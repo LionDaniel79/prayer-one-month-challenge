@@ -1,0 +1,10 @@
+* { box-sizing: border-box; }
+html { color-scheme: light; }
+body {
+  margin: 0;
+  background: #f7f7f4;
+  color: #1f2937;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+}
+button, input, select { font: inherit; }
+.shell { width: min(100% - 32px, 720px); margin: 0 auto; padding: 48px 0; }
