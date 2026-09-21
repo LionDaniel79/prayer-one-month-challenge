@@ -6,7 +6,7 @@
 
 **Architecture:** Next.js App Router가 UI와 Route Handler를 함께 제공하고, Supabase PostgreSQL은 외부 DB로만 사용한다. 브라우저가 Supabase Data API에 직접 접근하지 않으며, Vercel 서버리스 런타임이 Supavisor transaction pooler를 통해 Drizzle ORM으로 private schema에 접근한다. 인증은 Supabase Auth가 아니라 이름+전화번호 기반의 커스텀 인증과 DB-backed HttpOnly 세션으로 구현한다.
 
-**Tech Stack:** Next.js 16.3.3, React 19.3.0, TypeScript 7.0.2, Node 22.x, Drizzle ORM 0.45.3, Drizzle Kit 0.31.10, Postgres.js 3.4.9, Argon2 0.45.1, Zod 4.6.5, Vitest 5.0.1, Playwright 1.63.0, Supabase PostgreSQL, Vercel
+**Tech Stack:** Next.js 16.3.5, React 19.3.0, TypeScript 6.0.2, Node 22.x, Drizzle ORM 0.45.3, Drizzle Kit 0.31.10, Postgres.js 3.4.9, Argon2 0.45.1, Zod 4.6.5, Vitest 5.0.1, Playwright 1.63.0, Supabase PostgreSQL, Vercel
 
 **Spec:** `docs/superpowers/specs/2026-09-22-prayer-one-month-challenge-design.md`
 
@@ -125,8 +125,8 @@ vitest.config.ts
 Create the Next.js App Router project in the repository root and install exact versions:
 
 ```bash
-npm install --save-exact next@16.3.3 react@19.3.0 react-dom@19.3.0 drizzle-orm@0.45.3 postgres@3.4.9 argon2@0.45.1 zod@4.6.5
-npm install --save-dev --save-exact typescript@7.0.2 drizzle-kit@0.31.10 vitest@5.0.1 @playwright/test@1.63.0 @types/node@22.20.4 @types/react @types/react-dom eslint eslint-config-next
+npm install --save-exact next@16.3.5 react@19.3.0 react-dom@19.3.0 drizzle-orm@0.45.3 postgres@3.4.9 argon2@0.45.1 zod@4.6.5
+npm install --save-dev --save-exact typescript@6.0.2 drizzle-kit@0.31.10 vitest@5.0.1 @playwright/test@1.63.0 @types/node@22.20.4 @types/react@19.3.0 @types/react-dom@19.3.0 eslint@10.11.0 eslint-config-next@16.3.5 tsx@4.23.13
 ```
 
 Set `package.json` scripts:
@@ -142,6 +142,7 @@ Set `package.json` scripts:
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "db:generate": "drizzle-kit generate",
+    "admin:bootstrap": "tsx scripts/bootstrap-admin.ts",
     "admin:promote": "tsx scripts/promote-admin.ts",
     "db:smoke": "tsx scripts/smoke-db.ts"
   },
@@ -248,7 +249,7 @@ import {
 } from 'drizzle-orm/pg-core'
 
 export const appSchema = pgSchema('prayer_app')
-export const roleEnum = pgEnum('prayer_role', ['member', 'admin'])
+export const roleEnum = appSchema.enum('prayer_role', ['member', 'admin'])
 
 export const challenges = appSchema.table('challenges', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -445,7 +446,7 @@ Tests:
 - [ ] **Step 2: Implement phone secrecy**
 
 ```ts
-import { createHmac, createHash, randomBytes } from 'node:crypto'
+import { createHmac, randomBytes } from 'node:crypto'
 import * as argon2 from 'argon2'
 import { env } from '@/src/lib/env'
 
@@ -709,7 +710,7 @@ git commit -m "feat: add prayer check-in dashboard"
 - Create: `src/features/admin/service.ts`
 - Create: `app/admin/page.tsx`, `components/admin/AdminDashboard.tsx`
 - Create: `app/api/admin/challenge/route.ts`, `sams/route.ts`, `users/route.ts`
-- Create: `scripts/promote-admin.ts`
+- Create: `scripts/bootstrap-admin.ts`, `scripts/promote-admin.ts`
 - Test: `tests/admin/stats.test.ts`, `tests/e2e/admin-flow.spec.ts`
 
 **Interfaces:**
@@ -811,21 +812,39 @@ Sections in one responsive page:
 
 Desktop can use tables; under 640px rows become stacked cards.
 
-- [ ] **Step 6: Implement safe initial admin promotion script**
+- [ ] **Step 6: Implement first-admin bootstrap and later promotion scripts**
 
-Command:
+The first deployment cannot depend on an existing sam or member account. Add a one-time bootstrap command that reads secrets from environment variables rather than shell arguments:
+
+```bash
+BOOTSTRAP_ADMIN_NAME="관리자이름" \
+BOOTSTRAP_ADMIN_PHONE="01012345678" \
+BOOTSTRAP_SAM_NAME="관리자샘" \
+BOOTSTRAP_SAM_LEADER="샘리더이름" \
+npm run admin:bootstrap
+```
+
+`bootstrap-admin.ts` must:
+- abort if any admin already exists;
+- create the named sam if it does not exist;
+- normalize/hash the phone with the same production functions;
+- create exactly one admin linked to that sam in one transaction;
+- never print or persist the plaintext phone beyond process memory.
+
+For later administrators, keep:
+
 ```bash
 npm run admin:promote -- --name "홍길동" --phone "01012345678"
 ```
 
-The script derives the same lookup HMAC, verifies Argon2, then updates exactly one matching active user to admin. It never prints the phone.
+`promote-admin.ts` derives the lookup HMAC, verifies Argon2, then updates exactly one matching active user to admin. It never prints the phone.
 
 - [ ] **Step 7: Run admin tests and commit**
 
 ```bash
 npm test -- tests/admin
 npm run test:e2e -- tests/e2e/admin-flow.spec.ts
-git add app/admin app/api/admin components/admin src/features/admin scripts/promote-admin.ts tests/admin
+git add app/admin app/api/admin components/admin src/features/admin scripts/bootstrap-admin.ts scripts/promote-admin.ts tests/admin
 git commit -m "feat: add administrator dashboard"
 ```
 
@@ -941,8 +960,9 @@ README and operations docs must include:
 - Supabase project region and private schema name
 - Vercel environment variable names
 - use of transaction pooler
-- how to create sams before public registration
-- how the first administrator can register as a normal member and then be promoted with `npm run admin:promote`
+- how to bootstrap the first administrator and first sam with `npm run admin:bootstrap`
+- how the administrator creates the remaining sams before public registration
+- how later administrators are promoted with `npm run admin:promote`
 - how to create/activate the challenge
 - how to revoke a user/session
 - backup/export considerations
