@@ -10,6 +10,7 @@ import {
   uuid,
   varchar,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 export const appSchema = pgSchema("prayer_app");
 export const roleEnum = appSchema.enum("prayer_role", ["member", "admin"]);
@@ -28,7 +29,7 @@ export const challenges = appSchema.table(
   (t) => [
     uniqueIndex("challenges_one_active_uq")
       .on(t.isActive)
-      .where(t.isActive),
+      .where(sql`${t.isActive} = true`),
   ],
 );
 
