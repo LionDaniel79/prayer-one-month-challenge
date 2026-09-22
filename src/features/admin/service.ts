@@ -268,7 +268,7 @@ export async function updateChallenge(input: {
   endDate?: string;
   isActive: boolean;
 }) {
-  const endDate = resolveChallengeEndDate(input.startDate, endDate);
+  const endDate = resolveChallengeEndDate(input.startDate, input.endDate);
   assertChallengeRange(input.startDate, endDate);
   const db = getDb();
 
