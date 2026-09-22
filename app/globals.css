@@ -31,3 +31,34 @@ input { width: 100%; min-height: 48px; border: 1px solid #d1d5db; border-radius:
 .profile-summary div { display: flex; justify-content: space-between; gap: 16px; }
 .profile-summary dt { color: #667085; }
 .profile-summary dd { margin: 0; font-weight: 700; }
+
+.member-header { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+.member-header h1 { margin: 4px 0 6px; font-size: clamp(1.75rem, 7vw, 2.7rem); }
+.header-actions { display: flex; gap: 12px; align-items: center; white-space: nowrap; }
+.progress-card { display: flex; justify-content: space-between; align-items: center; gap: 20px; margin-bottom: 14px; }
+.progress-percent { font-size: clamp(2.4rem, 10vw, 4rem); line-height: 1; }
+.progress-copy { display: grid; gap: 5px; text-align: right; }
+.progress-copy span { color: #667085; font-size: .88rem; }
+.calendar-card { padding: 14px; }
+.weekday-row, .calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 5px; }
+.weekday-row { margin-bottom: 6px; text-align: center; font-size: .8rem; color: #667085; font-weight: 700; }
+.calendar-cell { position: relative; aspect-ratio: 1 / 1; min-width: 0; border: 1px solid #e4e7ec; border-radius: 11px; background: #fff; color: #344054; display: grid; place-items: center; padding: 3px; }
+.calendar-cell:disabled { cursor: default; }
+.calendar-cell.is-outside { opacity: .2; border-color: transparent; }
+.calendar-cell.is-sunday { background: #f4f4f5; color: #a1a1aa; }
+.calendar-cell.is-today { outline: 3px solid #667c70; outline-offset: 1px; }
+.calendar-cell.is-mutable { cursor: pointer; box-shadow: inset 0 0 0 1px #a7b8ad; }
+.calendar-cell.is-checked { background: #e7efe9; border-color: #7d9987; }
+.date-number { position: absolute; top: 6px; left: 7px; font-size: .72rem; }
+.check-mark { font-size: clamp(1rem, 5vw, 1.8rem); font-weight: 900; color: #2f5b40; }
+.calendar-legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 12px; color: #667085; font-size: .78rem; }
+.empty-state { text-align: center; padding-block: 40px; }
+@media (max-width: 520px) {
+  .shell { width: min(100% - 20px, 720px); padding-top: 22px; }
+  .member-header { display: grid; }
+  .header-actions { justify-content: flex-start; }
+  .progress-card { align-items: flex-end; }
+  .calendar-card { padding: 9px; }
+  .weekday-row, .calendar-grid { gap: 3px; }
+  .calendar-cell { border-radius: 9px; }
+}
