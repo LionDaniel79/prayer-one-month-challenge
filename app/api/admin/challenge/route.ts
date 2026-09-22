@@ -12,7 +12,7 @@ const ChallengeSchema = z.object({
   id: z.string().uuid().optional(),
   title: z.string().trim().min(1).max(120),
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   isActive: z.boolean(),
 });
 

@@ -3,7 +3,7 @@ import { getDb } from "../../db/client";
 import { challenges, prayerCheckins, sams, sessions, users } from "../../db/schema";
 import { DomainError } from "../../lib/http";
 import type { SessionUser } from "../auth/session";
-import { todayInSeoul } from "../challenge/date";
+import { defaultEndDate, todayInSeoul } from "../challenge/date";
 import { calculateProgress } from "../challenge/progress";
 
 export type AdminMemberSource = {
@@ -150,6 +150,10 @@ export function requireAdmin(sessionUser: SessionUser | null): asserts sessionUs
   }
 }
 
+export function resolveChallengeEndDate(startDate: string, explicitEndDate?: string): string {
+  return explicitEndDate?.trim() || defaultEndDate(startDate);
+}
+
 export function assertChallengeRange(startDate: string, endDate: string) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate) || !/^\d{4}-\d{2}-\d{2}$/.test(endDate)) {
     throw new DomainError("INVALID_DATE_RANGE", 400);
@@ -261,10 +265,11 @@ export async function updateChallenge(input: {
   id?: string;
   title: string;
   startDate: string;
-  endDate: string;
+  endDate?: string;
   isActive: boolean;
 }) {
-  assertChallengeRange(input.startDate, input.endDate);
+  const endDate = resolveChallengeEndDate(input.startDate, endDate);
+  assertChallengeRange(input.startDate, endDate);
   const db = getDb();
 
   return db.transaction(async (tx) => {
@@ -277,7 +282,7 @@ export async function updateChallenge(input: {
             eq(prayerCheckins.challengeId, input.id),
             or(
               lt(prayerCheckins.prayerDate, input.startDate),
-              gt(prayerCheckins.prayerDate, input.endDate),
+              gt(prayerCheckins.prayerDate, endDate),
             ),
           ),
         )
@@ -295,7 +300,7 @@ export async function updateChallenge(input: {
         .set({
           title: input.title,
           startDate: input.startDate,
-          endDate: input.endDate,
+          endDate: endDate,
           isActive: input.isActive,
         })
         .where(eq(challenges.id, input.id))
@@ -309,7 +314,7 @@ export async function updateChallenge(input: {
       .values({
         title: input.title,
         startDate: input.startDate,
-        endDate: input.endDate,
+        endDate: endDate,
         isActive: input.isActive,
       })
       .returning({ id: challenges.id });

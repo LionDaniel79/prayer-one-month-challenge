@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import type { AdminDashboardData } from "../../src/features/admin/service";
+import { defaultEndDate } from "../../src/features/challenge/date";
 
 type Modal = "challenge" | "sam" | "user" | null;
 
@@ -26,6 +27,9 @@ export function AdminDashboard({ initial }: { initial: AdminDashboardData }) {
   const [samFilter, setSamFilter] = useState("");
   const [error, setError] = useState("");
   const [selectedUserId, setSelectedUserId] = useState(initial.members[0]?.userId ?? "");
+  const [selectedSamId, setSelectedSamId] = useState("");
+  const [challengeStart, setChallengeStart] = useState(initial.challenge?.startDate ?? "");
+  const [challengeEnd, setChallengeEnd] = useState(initial.challenge?.endDate ?? "");
 
   const filteredMembers = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase("ko-KR");
@@ -37,6 +41,23 @@ export function AdminDashboard({ initial }: { initial: AdminDashboardData }) {
   }, [initial.members, query, samFilter]);
 
   const selectedUser = initial.members.find((member) => member.userId === selectedUserId);
+  const selectedSam = initial.sams.find((sam) => sam.samId === selectedSamId);
+
+  function openNewSam() {
+    setSelectedSamId("");
+    setModal("sam");
+  }
+
+  function openExistingSam(samId: string) {
+    setSelectedSamId(samId);
+    setModal("sam");
+  }
+
+  function changeChallengeStart(value: string) {
+    setChallengeStart(value);
+    if (value) setChallengeEnd(defaultEndDate(value));
+    else setChallengeEnd("");
+  }
 
   async function submitChallenge(formData: FormData) {
     setError("");
@@ -46,8 +67,8 @@ export function AdminDashboard({ initial }: { initial: AdminDashboardData }) {
         body: JSON.stringify({
           id: initial.challenge?.id,
           title: String(formData.get("title") ?? ""),
-          startDate: String(formData.get("startDate") ?? ""),
-          endDate: String(formData.get("endDate") ?? ""),
+          startDate: challengeStart,
+          endDate: challengeEnd || undefined,
           isActive: formData.get("isActive") === "on",
         }),
       });
@@ -63,9 +84,10 @@ export function AdminDashboard({ initial }: { initial: AdminDashboardData }) {
       await jsonRequest("/api/admin/sams", {
         method: "POST",
         body: JSON.stringify({
+          id: selectedSam?.samId,
           name: String(formData.get("name") ?? ""),
           leaderName: String(formData.get("leaderName") ?? ""),
-          isActive: true,
+          isActive: formData.get("isActive") === "on",
         }),
       });
       window.location.reload();
@@ -104,7 +126,7 @@ export function AdminDashboard({ initial }: { initial: AdminDashboardData }) {
         <div className="header-actions">
           <Link href="/">사용자 화면</Link>
           <button className="text-button" type="button" onClick={() => setModal("challenge")}>도전 설정</button>
-          <button className="text-button" type="button" onClick={() => setModal("sam")}>샘 추가</button>
+          <button className="text-button" type="button" onClick={openNewSam}>샘 추가</button>
           <button className="text-button" type="button" onClick={() => setModal("user")}>사용자 관리</button>
         </div>
       </header>
@@ -135,7 +157,13 @@ export function AdminDashboard({ initial }: { initial: AdminDashboardData }) {
           </div>
           {initial.sams.map((sam) => (
             <div className="admin-row" role="row" key={sam.samId}>
-              <span><strong>{sam.name}</strong><small>{sam.leaderName}</small></span>
+              <span>
+                <strong>{sam.name}</strong>
+                <small>{sam.leaderName}{sam.isActive ? "" : " · 비활성"}</small>
+                <button className="text-button sam-edit-button" type="button" onClick={() => openExistingSam(sam.samId)}>
+                  {sam.name} 수정
+                </button>
+              </span>
               <span>{sam.members}명</span>
               <span>{percent(sam.averageRate)}</span>
               <span>{sam.todayCompleted}명 · {percent(sam.todayRate)}</span>
@@ -179,19 +207,21 @@ export function AdminDashboard({ initial }: { initial: AdminDashboardData }) {
               <form action={submitChallenge} className="admin-form">
                 <h2>도전 설정</h2>
                 <label>제목<input name="title" defaultValue={initial.challenge?.title ?? "기도운동 1달 도전"} required /></label>
-                <label>시작일<input name="startDate" type="date" defaultValue={initial.challenge?.startDate ?? ""} required /></label>
-                <label>종료일<input name="endDate" type="date" defaultValue={initial.challenge?.endDate ?? ""} required /></label>
+                <label>시작일<input name="startDate" type="date" value={challengeStart} onChange={(event) => changeChallengeStart(event.target.value)} required /></label>
+                <label>종료일<input name="endDate" type="date" value={challengeEnd} onChange={(event) => setChallengeEnd(event.target.value)} required /></label>
+                <p className="helper-text">시작일을 바꾸면 1개월 기준 종료일이 자동 계산되며, 필요하면 종료일을 직접 수정할 수 있습니다.</p>
                 <label className="checkbox-row"><input name="isActive" type="checkbox" defaultChecked={initial.challenge?.isActive ?? true} /> 활성화</label>
                 <button className="primary-button" type="submit">저장</button>
               </form>
             )}
 
             {modal === "sam" && (
-              <form action={submitSam} className="admin-form">
-                <h2>샘 추가</h2>
-                <label>샘 이름<input name="name" required /></label>
-                <label>샘리더 이름<input name="leaderName" required /></label>
-                <button className="primary-button" type="submit">추가</button>
+              <form action={submitSam} className="admin-form" key={selectedSam?.samId ?? "new"}>
+                <h2>{selectedSam ? "샘 수정" : "샘 추가"}</h2>
+                <label>샘 이름<input name="name" defaultValue={selectedSam?.name ?? ""} required /></label>
+                <label>샘리더 이름<input name="leaderName" defaultValue={selectedSam?.leaderName ?? ""} required /></label>
+                <label className="checkbox-row"><input name="isActive" type="checkbox" defaultChecked={selectedSam?.isActive ?? true} /> 활성 샘</label>
+                <button className="primary-button" type="submit">{selectedSam ? "저장" : "추가"}</button>
               </form>
             )}
 
