@@ -62,3 +62,48 @@ input { width: 100%; min-height: 48px; border: 1px solid #d1d5db; border-radius:
   .weekday-row, .calendar-grid { gap: 3px; }
   .calendar-cell { border-radius: 9px; }
 }
+
+.admin-shell { width: min(100% - 32px, 1200px); margin: 0 auto; padding: 36px 0 64px; }
+.admin-header { display: flex; justify-content: space-between; gap: 24px; align-items: flex-start; margin-bottom: 20px; }
+.admin-header h1 { margin: 4px 0 6px; font-size: clamp(2rem, 6vw, 3rem); }
+.admin-kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-bottom: 14px; }
+.admin-kpis article { display: grid; gap: 8px; }
+.admin-kpis span { color: #667085; font-size: .9rem; }
+.admin-kpis strong { font-size: clamp(1.4rem, 4vw, 2.1rem); }
+.admin-section { margin-top: 14px; }
+.admin-section h2 { margin-top: 0; }
+.bucket-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.bucket-grid div { background: #f3f5f2; border-radius: 14px; padding: 16px; display: grid; gap: 4px; }
+.bucket-grid strong { font-size: 1.6rem; }
+.bucket-grid span { color: #667085; font-size: .85rem; }
+.section-heading { display: flex; justify-content: space-between; gap: 16px; align-items: center; }
+.admin-filters { display: flex; gap: 8px; }
+.admin-filters input, .admin-filters select, .admin-form select { min-height: 44px; border: 1px solid #d1d5db; border-radius: 10px; padding: 0 10px; background: #fff; }
+.admin-table { display: grid; }
+.admin-row { display: grid; grid-template-columns: minmax(180px, 1.5fr) repeat(3, minmax(100px, 1fr)); gap: 12px; align-items: center; padding: 13px 6px; border-top: 1px solid #e5e7eb; }
+.admin-row-head { color: #667085; font-size: .82rem; font-weight: 700; border-top: 0; }
+.admin-row span { min-width: 0; }
+.admin-row span:first-child { display: grid; gap: 3px; }
+.admin-row small { color: #667085; }
+.modal-backdrop { position: fixed; inset: 0; z-index: 50; background: rgba(17, 24, 39, .48); display: grid; place-items: center; padding: 20px; }
+.admin-modal { position: relative; width: min(100%, 520px); max-height: 90vh; overflow: auto; background: #fff; border-radius: 20px; padding: 24px; box-shadow: 0 24px 70px rgba(0,0,0,.25); }
+.modal-close { position: absolute; top: 10px; right: 14px; min-width: 44px; min-height: 44px; border: 0; background: transparent; font-size: 1.8rem; cursor: pointer; }
+.admin-form { display: grid; gap: 14px; }
+.admin-form label { display: grid; gap: 7px; }
+.checkbox-row { display: flex !important; align-items: center; gap: 9px !important; }
+.checkbox-row input { width: 20px; min-height: 20px; }
+@media (max-width: 720px) {
+  .admin-shell { width: min(100% - 20px, 1200px); padding-top: 22px; }
+  .admin-header, .section-heading { display: grid; }
+  .admin-kpis, .bucket-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .admin-filters { display: grid; grid-template-columns: 1fr; }
+  .admin-row-head { display: none; }
+  .admin-row { grid-template-columns: 1fr 1fr; padding: 14px 0; }
+  .admin-row span::before { display: block; color: #98a2b3; font-size: .72rem; }
+  .member-table .admin-row span:nth-child(2)::before { content: "샘"; }
+  .member-table .admin-row span:nth-child(3)::before { content: "달성률"; }
+  .member-table .admin-row span:nth-child(4)::before { content: "오늘"; }
+}
+@media (max-width: 430px) {
+  .admin-kpis, .bucket-grid { grid-template-columns: 1fr; }
+}
