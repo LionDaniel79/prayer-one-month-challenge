@@ -4,7 +4,6 @@ beforeAll(() => {
   process.env.DATABASE_URL = "postgres://example";
   process.env.SESSION_SECRET = "s".repeat(32);
   process.env.PHONE_LOOKUP_PEPPER = "p".repeat(32);
-  process.env.NODE_ENV = "test";
 });
 
 describe("authentication crypto", () => {
