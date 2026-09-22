@@ -8,3 +8,26 @@ body {
 }
 button, input, select { font: inherit; }
 .shell { width: min(100% - 32px, 720px); margin: 0 auto; padding: 48px 0; }
+
+a { color: inherit; }
+.card { background: #fff; border: 1px solid #e5e7eb; border-radius: 20px; padding: 20px; box-shadow: 0 8px 30px rgba(31, 41, 55, .06); }
+.auth-shell { padding-top: 32px; }
+.hero-copy { margin-bottom: 24px; }
+.hero-copy h1 { margin: 6px 0 8px; font-size: clamp(2rem, 8vw, 3rem); }
+.eyebrow { font-weight: 700; color: #6b7280; }
+.auth-card, .card label { display: grid; gap: 8px; }
+.auth-card { gap: 18px; }
+input { width: 100%; min-height: 48px; border: 1px solid #d1d5db; border-radius: 12px; padding: 0 14px; background: #fff; }
+.primary-button, .sam-option { min-height: 48px; border: 0; border-radius: 12px; cursor: pointer; }
+.primary-button { background: #253b32; color: white; padding: 0 18px; font-weight: 700; }
+.text-button { border: 0; background: transparent; padding: 4px 0; text-align: left; cursor: pointer; }
+.helper-text { color: #6b7280; font-size: .92rem; }
+.error-text { color: #b42318; font-weight: 600; }
+.sam-list { display: grid; gap: 10px; margin-top: 14px; }
+.sam-option { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 14px; background: #f3f5f2; text-align: left; }
+.sam-option span { color: #667085; font-size: .88rem; }
+.top-nav { margin-bottom: 16px; }
+.profile-summary { display: grid; gap: 8px; margin: 0 0 24px; }
+.profile-summary div { display: flex; justify-content: space-between; gap: 16px; }
+.profile-summary dt { color: #667085; }
+.profile-summary dd { margin: 0; font-weight: 700; }

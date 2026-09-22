@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { SessionHeartbeat } from "../components/auth/SessionHeartbeat";
 
 export const metadata: Metadata = {
   title: "기도운동 1달 도전",
@@ -9,7 +10,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="ko">
-      <body>{children}</body>
+      <body><SessionHeartbeat />{children}</body>
     </html>
   );
 }
