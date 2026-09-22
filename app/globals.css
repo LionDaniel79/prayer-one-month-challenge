@@ -107,3 +107,22 @@ input { width: 100%; min-height: 48px; border: 1px solid #d1d5db; border-radius:
 @media (max-width: 430px) {
   .admin-kpis, .bucket-grid { grid-template-columns: 1fr; }
 }
+
+button, [role="button"], .header-actions a {
+  touch-action: manipulation;
+}
+.primary-button, .text-button, .sam-option, .calendar-cell, .modal-close, .header-actions a {
+  min-height: 44px;
+}
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, [role="button"]:focus-visible {
+  outline: 3px solid #2563eb;
+  outline-offset: 3px;
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
