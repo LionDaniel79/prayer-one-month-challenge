@@ -21,7 +21,11 @@ function fakeRepo(initial: string[] = [], insertError?: Error & { code?: string 
       dates.add(date);
     },
     getCompletedDates: async () => [...dates],
-    getMemberIdentity: async () => ({ displayName: "홍길동", samName: "사랑샘" }),
+    getMemberIdentity: async () => ({
+      displayName: "홍길동",
+      position: "집사",
+      samLabel: "1-6",
+    }),
   };
   return { repo, dates };
 }

@@ -40,9 +40,9 @@ export function PrayerDashboardClient({ initial }: { initial: MemberDashboard })
     <>
       <header className="member-header">
         <div>
-          <p className="eyebrow">{dashboard.user.samName ?? "샘 미지정"}</p>
+          <p className="eyebrow">{dashboard.user.samLabel ?? "샘 미지정"}</p>
           <h1>{dashboard.challenge.title}</h1>
-          <p><strong>{dashboard.user.displayName}</strong> 님의 기도 기록</p>
+          <p><strong>{dashboard.user.displayName}</strong>{dashboard.user.position ? ` · ${dashboard.user.position}` : ""} 님의 기도 기록</p>
         </div>
         <div className="header-actions">
           <Link href="/profile">내 정보</Link>

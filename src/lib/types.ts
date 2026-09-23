@@ -14,7 +14,8 @@ export type MemberDashboard = {
   today: string;
   user: {
     displayName: string;
-    samName: string | null;
+    position: string | null;
+    samLabel: string | null;
   };
   challenge: {
     id: string;

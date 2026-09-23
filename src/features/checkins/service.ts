@@ -1,6 +1,6 @@
 import { and, asc, eq } from "drizzle-orm";
 import { getDb } from "../../db/client";
-import { challenges, prayerCheckins, sams, users } from "../../db/schema";
+import { challenges, memberRoster, prayerCheckins, users } from "../../db/schema";
 import { DomainError } from "../../lib/http";
 import type { MemberDashboard } from "../../lib/types";
 import { isMutablePrayerDate, todayInSeoul } from "../challenge/date";
@@ -19,7 +19,11 @@ export type CheckinRepository = {
   deleteCheckin(id: string): Promise<void>;
   insertCheckin(userId: string, challengeId: string, prayerDate: string): Promise<void>;
   getCompletedDates(userId: string, challengeId: string): Promise<string[]>;
-  getMemberIdentity(userId: string): Promise<{ displayName: string; samName: string | null } | null>;
+  getMemberIdentity(userId: string): Promise<{
+    displayName: string;
+    position: string | null;
+    samLabel: string | null;
+  } | null>;
 };
 
 export const dbCheckinRepository: CheckinRepository = {
@@ -66,12 +70,22 @@ export const dbCheckinRepository: CheckinRepository = {
   },
   async getMemberIdentity(userId) {
     const [row] = await getDb()
-      .select({ displayName: users.displayName, samName: sams.name })
+      .select({
+        userDisplayName: users.displayName,
+        rosterName: memberRoster.canonicalName,
+        position: memberRoster.position,
+        samLabel: memberRoster.samLabel,
+      })
       .from(users)
-      .leftJoin(sams, eq(sams.id, users.samId))
+      .leftJoin(memberRoster, eq(memberRoster.id, users.rosterId))
       .where(eq(users.id, userId))
       .limit(1);
-    return row ?? null;
+    if (!row) return null;
+    return {
+      displayName: row.rosterName ?? row.userDisplayName,
+      position: row.position,
+      samLabel: row.samLabel,
+    };
   },
 };
 
