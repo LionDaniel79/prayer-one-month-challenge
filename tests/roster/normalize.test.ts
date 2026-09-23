@@ -34,4 +34,8 @@ describe("roster normalization", () => {
     expect(makeSamLabel(" 12 마을 ", " 3 샘 ")).toBe("12-3");
     expect(makeSamLabel("1마을", null)).toBeNull();
   });
+
+  it("preserves the special management sam label", () => {
+    expect(makeSamLabel("관리샘", null)).toBe("관리샘");
+  });
 });
