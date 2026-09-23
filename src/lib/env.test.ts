@@ -10,12 +10,18 @@ const valid = {
 };
 
 describe("parseEnv", () => {
-  it("rejects missing secrets", () => {
+  it("rejects missing core secrets", () => {
     expect(() => parseEnv({ DATABASE_URL: "" })).toThrow();
   });
 
   it("accepts the required server environment", () => {
     expect(parseEnv(valid).NODE_ENV).toBe("test");
+  });
+
+  it("allows roster encryption key to be absent before roster features are activated", () => {
+    const { ROSTER_ENCRYPTION_KEY, ...withoutRosterKey } = valid;
+    expect(ROSTER_ENCRYPTION_KEY).toBeTruthy();
+    expect(parseEnv(withoutRosterKey).ROSTER_ENCRYPTION_KEY).toBeUndefined();
   });
 
   it("rejects roster encryption keys that do not decode to 32 bytes", () => {

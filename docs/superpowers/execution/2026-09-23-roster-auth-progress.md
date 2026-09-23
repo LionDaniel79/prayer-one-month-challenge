@@ -13,3 +13,6 @@ Pre-flight shared interfaces:
 - Task 7 → Task 8: optimistic UI and reduced POST response are consumed by Preview verification; no interface conflict found.
 
 Ruling: Use the existing GitHub feature branch as the isolated workspace instead of a local git worktree — this harness has GitHub repository actions but no mounted git checkout — cost if wrong: local Superpowers helper scripts/ignored workspace cannot be used, so progress is recorded in a committed execution ledger instead.
+Task 1: RED observed in GitHub Actions run 35822168409 — roster normalize/crypto modules absent and malformed roster key was not rejected.
+Task 1: Ruling: ROSTER_ENCRYPTION_KEY is optional in the global environment contract during staged rollout, but requireRosterEncryptionKey() fails closed when roster encryption is actually invoked — prevents breaking the already-live Preview before the private key can be installed, while roster operations remain impossible without the key — cost if wrong: a missing key is detected at first roster operation instead of process startup.
+Task 1: Ruling: defer SheetJS installation from Task 1 to Task 3 where it is first consumed — avoids an unused dependency and package-lock-only churn before importer work — cost if wrong: Task 3 owns one extra dependency setup step.

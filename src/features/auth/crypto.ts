@@ -1,17 +1,14 @@
 import { createHmac, randomBytes } from "node:crypto";
 import * as argon2 from "argon2";
 import { getEnv } from "../../lib/env";
+import { canonicalizeRosterName, normalizeRosterPhone } from "../roster/normalize";
 
 export function normalizeName(value: string): string {
-  const normalized = value.trim().replace(/\s+/g, " ").normalize("NFC");
-  if (!normalized) throw new Error("INVALID_NAME");
-  return normalized.toLocaleLowerCase("ko-KR");
+  return canonicalizeRosterName(value).toLocaleLowerCase("ko-KR");
 }
 
 export function normalizePhone(value: string): string {
-  const digits = value.replace(/\D/g, "");
-  if (!/^\d{9,11}$/.test(digits)) throw new Error("INVALID_PHONE");
-  return digits;
+  return normalizeRosterPhone(value);
 }
 
 export function phoneLookupHash(phone: string): string {
