@@ -1,12 +1,12 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { SamRegistration } from "./SamRegistration";
+import { useRouter } from "next/navigation";
 
 export function LoginForm() {
+  const router = useRouter();
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
-  const [registering, setRegistering] = useState(false);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -14,6 +14,7 @@ export function LoginForm() {
     event.preventDefault();
     setBusy(true);
     setMessage("");
+
     try {
       const response = await fetch("/api/auth/login", {
         method: "POST",
@@ -21,42 +22,56 @@ export function LoginForm() {
         body: JSON.stringify({ name, phone }),
       });
       const body = await response.json().catch(() => ({}));
+
       if (response.ok) {
-        window.location.assign("/");
+        router.replace("/");
+        router.refresh();
         return;
       }
-      if (response.status === 404 && body.code === "REGISTRATION_REQUIRED") {
-        setRegistering(true);
-        return;
-      }
+
       setMessage(
         body.message ??
           (response.status === 429
             ? "로그인 시도가 너무 많습니다. 잠시 후 다시 시도해 주세요."
-            : "입력한 정보를 확인해 주세요."),
+            : "등록된 명단과 일치하지 않습니다. 이름과 전화번호를 확인해 주세요."),
       );
     } finally {
       setBusy(false);
     }
   }
 
-  if (registering) {
-    return <SamRegistration name={name} phone={phone} onBack={() => setRegistering(false)} />;
-  }
-
   return (
     <form className="card auth-card" onSubmit={submit}>
       <label>
         <span>이름 (아이디)</span>
-        <input required maxLength={80} autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="이름을 입력하세요" />
+        <input
+          required
+          maxLength={80}
+          autoComplete="name"
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+          placeholder="이름을 입력하세요"
+        />
       </label>
       <label>
         <span>전화번호 (비밀번호)</span>
-        <input required type="tel" inputMode="numeric" autoComplete="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="01012345678" />
+        <input
+          required
+          type="tel"
+          inputMode="numeric"
+          autoComplete="tel"
+          value={phone}
+          onChange={(event) => setPhone(event.target.value)}
+          placeholder="01012345678"
+        />
       </label>
       {message && <p className="error-text" role="alert">{message}</p>}
-      <button className="primary-button" type="submit" disabled={busy}>{busy ? "확인 중…" : "로그인 / 시작하기"}</button>
-      <p className="helper-text">처음 접속하는 경우 로그인 후 본인의 샘을 선택합니다.</p>
+      <button className="primary-button" type="submit" disabled={busy}>
+        {busy ? "확인 중…" : "로그인"}
+      </button>
+      <p className="helper-text">
+        등록된 공동체 명단의 이름과 전화번호가 일치해야 로그인할 수 있습니다.
+      </p>
     </form>
   );
 }

@@ -1,123 +1,166 @@
 import { and, eq } from "drizzle-orm";
 import { getDb } from "../../db/client";
-import { sams, sessions, users } from "../../db/schema";
+import { users } from "../../db/schema";
+import type { SessionUser } from "./session";
+import { createSession } from "./session";
 import {
   hashPhonePassword,
-  newSessionToken,
   normalizeName,
   phoneLookupHash,
-  sessionTokenHash,
-  verifyPhonePassword,
 } from "./crypto";
-import { sessionExpiry } from "./session";
+import {
+  findActiveRosterCredential,
+  type RosterCredential,
+} from "../roster/repository";
+import { canonicalizeRosterName } from "../roster/normalize";
 
-export type AuthUserRecord = {
+export type ParticipantRecord = {
   id: string;
-  displayName: string;
-  normalizedName: string;
-  phoneLookupHash: string;
-  phonePasswordHash: string;
-  samId: string | null;
   role: "member" | "admin";
   isActive: boolean;
 };
 
-export type AuthRepository = {
-  findCredential(normalizedName: string, lookupHash: string): Promise<AuthUserRecord | null>;
+export type RosterAuthRepository = {
+  findRosterCredential(
+    canonicalName: string,
+    lookupHash: string,
+  ): Promise<RosterCredential | null>;
+  findParticipantByRosterId(rosterId: string): Promise<ParticipantRecord | null>;
+  createParticipant(input: {
+    roster: RosterCredential;
+    phonePasswordHash: string;
+    now: Date;
+  }): Promise<ParticipantRecord>;
+  syncParticipant(input: {
+    participantId: string;
+    roster: RosterCredential;
+    now: Date;
+  }): Promise<ParticipantRecord>;
 };
 
-export const dbAuthRepository: AuthRepository = {
-  async findCredential(normalizedName, lookupHash) {
+function participantValues(roster: RosterCredential, now: Date) {
+  return {
+    rosterId: roster.id,
+    displayName: roster.canonicalName,
+    normalizedName: normalizeName(roster.canonicalName),
+    phoneLookupHash: roster.phoneLookupHash!,
+    role: roster.isAdmin ? "admin" as const : "member" as const,
+    isActive: roster.isActive,
+    updatedAt: now,
+  };
+}
+
+export const dbRosterAuthRepository: RosterAuthRepository = {
+  findRosterCredential: findActiveRosterCredential,
+
+  async findParticipantByRosterId(rosterId) {
     const [row] = await getDb()
-      .select({
-        id: users.id,
-        displayName: users.displayName,
-        normalizedName: users.normalizedName,
-        phoneLookupHash: users.phoneLookupHash,
-        phonePasswordHash: users.phonePasswordHash,
-        samId: users.samId,
-        role: users.role,
-        isActive: users.isActive,
-      })
+      .select({ id: users.id, role: users.role, isActive: users.isActive })
       .from(users)
-      .where(
-        and(
-          eq(users.normalizedName, normalizedName),
-          eq(users.phoneLookupHash, lookupHash),
-        ),
-      )
+      .where(eq(users.rosterId, rosterId))
       .limit(1);
     return row ?? null;
   },
+
+  async createParticipant({ roster, phonePasswordHash, now }) {
+    const values = {
+      ...participantValues(roster, now),
+      phonePasswordHash,
+    };
+
+    try {
+      const [created] = await getDb()
+        .insert(users)
+        .values(values)
+        .returning({ id: users.id, role: users.role, isActive: users.isActive });
+      return created;
+    } catch (error) {
+      if ((error as { code?: string }).code !== "23505") throw error;
+
+      const [legacy] = await getDb()
+        .select({ id: users.id })
+        .from(users)
+        .where(
+          and(
+            eq(users.normalizedName, values.normalizedName),
+            eq(users.phoneLookupHash, values.phoneLookupHash),
+          ),
+        )
+        .limit(1);
+      if (!legacy) throw error;
+
+      const [linked] = await getDb()
+        .update(users)
+        .set({ ...participantValues(roster, now), phonePasswordHash })
+        .where(eq(users.id, legacy.id))
+        .returning({ id: users.id, role: users.role, isActive: users.isActive });
+      return linked;
+    }
+  },
+
+  async syncParticipant({ participantId, roster, now }) {
+    const [updated] = await getDb()
+      .update(users)
+      .set(participantValues(roster, now))
+      .where(eq(users.id, participantId))
+      .returning({ id: users.id, role: users.role, isActive: users.isActive });
+    return updated;
+  },
 };
 
-export async function authenticateCredentials(
-  repository: AuthRepository,
+export async function authenticateRosterIdentity(
+  repository: RosterAuthRepository,
   name: string,
   phone: string,
-): Promise<AuthUserRecord | null> {
-  const record = await repository.findCredential(normalizeName(name), phoneLookupHash(phone));
-  if (!record?.isActive) return null;
-  if (!(await verifyPhonePassword(record.phonePasswordHash, phone))) return null;
-  return record;
-}
-
-export async function credentialExists(name: string, phone: string): Promise<boolean> {
-  return Boolean(
-    await dbAuthRepository.findCredential(normalizeName(name), phoneLookupHash(phone)),
-  );
-}
-
-export async function registerMember({
-  name,
-  phone,
-  samId,
   now = new Date(),
-}: {
-  name: string;
-  phone: string;
-  samId: string;
-  now?: Date;
-}): Promise<{ userId: string; token: string }> {
-  const normalizedName = normalizeName(name);
+): Promise<{ roster: RosterCredential; participant: ParticipantRecord } | null> {
+  const canonicalName = canonicalizeRosterName(name);
   const lookupHash = phoneLookupHash(phone);
-  const phonePasswordHash = await hashPhonePassword(phone);
-  const token = newSessionToken();
-  const tokenHash = sessionTokenHash(token);
+  const roster = await repository.findRosterCredential(canonicalName, lookupHash);
 
-  return getDb().transaction(async (tx) => {
-    const [sam] = await tx
-      .select({ id: sams.id })
-      .from(sams)
-      .where(and(eq(sams.id, samId), eq(sams.isActive, true)))
-      .limit(1);
-    if (!sam) throw new Error("INVALID_SAM");
+  if (!roster?.isActive || !roster.phoneLookupHash) return null;
 
-    const [existing] = await tx
-      .select({ id: users.id })
-      .from(users)
-      .where(and(eq(users.normalizedName, normalizedName), eq(users.phoneLookupHash, lookupHash)))
-      .limit(1);
-    if (existing) throw new Error("ACCOUNT_EXISTS");
+  const existing = await repository.findParticipantByRosterId(roster.id);
+  if (existing) {
+    return {
+      roster,
+      participant: await repository.syncParticipant({
+        participantId: existing.id,
+        roster,
+        now,
+      }),
+    };
+  }
 
-    const [user] = await tx
-      .insert(users)
-      .values({
-        displayName: name.trim().normalize("NFC"),
-        normalizedName,
-        phoneLookupHash: lookupHash,
-        phonePasswordHash,
-        samId,
-      })
-      .returning({ id: users.id });
-
-    await tx.insert(sessions).values({
-      userId: user.id,
-      tokenHash,
-      expiresAt: sessionExpiry(now),
-      lastSeenAt: now,
-    });
-
-    return { userId: user.id, token };
+  const participant = await repository.createParticipant({
+    roster,
+    phonePasswordHash: await hashPhonePassword(phone),
+    now,
   });
+  return { roster, participant };
+}
+
+export async function authenticateRosterLogin(
+  name: string,
+  phone: string,
+  now = new Date(),
+): Promise<{ user: SessionUser; token: string } | null> {
+  const result = await authenticateRosterIdentity(
+    dbRosterAuthRepository,
+    name,
+    phone,
+    now,
+  );
+  if (!result) return null;
+
+  const session = await createSession(result.participant.id, now);
+  return {
+    user: {
+      id: result.participant.id,
+      displayName: result.roster.canonicalName,
+      samId: null,
+      role: result.participant.role,
+    },
+    token: session.token,
+  };
 }

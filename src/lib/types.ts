@@ -6,9 +6,8 @@ export type SamOption = {
 
 export type ProfileData = {
   displayName: string;
-  samId: string | null;
-  samName: string | null;
-  samLeaderName: string | null;
+  position: string | null;
+  samLabel: string | null;
 };
 
 export type MemberDashboard = {

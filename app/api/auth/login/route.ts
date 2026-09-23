@@ -6,13 +6,8 @@ import {
   isLoginBlocked,
   recordLoginFailure,
 } from "../../../../src/features/auth/rate-limit";
+import { authenticateRosterLogin } from "../../../../src/features/auth/service";
 import {
-  authenticateCredentials,
-  credentialExists,
-  dbAuthRepository,
-} from "../../../../src/features/auth/service";
-import {
-  createSession,
   SESSION_COOKIE_NAME,
   sessionCookieOptions,
 } from "../../../../src/features/auth/session";
@@ -34,37 +29,34 @@ export async function POST(request: NextRequest) {
 
   const { name, phone } = parsed.data;
   const ip = requestIp(request);
+
   if (await isLoginBlocked(name, ip)) {
     return NextResponse.json(
-      { code: "TOO_MANY_ATTEMPTS", message: "로그인 시도가 너무 많습니다. 잠시 후 다시 시도해 주세요." },
+      {
+        code: "TOO_MANY_ATTEMPTS",
+        message: "로그인 시도가 너무 많습니다. 잠시 후 다시 시도해 주세요.",
+      },
       { status: 429 },
     );
   }
 
-  const exists = await credentialExists(name, phone);
-  if (!exists) {
-    const failure = await recordLoginFailure(name, ip);
-    if (failure.blockedUntil) {
-      return NextResponse.json({ code: "TOO_MANY_ATTEMPTS" }, { status: 429 });
-    }
-    return NextResponse.json({ code: "REGISTRATION_REQUIRED" }, { status: 404 });
-  }
-
-  const user = await authenticateCredentials(dbAuthRepository, name, phone);
-  if (!user) {
+  const result = await authenticateRosterLogin(name, phone);
+  if (!result) {
     const failure = await recordLoginFailure(name, ip);
     if (failure.blockedUntil) {
       return NextResponse.json({ code: "TOO_MANY_ATTEMPTS" }, { status: 429 });
     }
     return NextResponse.json(
-      { code: "INVALID_CREDENTIALS", message: "아이디 또는 비밀번호를 확인해 주세요." },
+      {
+        code: "ROSTER_MISMATCH",
+        message: "등록된 명단과 일치하지 않습니다. 이름과 전화번호를 확인해 주세요.",
+      },
       { status: 401 },
     );
   }
 
   await clearLoginFailures(name, ip);
-  const session = await createSession(user.id);
   const store = await cookies();
-  store.set(SESSION_COOKIE_NAME, session.token, sessionCookieOptions());
+  store.set(SESSION_COOKIE_NAME, result.token, sessionCookieOptions());
   return NextResponse.json({ status: "ok" });
 }
