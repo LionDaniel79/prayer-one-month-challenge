@@ -1,19 +1,63 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { MemberDashboard } from "../../src/lib/types";
+import {
+  optimisticToggleDashboard,
+  reconcileCheckinState,
+  type CheckinState,
+} from "../../src/features/checkins/optimistic";
 import { PrayerCalendar } from "../calendar/PrayerCalendar";
 import { ProgressCard } from "./ProgressCard";
 
 export function PrayerDashboardClient({ initial }: { initial: MemberDashboard }) {
+  const router = useRouter();
   const [dashboard, setDashboard] = useState(initial);
-  const [busyDate, setBusyDate] = useState<string | null>(null);
+  const dashboardRef = useRef(initial);
+  const [pendingDates, setPendingDates] = useState<Set<string>>(new Set());
+  const pendingDatesRef = useRef<Set<string>>(new Set());
   const [message, setMessage] = useState("");
 
+  function updateDashboard(
+    reducer: (current: MemberDashboard) => MemberDashboard,
+  ) {
+    setDashboard((current) => {
+      const next = reducer(current);
+      dashboardRef.current = next;
+      return next;
+    });
+  }
+
+  function addPending(prayerDate: string) {
+    pendingDatesRef.current = new Set(pendingDatesRef.current).add(prayerDate);
+    setPendingDates((current) => new Set(current).add(prayerDate));
+  }
+
+  function removePending(prayerDate: string) {
+    const nextRef = new Set(pendingDatesRef.current);
+    nextRef.delete(prayerDate);
+    pendingDatesRef.current = nextRef;
+    setPendingDates((current) => {
+      const next = new Set(current);
+      next.delete(prayerDate);
+      return next;
+    });
+  }
+
   async function toggle(prayerDate: string) {
-    setBusyDate(prayerDate);
+    if (pendingDatesRef.current.has(prayerDate)) return;
+
+    const previouslyChecked =
+      dashboardRef.current.completedDates.includes(prayerDate);
+
+    addPending(prayerDate);
     setMessage("");
+    updateDashboard((current) =>
+      optimisticToggleDashboard(current, prayerDate),
+    );
+
     try {
       const response = await fetch("/api/checkins", {
         method: "POST",
@@ -21,19 +65,41 @@ export function PrayerDashboardClient({ initial }: { initial: MemberDashboard })
         body: JSON.stringify({ prayerDate }),
       });
       const body = await response.json().catch(() => ({}));
-      if (!response.ok || !body.dashboard) {
-        setMessage("체크할 수 없는 날짜입니다. 화면을 새로고침해 주세요.");
+      const state = body.state as CheckinState | undefined;
+
+      if (!response.ok || (state !== "checked" && state !== "unchecked")) {
+        updateDashboard((current) =>
+          reconcileCheckinState(
+            current,
+            prayerDate,
+            previouslyChecked ? "checked" : "unchecked",
+          ),
+        );
+        setMessage("저장하지 못했습니다. 해당 날짜를 다시 눌러 주세요.");
         return;
       }
-      setDashboard(body.dashboard);
+
+      updateDashboard((current) =>
+        reconcileCheckinState(current, prayerDate, state),
+      );
+    } catch {
+      updateDashboard((current) =>
+        reconcileCheckinState(
+          current,
+          prayerDate,
+          previouslyChecked ? "checked" : "unchecked",
+        ),
+      );
+      setMessage("저장하지 못했습니다. 해당 날짜를 다시 눌러 주세요.");
     } finally {
-      setBusyDate(null);
+      removePending(prayerDate);
     }
   }
 
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
-    window.location.assign("/login");
+    router.replace("/login");
+    router.refresh();
   }
 
   return (
@@ -42,7 +108,10 @@ export function PrayerDashboardClient({ initial }: { initial: MemberDashboard })
         <div>
           <p className="eyebrow">{dashboard.user.samLabel ?? "샘 미지정"}</p>
           <h1>{dashboard.challenge.title}</h1>
-          <p><strong>{dashboard.user.displayName}</strong>{dashboard.user.position ? ` · ${dashboard.user.position}` : ""} 님의 기도 기록</p>
+          <p>
+            <strong>{dashboard.user.displayName}</strong>
+            {dashboard.user.position ? ` · ${dashboard.user.position}` : ""} 님의 기도 기록
+          </p>
         </div>
         <div className="header-actions">
           <Link href="/profile">내 정보</Link>
@@ -51,7 +120,11 @@ export function PrayerDashboardClient({ initial }: { initial: MemberDashboard })
       </header>
       <ProgressCard dashboard={dashboard} />
       {message && <p className="error-text" role="alert">{message}</p>}
-      <PrayerCalendar dashboard={dashboard} onToggle={toggle} busyDate={busyDate} />
+      <PrayerCalendar
+        dashboard={dashboard}
+        onToggle={toggle}
+        pendingDates={pendingDates}
+      />
     </>
   );
 }

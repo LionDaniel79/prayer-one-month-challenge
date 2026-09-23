@@ -25,11 +25,11 @@ function shortDate(date: string) {
 export function PrayerCalendar({
   dashboard,
   onToggle,
-  busyDate,
+  pendingDates,
 }: {
   dashboard: MemberDashboard;
   onToggle: (date: string) => void;
-  busyDate: string | null;
+  pendingDates: ReadonlySet<string>;
 }) {
   const checked = new Set(dashboard.completedDates);
   const { first, last } = calendarBounds(
@@ -53,6 +53,7 @@ export function PrayerCalendar({
             startDate: dashboard.challenge.startDate,
             endDate: dashboard.challenge.endDate,
           });
+          const pending = pendingDates.has(date);
           const done = checked.has(date);
           const sunday = !isPrayerDay(date);
           const today = date === dashboard.today;
@@ -70,9 +71,11 @@ export function PrayerCalendar({
                 done ? "is-checked" : "",
                 today ? "is-today" : "",
                 mutable ? "is-mutable" : "",
+                pending ? "is-pending" : "",
               ].filter(Boolean).join(" ")}
-              disabled={!mutable || busyDate !== null}
+              disabled={!mutable || pending}
               onClick={() => onToggle(date)}
+              aria-busy={pending || undefined}
               aria-label={`${month}월 ${day}일 ${mutable ? action : reason}`}
               title={reason || action}
             >

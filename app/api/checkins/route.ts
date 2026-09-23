@@ -21,9 +21,11 @@ export async function POST(request: Request) {
   if (!parsed.success) return NextResponse.json({ code: "INVALID_INPUT" }, { status: 400 });
 
   try {
-    const state = await toggleCheckin({ userId: user.id, prayerDate: parsed.data.prayerDate });
-    const dashboard = await getMemberDashboard(user.id);
-    return NextResponse.json({ state, dashboard });
+    const state = await toggleCheckin({
+      userId: user.id,
+      prayerDate: parsed.data.prayerDate,
+    });
+    return NextResponse.json({ state });
   } catch (error) {
     if (error instanceof DomainError) {
       return NextResponse.json({ code: error.code }, { status: error.status });

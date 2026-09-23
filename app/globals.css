@@ -144,3 +144,5 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .participant-table .admin-row span:nth-child(6)::before { content: "달성률"; }
   .participant-table .admin-row span:nth-child(7)::before { content: "오늘"; }
 }
+
+.calendar-cell.is-pending { opacity: .72; }
