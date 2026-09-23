@@ -43,6 +43,8 @@ export function AdminDashboard({
   const [selectedRosterId, setSelectedRosterId] = useState<string | null>(null);
   const [challengeStart, setChallengeStart] = useState(initial.challenge?.startDate ?? "");
   const [challengeEnd, setChallengeEnd] = useState(initial.challenge?.endDate ?? "");
+  const [importBusy, setImportBusy] = useState(false);
+  const [importMessage, setImportMessage] = useState("");
 
   const filteredMembers = useMemo(() => {
     const needle = participantQuery.trim().toLocaleLowerCase("ko-KR");
@@ -116,6 +118,52 @@ export function AdminDashboard({
   function openEditRoster(row: AdminRosterRow) {
     setSelectedRosterId(row.id);
     setModal("roster");
+  }
+
+  async function submitRosterImport(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError("");
+    setImportMessage("");
+
+    const form = event.currentTarget;
+    const data = new FormData(form);
+    const file = data.get("file");
+    if (!(file instanceof File) || !file.name) {
+      setError("가져올 .xls 파일을 선택해 주세요.");
+      return;
+    }
+
+    setImportBusy(true);
+    try {
+      const response = await fetch("/api/admin/roster/import", {
+        method: "POST",
+        body: data,
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok || !body.summary) {
+        throw new Error(body.code ?? "ROSTER_IMPORT_FAILED");
+      }
+
+      const summary = body.summary as {
+        total: number;
+        imported: number;
+        missingPhone: number;
+        errors: number;
+      };
+      setImportMessage(
+        `명단 ${summary.imported}명 가져오기 완료 · 전화번호 없음 ${summary.missingPhone}명`,
+      );
+      form.reset();
+      await loadRoster(true);
+    } catch (cause) {
+      setError(
+        cause instanceof Error
+          ? `명단 가져오기 실패: ${cause.message}`
+          : "명단을 가져오지 못했습니다.",
+      );
+    } finally {
+      setImportBusy(false);
+    }
   }
 
   async function submitRoster(formData: FormData) {
@@ -246,6 +294,28 @@ export function AdminDashboard({
             사용자 추가
           </button>
         </div>
+
+        <form className="roster-import-form" onSubmit={submitRosterImport}>
+          <div>
+            <strong>56공동체 명단 가져오기</strong>
+            <p className="helper-text">
+              구형 .xls 파일만 허용합니다. 기존 참여자의 기도기록은 유지됩니다.
+            </p>
+          </div>
+          <input
+            name="file"
+            type="file"
+            accept=".xls,application/vnd.ms-excel"
+            aria-label="56공동체 XLS 파일"
+            required
+            disabled={importBusy}
+          />
+          <button className="text-button" type="submit" disabled={importBusy}>
+            {importBusy ? "가져오는 중..." : "XLS 가져오기"}
+          </button>
+        </form>
+        {importMessage && <p className="success-text" role="status">{importMessage}</p>}
+
         <form className="admin-filters roster-filters" onSubmit={searchRoster}>
           <input
             value={rosterQuery}
