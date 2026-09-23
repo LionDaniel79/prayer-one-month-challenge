@@ -349,8 +349,11 @@ const RosterEncryptionKey = z.string().refine((value) => {
 }, "ROSTER_ENCRYPTION_KEY must decode to 32 bytes");
 
 const EnvSchema = z.object({
-  // existing fields...
+  DATABASE_URL: z.string().url(),
+  SESSION_SECRET: z.string().min(32),
+  PHONE_LOOKUP_PEPPER: z.string().min(32),
   ROSTER_ENCRYPTION_KEY: RosterEncryptionKey,
+  NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
 });
 ```
 
@@ -460,12 +463,22 @@ export const memberRoster = appSchema.table(
 export const users = appSchema.table(
   "users",
   {
-    // existing fields...
+    id: uuid("id").defaultRandom().primaryKey(),
+    displayName: varchar("display_name", { length: 80 }).notNull(),
+    normalizedName: varchar("normalized_name", { length: 80 }).notNull(),
+    phoneLookupHash: varchar("phone_lookup_hash", { length: 64 }).notNull(),
+    phonePasswordHash: text("phone_password_hash").notNull(),
+    samId: uuid("sam_id").references(() => sams.id),
     rosterId: uuid("roster_id").references(() => memberRoster.id),
+    role: roleEnum("role").notNull().default("member"),
+    isActive: boolean("is_active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
+    uniqueIndex("users_name_phone_uq").on(t.normalizedName, t.phoneLookupHash),
     uniqueIndex("users_roster_uq").on(t.rosterId),
-    // existing indexes...
+    index("users_sam_idx").on(t.samId),
   ],
 );
 ```
@@ -499,7 +512,17 @@ export async function findActiveRosterCredential(
   lookupHash: string,
 ): Promise<RosterCredential | null> {
   const [row] = await getDb()
-    .select(/* required fields */)
+    .select({
+      id: memberRoster.id,
+      canonicalName: memberRoster.canonicalName,
+      position: memberRoster.position,
+      phoneLookupHash: memberRoster.phoneLookupHash,
+      village: memberRoster.village,
+      sam: memberRoster.sam,
+      samLabel: memberRoster.samLabel,
+      isActive: memberRoster.isActive,
+      isAdmin: memberRoster.isAdmin,
+    })
     .from(memberRoster)
     .where(and(
       eq(memberRoster.canonicalName, canonicalName),
