@@ -5,7 +5,6 @@ function setValidEnv(keyByte: number) {
   process.env.SESSION_SECRET = "s".repeat(32);
   process.env.PHONE_LOOKUP_PEPPER = "p".repeat(32);
   process.env.ROSTER_ENCRYPTION_KEY = Buffer.alloc(32, keyByte).toString("base64");
-  process.env.NODE_ENV = "test";
 }
 
 describe("roster phone encryption", () => {
