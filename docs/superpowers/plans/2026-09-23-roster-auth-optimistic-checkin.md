@@ -114,7 +114,9 @@ tests/
 **Interfaces:**
 - Produces:
   - `canonicalizeRosterName(value: string): string`
+  - `normalizeRosterPhone(value: string): string`
   - `normalizeOptionalPhone(value: string): string | null`
+  - `formatPhoneForDisplay(value: string): string`
   - `normalizeVillage(value: string): string | null`
   - `normalizeSam(value: string): string | null`
   - `makeSamLabel(village: string | null, sam: string | null): string | null`
@@ -130,8 +132,10 @@ Create `tests/roster/normalize.test.ts`:
 import { describe, expect, it } from "vitest";
 import {
   canonicalizeRosterName,
+  formatPhoneForDisplay,
   makeSamLabel,
   normalizeOptionalPhone,
+  normalizeRosterPhone,
 } from "../../src/features/roster/normalize";
 
 describe("roster normalization", () => {
@@ -148,9 +152,11 @@ describe("roster normalization", () => {
     expect(canonicalizeRosterName("Alice")).toBe("Alice");
   });
 
-  it("normalizes phone punctuation and accepts blank roster phones", () => {
+  it("normalizes phone punctuation, accepts blank roster phones, and formats admin display", () => {
+    expect(normalizeRosterPhone("010-1234-5678")).toBe("01012345678");
     expect(normalizeOptionalPhone("010-1234-5678")).toBe("01012345678");
     expect(normalizeOptionalPhone("")).toBeNull();
+    expect(formatPhoneForDisplay("01012345678")).toBe("010-1234-5678");
   });
 
   it("formats village and sam as village-sam", () => {
@@ -176,8 +182,6 @@ Expected: FAIL because the roster normalization module does not exist.
 Create `src/features/roster/normalize.ts`:
 
 ```ts
-import { normalizePhone } from "../auth/crypto";
-
 export function canonicalizeRosterName(value: string): string {
   const normalized = value.trim().replace(/\s+/g, " ").normalize("NFC");
   if (!normalized) throw new Error("INVALID_NAME");
@@ -186,9 +190,26 @@ export function canonicalizeRosterName(value: string): string {
   return (suffix?.[1] ?? normalized).trim();
 }
 
+export function normalizeRosterPhone(value: string): string {
+  const digits = value.replace(/\D/g, "");
+  if (!/^\d{9,11}$/.test(digits)) throw new Error("INVALID_PHONE");
+  return digits;
+}
+
 export function normalizeOptionalPhone(value: string): string | null {
   if (!value.trim()) return null;
-  return normalizePhone(value);
+  return normalizeRosterPhone(value);
+}
+
+export function formatPhoneForDisplay(value: string): string {
+  const digits = normalizeRosterPhone(value);
+  if (digits.length === 11) {
+    return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
+  }
+  if (digits.length === 10) {
+    return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
+  }
+  return digits;
 }
 
 function trimSuffix(value: string, suffix: string): string | null {
@@ -219,7 +240,7 @@ export function makeSamLabel(
 }
 ```
 
-Also change auth `normalizeName()` to delegate to `canonicalizeRosterName()` then apply the existing case normalization so rate limiting and login use the same canonical form.
+Also change auth `normalizeName()` to delegate to `canonicalizeRosterName()` then apply the existing case normalization, and change auth `normalizePhone()` to delegate to `normalizeRosterPhone()`. The roster module must not import the auth module; this keeps the dependency one-way and avoids an import cycle.
 
 - [ ] **Step 4: Add failing encryption/env tests**
 
@@ -316,7 +337,24 @@ export function decryptRosterPhone(value: string): string {
 }
 ```
 
-In `src/lib/env.ts`, require `ROSTER_ENCRYPTION_KEY` as base64 that decodes to exactly 32 bytes. Add only the variable name to `.env.example`.
+In `src/lib/env.ts`, require `ROSTER_ENCRYPTION_KEY` as base64 that decodes to exactly 32 bytes:
+
+```ts
+const RosterEncryptionKey = z.string().refine((value) => {
+  try {
+    return Buffer.from(value, "base64").length === 32;
+  } catch {
+    return false;
+  }
+}, "ROSTER_ENCRYPTION_KEY must decode to 32 bytes");
+
+const EnvSchema = z.object({
+  // existing fields...
+  ROSTER_ENCRYPTION_KEY: RosterEncryptionKey,
+});
+```
+
+Add only the variable name to `.env.example`.
 
 - [ ] **Step 6: Add SheetJS 0.20.3 as an importer-only dev dependency**
 
@@ -512,9 +550,12 @@ git commit -m "feat: add member roster database model"
 
 - [ ] **Step 1: Write parser tests using an in-memory workbook, not real personal data**
 
-Create a generated fixture in the test using SheetJS:
+Create a generated fixture in the test using SheetJS and write it to a temporary legacy-XLS path:
 
 ```ts
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { utils, write } from "xlsx";
 
 const sheet = utils.aoa_to_sheet([
@@ -523,6 +564,10 @@ const sheet = utils.aoa_to_sheet([
   ["김은희B", "권사", "010-9999-0000", "2마을", "3샘"],
   ["전화없음", "성도", "", "1마을", "7샘"],
 ]);
+const workbook = utils.book_new();
+utils.book_append_sheet(workbook, sheet, "명단");
+const file = join(mkdtempSync(join(tmpdir(), "roster-")), "fixture.xls");
+writeFileSync(file, write(workbook, { type: "buffer", bookType: "xls" }));
 ```
 
 Tests:
@@ -665,6 +710,10 @@ Never `git add` the XLS.
 - Modify: `components/auth/LoginForm.tsx`
 - Delete: `components/auth/SamRegistration.tsx`
 - Modify: `app/login/page.tsx`
+- Modify: `app/profile/page.tsx`
+- Modify: `app/api/profile/route.ts`
+- Modify: `src/features/profile/service.ts`
+- Modify: `components/profile/ProfileForm.tsx`
 - Test: `tests/auth/roster-login.test.ts`
 - Modify existing auth tests as required
 
@@ -789,7 +838,7 @@ Replace the current sam-edit profile behavior with read-only:
 - 전화번호 is NOT shown on ordinary member profile unless explicitly desired later
 - 샘 label
 
-Remove general-user sam update API behavior; admin remains the only roster editor.
+Make `GET /api/profile` roster-driven and remove/disable general-user `PATCH /api/profile`; admin remains the only roster editor. A PATCH attempt from a member returns `405 METHOD_NOT_ALLOWED` or the route no longer exports PATCH.
 
 - [ ] **Step 6: Run auth tests, build, and commit**
 
@@ -895,7 +944,7 @@ For create/update:
 
 `GET /api/admin/roster?q=&participation=all|joined|not_joined`:
 - admin-only
-- returns paginated/limited rows with decrypted formatted phone for admin use
+- returns paginated/limited rows with decrypted phone passed through `formatPhoneForDisplay()` for admin use
 - search name, phone (by normalized exact phone when query is phone-like), and sam label
 - default limit 100; support offset/next pagination so 411 rows do not create one huge response
 
@@ -1200,11 +1249,12 @@ Requirements:
 
 Search Git history/tree for:
 - `56공동체.xls`
-- real phone-number regex `01[016789][- ]?\d{3,4}[- ]?\d{4}`
+- the real current administrator phone in both dashed and digit-only forms
+- generic mobile regex `01[016789][- ]?\d{3,4}[- ]?\d{4}`; manually verify every match is confined to synthetic test fixtures
 - `ROSTER_ENCRYPTION_KEY=`
-- copied roster names outside approved non-PII fixtures
+- copied real roster names outside approved synthetic fixtures
 
-Any real roster PII in Git is a release blocker.
+Any real roster PII in Git is a release blocker. Synthetic phone fixtures may remain only in test files and must not match a real roster credential.
 
 - [ ] **Step 7: Record final verification and update PR**
 
