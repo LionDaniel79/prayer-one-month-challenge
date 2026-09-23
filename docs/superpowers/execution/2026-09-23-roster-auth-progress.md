@@ -18,3 +18,4 @@ Task 1: Ruling: ROSTER_ENCRYPTION_KEY is optional in the global environment cont
 Task 1: Ruling: defer SheetJS installation from Task 1 to Task 3 where it is first consumed — avoids an unused dependency and package-lock-only churn before importer work — cost if wrong: Task 3 owns one extra dependency setup step.
 Task 1: complete (commits 725685a..bc83b57, verification: GitHub Actions run 35822508617 — 16 test files / 59 tests PASS, lint PASS, production build PASS, E2E PASS).
 Task 2: RED observed in GitHub Actions run 35822662694 — member_roster export/users.rosterId/repository were absent.
+Task 2: complete (commits 2d7e0ba..0cfffbb, verification: GitHub Actions run 35822834677 PASS; Supabase migration member_roster applied; users=1/checkins=1 unchanged; Security Advisor 0 findings; only pre-production unused-index INFO notices).

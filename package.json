@@ -17,7 +17,8 @@
     "db:generate": "drizzle-kit generate",
     "admin:bootstrap": "tsx scripts/bootstrap-admin.ts",
     "admin:promote": "tsx scripts/promote-admin.ts",
-    "db:smoke": "tsx scripts/smoke-db.ts"
+    "db:smoke": "tsx scripts/smoke-db.ts",
+    "roster:import": "tsx scripts/roster-import.ts"
   },
   "dependencies": {
     "argon2": "0.45.1",
@@ -39,6 +40,7 @@
     "eslint-config-next": "16.3.5",
     "tsx": "4.23.13",
     "typescript": "npm:@typescript/typescript6@6.0.2",
-    "vitest": "5.0.1"
+    "vitest": "5.0.1",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   }
 }
