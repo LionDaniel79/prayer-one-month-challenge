@@ -34,7 +34,9 @@ function trimSuffix(value: string, suffix: string): string | null {
   const stripped = normalized.endsWith(suffix)
     ? normalized.slice(0, -suffix.length)
     : normalized;
-  return stripped || null;
+  if (!stripped) return null;
+  if (/^\d+$/.test(stripped)) return String(Number(stripped));
+  return stripped;
 }
 
 export function normalizeVillage(value: string): string | null {
