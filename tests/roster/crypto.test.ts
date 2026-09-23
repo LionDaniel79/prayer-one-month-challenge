@@ -33,8 +33,10 @@ describe("roster phone encryption", () => {
       await import("../../src/features/roster/crypto");
 
     const cipher = encryptRosterPhone("01012345678");
-    const last = cipher.at(-1);
-    const tampered = cipher.slice(0, -1) + (last === "A" ? "B" : "A");
+    const [version, iv, tag, ciphertext] = cipher.split(".");
+    const tamperedTag =
+      (tag[0] === "A" ? "B" : "A") + tag.slice(1);
+    const tampered = [version, iv, tamperedTag, ciphertext].join(".");
     expect(() => decryptRosterPhone(tampered)).toThrow("PHONE_DECRYPT_FAILED");
   });
 });
