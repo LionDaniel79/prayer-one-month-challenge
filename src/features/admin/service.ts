@@ -1,27 +1,23 @@
-import { and, asc, eq, gt, isNull, lt, or } from "drizzle-orm";
+import { and, asc, eq, gt, lt, or } from "drizzle-orm";
 import { getDb } from "../../db/client";
-import { challenges, prayerCheckins, sams, sessions, users } from "../../db/schema";
+import { challenges, memberRoster, prayerCheckins, users } from "../../db/schema";
 import { DomainError } from "../../lib/http";
 import type { SessionUser } from "../auth/session";
 import { defaultEndDate, todayInSeoul } from "../challenge/date";
 import { calculateProgress } from "../challenge/progress";
+import { decryptRosterPhone } from "../roster/crypto";
+import { formatPhoneForDisplay } from "../roster/normalize";
 
 export type AdminMemberSource = {
   userId: string;
   name: string;
-  samId: string | null;
-  samName: string | null;
+  position: string | null;
+  phone: string | null;
+  samLabel: string | null;
   completed: number;
   eligible: number;
   completedToday: boolean;
   role?: "member" | "admin";
-  isActive?: boolean;
-};
-
-export type AdminSamSource = {
-  samId: string;
-  name: string;
-  leaderName: string;
   isActive?: boolean;
 };
 
@@ -48,8 +44,9 @@ export type AdminDashboardData = {
   members: Array<{
     userId: string;
     name: string;
-    samId: string | null;
-    samName: string | null;
+    position: string | null;
+    phone: string | null;
+    samLabel: string | null;
     completed: number;
     eligible: number;
     rate: number;
@@ -59,10 +56,7 @@ export type AdminDashboardData = {
     isActive: boolean;
   }>;
   sams: Array<{
-    samId: string;
-    name: string;
-    leaderName: string;
-    isActive: boolean;
+    samLabel: string;
     members: number;
     averageRate: number;
     todayCompleted: number;
@@ -76,12 +70,11 @@ function ratio(completed: number, eligible: number): number {
 
 export function aggregateAdminDashboard(
   rows: AdminMemberSource[],
-  samRows: AdminSamSource[],
   challenge: AdminDashboardData["challenge"] = null,
 ): AdminDashboardData {
   const ranked = rows
     .map((row) => ({ ...row, rate: ratio(row.completed, row.eligible) }))
-    .sort((a, b) => b.rate - a.rate);
+    .sort((a, b) => b.rate - a.rate || a.name.localeCompare(b.name, "ko"));
 
   let lastRate: number | null = null;
   let denseRank = 0;
@@ -112,23 +105,27 @@ export function aggregateAdminDashboard(
     else buckets.low += 1;
   }
 
-  const samStats = samRows.map((sam) => {
-    const samMembers = members.filter((member) => member.samId === sam.samId);
-    const samTodayCompleted = samMembers.filter((member) => member.completedToday).length;
-    return {
-      samId: sam.samId,
-      name: sam.name,
-      leaderName: sam.leaderName,
-      isActive: sam.isActive ?? true,
-      members: samMembers.length,
-      averageRate:
-        samMembers.length > 0
-          ? samMembers.reduce((sum, member) => sum + member.rate, 0) / samMembers.length
-          : 0,
-      todayCompleted: samTodayCompleted,
-      todayRate: samMembers.length > 0 ? samTodayCompleted / samMembers.length : 0,
-    };
-  });
+  const grouped = new Map<string, typeof members>();
+  for (const member of members) {
+    const label = member.samLabel ?? "미지정";
+    const group = grouped.get(label) ?? [];
+    group.push(member);
+    grouped.set(label, group);
+  }
+
+  const sams = [...grouped.entries()]
+    .sort(([a], [b]) => a.localeCompare(b, "ko", { numeric: true }))
+    .map(([samLabel, samMembers]) => {
+      const samTodayCompleted = samMembers.filter((member) => member.completedToday).length;
+      return {
+        samLabel,
+        members: samMembers.length,
+        averageRate:
+          samMembers.reduce((sum, member) => sum + member.rate, 0) / samMembers.length,
+        todayCompleted: samTodayCompleted,
+        todayRate: samTodayCompleted / samMembers.length,
+      };
+    });
 
   return {
     challenge,
@@ -140,7 +137,7 @@ export function aggregateAdminDashboard(
     },
     buckets,
     members,
-    sams: samStats,
+    sams,
   };
 }
 
@@ -150,15 +147,13 @@ export function requireAdmin(sessionUser: SessionUser | null): asserts sessionUs
   }
 }
 
-export function resolveChallengeEndDate(startDate: string, explicitEndDate?: string): string {
-  return explicitEndDate?.trim() || defaultEndDate(startDate);
-}
-
-export function assertChallengeRange(startDate: string, endDate: string) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate) || !/^\d{4}-\d{2}-\d{2}$/.test(endDate)) {
-    throw new DomainError("INVALID_DATE_RANGE", 400);
+function phoneForAdmin(ciphertext: string | null): string | null {
+  if (!ciphertext) return null;
+  try {
+    return formatPhoneForDisplay(decryptRosterPhone(ciphertext));
+  } catch {
+    throw new DomainError("ROSTER_PHONE_DECRYPT_FAILED", 500);
   }
-  if (endDate < startDate) throw new DomainError("INVALID_DATE_RANGE", 400);
 }
 
 export async function getAdminDashboard(now = new Date()): Promise<AdminDashboardData> {
@@ -175,39 +170,40 @@ export async function getAdminDashboard(now = new Date()): Promise<AdminDashboar
     .where(eq(challenges.isActive, true))
     .limit(1);
 
-  const samRows = await db
-    .select({
-      samId: sams.id,
-      name: sams.name,
-      leaderName: sams.leaderName,
-      isActive: sams.isActive,
-    })
-    .from(sams)
-    .orderBy(asc(sams.name));
-
   const userRows = await db
     .select({
       userId: users.id,
-      name: users.displayName,
-      samId: users.samId,
-      samName: sams.name,
+      userName: users.displayName,
+      rosterName: memberRoster.canonicalName,
+      position: memberRoster.position,
+      phoneCiphertext: memberRoster.phoneCiphertext,
+      samLabel: memberRoster.samLabel,
       role: users.role,
       isActive: users.isActive,
     })
     .from(users)
-    .leftJoin(sams, eq(sams.id, users.samId))
+    .leftJoin(memberRoster, eq(memberRoster.id, users.rosterId))
     .where(eq(users.isActive, true))
     .orderBy(asc(users.displayName));
 
+  const identities = userRows.map((row) => ({
+    userId: row.userId,
+    name: row.rosterName ?? row.userName,
+    position: row.position,
+    phone: phoneForAdmin(row.phoneCiphertext),
+    samLabel: row.samLabel,
+    role: row.role,
+    isActive: row.isActive,
+  }));
+
   if (!activeChallenge) {
     return aggregateAdminDashboard(
-      userRows.map((row) => ({
+      identities.map((row) => ({
         ...row,
         completed: 0,
         eligible: 0,
         completedToday: false,
       })),
-      samRows,
       null,
     );
   }
@@ -228,7 +224,7 @@ export async function getAdminDashboard(now = new Date()): Promise<AdminDashboar
   }
 
   const today = todayInSeoul(now);
-  const rows = userRows.map((user) => {
+  const rows = identities.map((user) => {
     const completedDates = completedByUser.get(user.userId) ?? [];
     const progress = calculateProgress({
       startDate: activeChallenge.startDate,
@@ -244,11 +240,22 @@ export async function getAdminDashboard(now = new Date()): Promise<AdminDashboar
     };
   });
 
-  return aggregateAdminDashboard(rows, samRows, activeChallenge);
+  return aggregateAdminDashboard(rows, activeChallenge);
+}
+
+export function resolveChallengeEndDate(startDate: string, explicitEndDate?: string): string {
+  return explicitEndDate?.trim() || defaultEndDate(startDate);
+}
+
+export function assertChallengeRange(startDate: string, endDate: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate) || !/^\d{4}-\d{2}-\d{2}$/.test(endDate)) {
+    throw new DomainError("INVALID_DATE_RANGE", 400);
+  }
+  if (endDate < startDate) throw new DomainError("INVALID_DATE_RANGE", 400);
 }
 
 export async function getAdminChallenge() {
-  const rows = await getDb()
+  return getDb()
     .select({
       id: challenges.id,
       title: challenges.title,
@@ -258,7 +265,6 @@ export async function getAdminChallenge() {
     })
     .from(challenges)
     .orderBy(asc(challenges.createdAt));
-  return rows;
 }
 
 export async function updateChallenge(input: {
@@ -300,7 +306,7 @@ export async function updateChallenge(input: {
         .set({
           title: input.title,
           startDate: input.startDate,
-          endDate: endDate,
+          endDate,
           isActive: input.isActive,
         })
         .where(eq(challenges.id, input.id))
@@ -314,107 +320,10 @@ export async function updateChallenge(input: {
       .values({
         title: input.title,
         startDate: input.startDate,
-        endDate: endDate,
+        endDate,
         isActive: input.isActive,
       })
       .returning({ id: challenges.id });
     return created.id;
-  });
-}
-
-export async function getAdminSams() {
-  return getDb()
-    .select({
-      id: sams.id,
-      name: sams.name,
-      leaderName: sams.leaderName,
-      isActive: sams.isActive,
-    })
-    .from(sams)
-    .orderBy(asc(sams.name));
-}
-
-export async function upsertSam(input: {
-  id?: string;
-  name: string;
-  leaderName: string;
-  isActive: boolean;
-}) {
-  const name = input.name.trim().normalize("NFC");
-  const leaderName = input.leaderName.trim().normalize("NFC");
-  if (!name || !leaderName) throw new DomainError("INVALID_INPUT", 400);
-
-  if (input.id) {
-    const [updated] = await getDb()
-      .update(sams)
-      .set({ name, leaderName, isActive: input.isActive })
-      .where(eq(sams.id, input.id))
-      .returning({ id: sams.id });
-    if (!updated) throw new DomainError("SAM_NOT_FOUND", 404);
-    return updated.id;
-  }
-
-  const [created] = await getDb()
-    .insert(sams)
-    .values({ name, leaderName, isActive: input.isActive })
-    .returning({ id: sams.id });
-  return created.id;
-}
-
-export async function getAdminUsers() {
-  return getDb()
-    .select({
-      id: users.id,
-      name: users.displayName,
-      samId: users.samId,
-      samName: sams.name,
-      role: users.role,
-      isActive: users.isActive,
-    })
-    .from(users)
-    .leftJoin(sams, eq(sams.id, users.samId))
-    .orderBy(asc(users.displayName));
-}
-
-export async function updateUserAdmin(input: {
-  userId: string;
-  samId?: string | null;
-  role?: "member" | "admin";
-  isActive?: boolean;
-}) {
-  const db = getDb();
-  return db.transaction(async (tx) => {
-    if (input.samId) {
-      const [sam] = await tx
-        .select({ id: sams.id })
-        .from(sams)
-        .where(and(eq(sams.id, input.samId), eq(sams.isActive, true)))
-        .limit(1);
-      if (!sam) throw new DomainError("INVALID_SAM", 400);
-    }
-
-    const update: {
-      samId?: string | null;
-      role?: "member" | "admin";
-      isActive?: boolean;
-      updatedAt: Date;
-    } = { updatedAt: new Date() };
-    if ("samId" in input) update.samId = input.samId ?? null;
-    if (input.role) update.role = input.role;
-    if (typeof input.isActive === "boolean") update.isActive = input.isActive;
-
-    const [updated] = await tx
-      .update(users)
-      .set(update)
-      .where(eq(users.id, input.userId))
-      .returning({ id: users.id });
-    if (!updated) throw new DomainError("USER_NOT_FOUND", 404);
-
-    if (input.isActive === false) {
-      await tx
-        .update(sessions)
-        .set({ revokedAt: new Date() })
-        .where(and(eq(sessions.userId, input.userId), isNull(sessions.revokedAt)));
-    }
   });
 }
