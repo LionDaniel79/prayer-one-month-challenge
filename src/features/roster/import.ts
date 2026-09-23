@@ -1,5 +1,10 @@
+import * as fs from "node:fs";
 import { and, eq } from "drizzle-orm";
-import { readFile, utils } from "xlsx";
+import * as XLSX from "xlsx";
+import * as cptable from "xlsx/dist/cpexcel.full.mjs";
+
+XLSX.set_fs(fs);
+XLSX.set_cptable(cptable);
 import { getDb } from "../../db/client";
 import { memberRoster, users } from "../../db/schema";
 import { phoneLookupHash } from "../auth/crypto";
@@ -75,12 +80,12 @@ function findHeaderIndex(row: string[], aliases: readonly string[]): number {
 }
 
 export function parseRosterWorkbook(filePath: string): ImportCandidate[] {
-  const workbook = readFile(filePath, { cellText: true });
+  const workbook = XLSX.readFile(filePath, { cellText: true });
   const firstSheet = workbook.SheetNames[0];
   if (!firstSheet) throw new Error("ROSTER_SHEET_MISSING");
 
   const sheet = workbook.Sheets[firstSheet];
-  const matrix = utils.sheet_to_json<unknown[]>(sheet, {
+  const matrix = XLSX.utils.sheet_to_json<unknown[]>(sheet, {
     header: 1,
     raw: false,
     defval: "",
