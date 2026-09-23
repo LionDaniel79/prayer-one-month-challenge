@@ -63,11 +63,12 @@ describe("roster-driven participant view", () => {
         initialRoster: { rows: [], nextOffset: null },
       }),
     );
+    const participantSection = html.slice(html.indexOf("참여자 명단"));
 
-    const name = html.indexOf("이름");
-    const position = html.indexOf("직분");
-    const phone = html.indexOf("전화번호");
-    const sam = html.indexOf("샘");
+    const name = participantSection.indexOf(">이름<");
+    const position = participantSection.indexOf(">직분<");
+    const phone = participantSection.indexOf(">전화번호<");
+    const sam = participantSection.indexOf(">샘<");
     expect(name).toBeGreaterThan(-1);
     expect(name).toBeLessThan(position);
     expect(position).toBeLessThan(phone);

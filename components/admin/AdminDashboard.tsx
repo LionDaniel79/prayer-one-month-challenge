@@ -1,17 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
+import type {
+  AdminRosterPage,
+  AdminRosterRow,
+} from "../../src/features/admin/roster-service";
 import type { AdminDashboardData } from "../../src/features/admin/service";
 import { defaultEndDate } from "../../src/features/challenge/date";
 
-type Modal = "challenge" | "sam" | "user" | null;
+type Modal = "challenge" | "roster" | null;
 
 function percent(value: number) {
   return `${Math.round(value * 100)}%`;
 }
 
-async function jsonRequest(url: string, init: RequestInit) {
+async function jsonRequest(url: string, init: RequestInit = {}) {
   const response = await fetch(url, {
     ...init,
     headers: { "content-type": "application/json", ...(init.headers ?? {}) },
@@ -21,42 +25,43 @@ async function jsonRequest(url: string, init: RequestInit) {
   return body;
 }
 
-export function AdminDashboard({ initial }: { initial: AdminDashboardData }) {
+export function AdminDashboard({
+  initial,
+  initialRoster,
+}: {
+  initial: AdminDashboardData;
+  initialRoster: AdminRosterPage;
+}) {
   const [modal, setModal] = useState<Modal>(null);
-  const [query, setQuery] = useState("");
-  const [samFilter, setSamFilter] = useState("");
   const [error, setError] = useState("");
-  const [selectedUserId, setSelectedUserId] = useState(initial.members[0]?.userId ?? "");
-  const [selectedSamId, setSelectedSamId] = useState("");
+  const [participantQuery, setParticipantQuery] = useState("");
+  const [samFilter, setSamFilter] = useState("");
+  const [rosterQuery, setRosterQuery] = useState("");
+  const [participation, setParticipation] = useState<"all" | "joined" | "not_joined">("all");
+  const [rosterRows, setRosterRows] = useState(initialRoster.rows);
+  const [nextOffset, setNextOffset] = useState(initialRoster.nextOffset);
+  const [selectedRosterId, setSelectedRosterId] = useState<string | null>(null);
   const [challengeStart, setChallengeStart] = useState(initial.challenge?.startDate ?? "");
   const [challengeEnd, setChallengeEnd] = useState(initial.challenge?.endDate ?? "");
 
   const filteredMembers = useMemo(() => {
-    const needle = query.trim().toLocaleLowerCase("ko-KR");
+    const needle = participantQuery.trim().toLocaleLowerCase("ko-KR");
     return initial.members.filter((member) => {
-      const matchesName = !needle || member.name.toLocaleLowerCase("ko-KR").includes(needle);
-      const matchesSam = !samFilter || member.samId === samFilter;
-      return matchesName && matchesSam;
+      const matchesText =
+        !needle ||
+        member.name.toLocaleLowerCase("ko-KR").includes(needle) ||
+        (member.position ?? "").toLocaleLowerCase("ko-KR").includes(needle);
+      const matchesSam = !samFilter || (member.samLabel ?? "미지정") === samFilter;
+      return matchesText && matchesSam;
     });
-  }, [initial.members, query, samFilter]);
+  }, [initial.members, participantQuery, samFilter]);
 
-  const selectedUser = initial.members.find((member) => member.userId === selectedUserId);
-  const selectedSam = initial.sams.find((sam) => sam.samId === selectedSamId);
-
-  function openNewSam() {
-    setSelectedSamId("");
-    setModal("sam");
-  }
-
-  function openExistingSam(samId: string) {
-    setSelectedSamId(samId);
-    setModal("sam");
-  }
+  const selectedRoster =
+    rosterRows.find((row) => row.id === selectedRosterId) ?? null;
 
   function changeChallengeStart(value: string) {
     setChallengeStart(value);
-    if (value) setChallengeEnd(defaultEndDate(value));
-    else setChallengeEnd("");
+    setChallengeEnd(value ? defaultEndDate(value) : "");
   }
 
   async function submitChallenge(formData: FormData) {
@@ -78,40 +83,63 @@ export function AdminDashboard({ initial }: { initial: AdminDashboardData }) {
     }
   }
 
-  async function submitSam(formData: FormData) {
+  async function loadRoster(reset: boolean) {
     setError("");
+    const offset = reset ? 0 : nextOffset;
+    if (!reset && offset === null) return;
+
+    const params = new URLSearchParams({
+      q: rosterQuery,
+      participation,
+      offset: String(offset ?? 0),
+    });
     try {
-      await jsonRequest("/api/admin/sams", {
-        method: "POST",
-        body: JSON.stringify({
-          id: selectedSam?.samId,
-          name: String(formData.get("name") ?? ""),
-          leaderName: String(formData.get("leaderName") ?? ""),
-          isActive: formData.get("isActive") === "on",
-        }),
-      });
-      window.location.reload();
+      const body = await jsonRequest(`/api/admin/roster?${params.toString()}`);
+      const page = body as AdminRosterPage;
+      setRosterRows((current) => reset ? page.rows : [...current, ...page.rows]);
+      setNextOffset(page.nextOffset);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "저장하지 못했습니다.");
+      setError(cause instanceof Error ? cause.message : "명단을 불러오지 못했습니다.");
     }
   }
 
-  async function submitUser(formData: FormData) {
-    if (!selectedUser) return;
+  function searchRoster(event: FormEvent) {
+    event.preventDefault();
+    void loadRoster(true);
+  }
+
+  function openCreateRoster() {
+    setSelectedRosterId(null);
+    setModal("roster");
+  }
+
+  function openEditRoster(row: AdminRosterRow) {
+    setSelectedRosterId(row.id);
+    setModal("roster");
+  }
+
+  async function submitRoster(formData: FormData) {
     setError("");
+    const payload = {
+      name: String(formData.get("name") ?? ""),
+      position: String(formData.get("position") ?? "") || null,
+      phone: String(formData.get("phone") ?? "") || null,
+      village: String(formData.get("village") ?? "") || null,
+      sam: String(formData.get("sam") ?? "") || null,
+      isActive: formData.get("isActive") === "on",
+      isAdmin: formData.get("isAdmin") === "on",
+    };
+
     try {
-      await jsonRequest("/api/admin/users", {
-        method: "PATCH",
-        body: JSON.stringify({
-          userId: selectedUser.userId,
-          samId: String(formData.get("samId") ?? "") || null,
-          role: String(formData.get("role") ?? "member"),
-          isActive: formData.get("isActive") === "on",
-        }),
+      await jsonRequest("/api/admin/roster", {
+        method: selectedRoster ? "PATCH" : "POST",
+        body: JSON.stringify(
+          selectedRoster ? { id: selectedRoster.id, ...payload } : payload,
+        ),
       });
       window.location.reload();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "저장하지 못했습니다.");
+      setError(cause instanceof Error ? cause.message : "명단을 저장하지 못했습니다.");
     }
   }
 
@@ -121,13 +149,20 @@ export function AdminDashboard({ initial }: { initial: AdminDashboardData }) {
         <div>
           <p className="eyebrow">관리자</p>
           <h1>기도운동 진행 현황</h1>
-          <p>{initial.challenge ? `${initial.challenge.startDate} ~ ${initial.challenge.endDate}` : "활성 도전 없음"}</p>
+          <p>
+            {initial.challenge
+              ? `${initial.challenge.startDate} ~ ${initial.challenge.endDate}`
+              : "활성 도전 없음"}
+          </p>
         </div>
         <div className="header-actions">
           <Link href="/">사용자 화면</Link>
-          <button className="text-button" type="button" onClick={() => setModal("challenge")}>도전 설정</button>
-          <button className="text-button" type="button" onClick={openNewSam}>샘 추가</button>
-          <button className="text-button" type="button" onClick={() => setModal("user")}>사용자 관리</button>
+          <button className="text-button" type="button" onClick={() => setModal("challenge")}>
+            도전 설정
+          </button>
+          <button className="text-button" type="button" onClick={openCreateRoster}>
+            명단 추가
+          </button>
         </div>
       </header>
 
@@ -151,19 +186,13 @@ export function AdminDashboard({ initial }: { initial: AdminDashboardData }) {
 
       <section className="card admin-section">
         <h2>샘별 통계</h2>
-        <div className="admin-table" role="table">
-          <div className="admin-row admin-row-head" role="row">
+        <div className="admin-table">
+          <div className="admin-row admin-row-head">
             <span>샘</span><span>인원</span><span>평균</span><span>오늘</span>
           </div>
           {initial.sams.map((sam) => (
-            <div className="admin-row" role="row" key={sam.samId}>
-              <span>
-                <strong>{sam.name}</strong>
-                <small>{sam.leaderName}{sam.isActive ? "" : " · 비활성"}</small>
-                <button className="text-button sam-edit-button" type="button" onClick={() => openExistingSam(sam.samId)}>
-                  {sam.name} 수정
-                </button>
-              </span>
+            <div className="admin-row" key={sam.samLabel}>
+              <span><strong>{sam.samLabel}</strong></span>
               <span>{sam.members}명</span>
               <span>{percent(sam.averageRate)}</span>
               <span>{sam.todayCompleted}명 · {percent(sam.todayRate)}</span>
@@ -174,28 +203,89 @@ export function AdminDashboard({ initial }: { initial: AdminDashboardData }) {
 
       <section className="card admin-section">
         <div className="section-heading">
-          <h2>개인 현황</h2>
+          <h2>참여자 명단</h2>
           <div className="admin-filters">
-            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="이름 검색" aria-label="이름 검색" />
+            <input
+              value={participantQuery}
+              onChange={(event) => setParticipantQuery(event.target.value)}
+              placeholder="이름 또는 직분 검색"
+              aria-label="참여자 검색"
+            />
             <select value={samFilter} onChange={(event) => setSamFilter(event.target.value)} aria-label="샘 필터">
               <option value="">전체 샘</option>
-              {initial.sams.map((sam) => <option key={sam.samId} value={sam.samId}>{sam.name}</option>)}
+              {initial.sams.map((sam) => (
+                <option key={sam.samLabel} value={sam.samLabel}>{sam.samLabel}</option>
+              ))}
             </select>
           </div>
         </div>
-        <div className="admin-table member-table" role="table">
-          <div className="admin-row admin-row-head" role="row">
-            <span>순위 / 이름</span><span>샘</span><span>달성률</span><span>오늘</span>
+
+        <div className="admin-table participant-table">
+          <div className="admin-row admin-row-head participant-row">
+            <span>이름</span><span>직분</span><span>전화번호</span><span>샘</span>
+            <span>순위</span><span>달성률</span><span>오늘</span>
           </div>
           {filteredMembers.map((member) => (
-            <div className="admin-row" role="row" key={member.userId}>
-              <span><strong>{member.rank}위 · {member.name}</strong><small>{member.role === "admin" ? "관리자" : "회원"}</small></span>
-              <span>{member.samName ?? "미지정"}</span>
+            <div className="admin-row participant-row" key={member.userId}>
+              <span><strong>{member.name}</strong>{member.role === "admin" && <small>관리자</small>}</span>
+              <span>{member.position ?? "미지정"}</span>
+              <span>{member.phone ?? "미지정"}</span>
+              <span>{member.samLabel ?? "미지정"}</span>
+              <span>{member.rank}위</span>
               <span>{member.completed}/{member.eligible} · {percent(member.rate)}</span>
               <span>{member.completedToday ? "완료" : "미완료"}</span>
             </div>
           ))}
         </div>
+      </section>
+
+      <section className="card admin-section">
+        <div className="section-heading">
+          <h2>전체 로그인 허용 명단</h2>
+          <button className="primary-button compact-button" type="button" onClick={openCreateRoster}>
+            사용자 추가
+          </button>
+        </div>
+        <form className="admin-filters roster-filters" onSubmit={searchRoster}>
+          <input
+            value={rosterQuery}
+            onChange={(event) => setRosterQuery(event.target.value)}
+            placeholder="이름, 전화번호 또는 샘"
+            aria-label="허용 명단 검색"
+          />
+          <select value={participation} onChange={(event) => setParticipation(event.target.value as typeof participation)}>
+            <option value="all">전체</option>
+            <option value="joined">참여자</option>
+            <option value="not_joined">미참여</option>
+          </select>
+          <button className="text-button" type="submit">검색</button>
+        </form>
+
+        <div className="admin-table roster-table">
+          <div className="admin-row admin-row-head roster-row">
+            <span>이름</span><span>직분</span><span>전화번호</span><span>샘</span><span>상태</span><span>관리</span>
+          </div>
+          {rosterRows.map((row) => (
+            <div className="admin-row roster-row" key={row.id}>
+              <span><strong>{row.name}</strong>{row.isAdmin && <small>관리자</small>}</span>
+              <span>{row.position ?? "미지정"}</span>
+              <span>{row.phone ?? "미등록"}</span>
+              <span>{row.samLabel ?? "미지정"}</span>
+              <span>{row.joined ? "참여 중" : "미참여"}{row.isActive ? "" : " · 비활성"}</span>
+              <span>
+                <button className="text-button" type="button" onClick={() => openEditRoster(row)}>
+                  수정
+                </button>
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {nextOffset !== null && (
+          <button className="text-button load-more-button" type="button" onClick={() => void loadRoster(false)}>
+            더 보기
+          </button>
+        )}
       </section>
 
       {modal && (
@@ -215,37 +305,16 @@ export function AdminDashboard({ initial }: { initial: AdminDashboardData }) {
               </form>
             )}
 
-            {modal === "sam" && (
-              <form action={submitSam} className="admin-form" key={selectedSam?.samId ?? "new"}>
-                <h2>{selectedSam ? "샘 수정" : "샘 추가"}</h2>
-                <label>샘 이름<input name="name" defaultValue={selectedSam?.name ?? ""} required /></label>
-                <label>샘리더 이름<input name="leaderName" defaultValue={selectedSam?.leaderName ?? ""} required /></label>
-                <label className="checkbox-row"><input name="isActive" type="checkbox" defaultChecked={selectedSam?.isActive ?? true} /> 활성 샘</label>
-                <button className="primary-button" type="submit">{selectedSam ? "저장" : "추가"}</button>
-              </form>
-            )}
-
-            {modal === "user" && (
-              <form action={submitUser} className="admin-form">
-                <h2>사용자 관리</h2>
-                <label>사용자
-                  <select value={selectedUserId} onChange={(event) => setSelectedUserId(event.target.value)}>
-                    {initial.members.map((member) => <option key={member.userId} value={member.userId}>{member.name}</option>)}
-                  </select>
-                </label>
-                <label>샘
-                  <select name="samId" key={selectedUser?.userId} defaultValue={selectedUser?.samId ?? ""}>
-                    <option value="">미지정</option>
-                    {initial.sams.filter((sam) => sam.isActive).map((sam) => <option key={sam.samId} value={sam.samId}>{sam.name}</option>)}
-                  </select>
-                </label>
-                <label>권한
-                  <select name="role" key={`role-${selectedUser?.userId}`} defaultValue={selectedUser?.role ?? "member"}>
-                    <option value="member">회원</option>
-                    <option value="admin">관리자</option>
-                  </select>
-                </label>
-                <label className="checkbox-row"><input name="isActive" type="checkbox" key={`active-${selectedUser?.userId}`} defaultChecked={selectedUser?.isActive ?? true} /> 활성 사용자</label>
+            {modal === "roster" && (
+              <form action={submitRoster} className="admin-form" key={selectedRoster?.id ?? "new"}>
+                <h2>{selectedRoster ? "명단 수정" : "사용자 추가"}</h2>
+                <label>이름<input name="name" defaultValue={selectedRoster?.name ?? ""} required /></label>
+                <label>직분<input name="position" defaultValue={selectedRoster?.position ?? ""} /></label>
+                <label>전화번호<input name="phone" type="tel" defaultValue={selectedRoster?.phone ?? ""} /></label>
+                <label>마을<input name="village" defaultValue={selectedRoster?.village ?? ""} placeholder="예: 1마을" /></label>
+                <label>샘<input name="sam" defaultValue={selectedRoster?.sam ?? ""} placeholder="예: 6샘" /></label>
+                <label className="checkbox-row"><input name="isActive" type="checkbox" defaultChecked={selectedRoster?.isActive ?? true} /> 로그인 허용</label>
+                <label className="checkbox-row"><input name="isAdmin" type="checkbox" defaultChecked={selectedRoster?.isAdmin ?? false} /> 관리자</label>
                 <button className="primary-button" type="submit">저장</button>
               </form>
             )}

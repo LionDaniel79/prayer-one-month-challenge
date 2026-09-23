@@ -128,3 +128,19 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 }
 
 .sam-edit-button { min-height: 32px; width: fit-content; color: #2563eb; font-size: .8rem; }
+
+.participant-row { grid-template-columns: minmax(110px, 1.2fr) minmax(90px, .8fr) minmax(140px, 1.2fr) minmax(70px, .7fr) minmax(60px, .5fr) minmax(125px, 1fr) minmax(70px, .6fr); }
+.roster-row { grid-template-columns: minmax(120px, 1.2fr) minmax(90px, .8fr) minmax(140px, 1.2fr) minmax(70px, .7fr) minmax(120px, 1fr) minmax(70px, .6fr); }
+.roster-filters { margin: 14px 0; }
+.compact-button { width: auto; padding-inline: 16px; }
+.load-more-button { margin-top: 12px; }
+@media (max-width: 720px) {
+  .participant-row, .roster-row { grid-template-columns: 1fr 1fr; }
+  .participant-table .admin-row span:nth-child(1)::before { content: "이름"; }
+  .participant-table .admin-row span:nth-child(2)::before { content: "직분"; }
+  .participant-table .admin-row span:nth-child(3)::before { content: "전화번호"; }
+  .participant-table .admin-row span:nth-child(4)::before { content: "샘"; }
+  .participant-table .admin-row span:nth-child(5)::before { content: "순위"; }
+  .participant-table .admin-row span:nth-child(6)::before { content: "달성률"; }
+  .participant-table .admin-row span:nth-child(7)::before { content: "오늘"; }
+}
