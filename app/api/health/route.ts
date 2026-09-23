@@ -1,7 +1,7 @@
 import { sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { getDb } from "../../../src/db/client";
-import { classifyDatabaseError } from "../../../src/features/health/service";
+import { classifyDatabaseError, safeDatabaseErrorDetails } from "../../../src/features/health/service";
 import { getEnv } from "../../../src/lib/env";
 
 export const dynamic = "force-dynamic";
@@ -31,6 +31,7 @@ export async function GET() {
         status: "error",
         stage: "database",
         code: classifyDatabaseError(error),
+        driver: safeDatabaseErrorDetails(error),
         connection: {
           transactionPooler: databaseUrl.hostname.endsWith(".pooler.supabase.com"),
           port: databaseUrl.port || "5432",

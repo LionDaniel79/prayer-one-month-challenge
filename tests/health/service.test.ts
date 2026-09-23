@@ -15,3 +15,22 @@ describe("runtime health diagnostics", () => {
     expect(classifyDatabaseError({ message: "postgresql://secret" })).toBe("DB_CONNECT_FAILED");
   });
 });
+
+describe("safe database error details", () => {
+  it("collects nested driver codes without exposing messages", async () => {
+    const { safeDatabaseErrorDetails } = await import("../../src/features/health/service");
+    const details = safeDatabaseErrorDetails({
+      name: "AggregateError",
+      message: "postgres://secret",
+      errors: [
+        { code: "ECONNREFUSED", message: "secret host" },
+        { code: "ERR_TLS_CERT_ALTNAME_INVALID", message: "secret certificate" },
+      ],
+    });
+    expect(details).toEqual({
+      name: "AggregateError",
+      codes: ["ECONNREFUSED", "ERR_TLS_CERT_ALTNAME_INVALID"],
+    });
+    expect(JSON.stringify(details)).not.toContain("secret");
+  });
+});
