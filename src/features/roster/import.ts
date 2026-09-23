@@ -79,8 +79,7 @@ function findHeaderIndex(row: string[], aliases: readonly string[]): number {
   return row.findIndex((value) => aliases.includes(value));
 }
 
-export function parseRosterWorkbook(filePath: string): ImportCandidate[] {
-  const workbook = XLSX.readFile(filePath, { cellText: true });
+function parseWorkbook(workbook: XLSX.WorkBook): ImportCandidate[] {
   const firstSheet = workbook.SheetNames[0];
   if (!firstSheet) throw new Error("ROSTER_SHEET_MISSING");
 
@@ -145,6 +144,14 @@ export function parseRosterWorkbook(filePath: string): ImportCandidate[] {
   }
 
   return result;
+}
+
+export function parseRosterWorkbook(filePath: string): ImportCandidate[] {
+  return parseWorkbook(XLSX.readFile(filePath, { cellText: true }));
+}
+
+export function parseRosterWorkbookBuffer(buffer: Buffer): ImportCandidate[] {
+  return parseWorkbook(XLSX.read(buffer, { type: "buffer", cellText: true }));
 }
 
 export function validateRosterCandidates(rows: ImportCandidate[]): ImportValidation {
@@ -318,24 +325,46 @@ export const dbRosterImportRepository: RosterImportRepository = {
 
 export async function importRosterCandidates(
   rows: ImportCandidate[],
-  options: {
-    adminName: string;
-    adminPhone: string;
-    repository?: RosterImportRepository;
-  },
+  options:
+    | {
+        adminName: string;
+        adminPhone: string;
+        adminCredential?: never;
+        repository?: RosterImportRepository;
+      }
+    | {
+        adminName?: never;
+        adminPhone?: never;
+        adminCredential: {
+          canonicalName: string;
+          phoneLookupHash: string;
+        };
+        repository?: RosterImportRepository;
+      },
 ): Promise<ImportSummary> {
   const validation = validateRosterCandidates(rows);
   if (validation.errors.length > 0) {
     throw new Error("ROSTER_VALIDATION_FAILED");
   }
 
-  const adminCanonicalName = canonicalizeRosterName(options.adminName);
-  const adminPhone = normalizeRosterPhone(options.adminPhone);
+  const rawAdmin =
+    "adminCredential" in options && options.adminCredential
+      ? {
+          canonicalName: canonicalizeRosterName(options.adminCredential.canonicalName),
+          phoneLookupHash: options.adminCredential.phoneLookupHash,
+        }
+      : {
+          canonicalName: canonicalizeRosterName(options.adminName),
+          phoneLookupHash: phoneLookupHash(normalizeRosterPhone(options.adminPhone)),
+        };
   let adminMatches = 0;
 
   const prepared: PreparedRosterRow[] = rows.map((row) => {
+    const lookupHash = row.phone ? phoneLookupHash(row.phone) : null;
     const isAdmin =
-      row.canonicalName === adminCanonicalName && row.phone === adminPhone;
+      row.canonicalName === rawAdmin.canonicalName &&
+      lookupHash !== null &&
+      lookupHash === rawAdmin.phoneLookupHash;
     if (isAdmin) adminMatches += 1;
 
     return {
@@ -343,7 +372,7 @@ export async function importRosterCandidates(
       sourceName: row.sourceName,
       canonicalName: row.canonicalName,
       position: row.position,
-      phoneLookupHash: row.phone ? phoneLookupHash(row.phone) : null,
+      phoneLookupHash: lookupHash,
       phoneCiphertext: row.phone ? encryptRosterPhone(row.phone) : null,
       village: row.village,
       sam: row.sam,

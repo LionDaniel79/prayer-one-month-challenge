@@ -34,3 +34,5 @@ Task 3 Ruling: preserve a nonstandard village-cell value ending in “샘” whe
 Task 3 source exception fix: complete (commit 046eb2e; GitHub Actions run 35834123472 PASS — tests, lint, production build).
 Task 7: complete (commit d47b470; GitHub Actions run 35830784282 PASS — optimistic state tests, full unit suite, lint, production build).
 Ruling: keep the approved separate ROSTER_ENCRYPTION_KEY rather than moving it into Supabase Vault — Vault is available, but co-locating data access and the phone decryption secret changes the approved security boundary and adds async secret-fetch complexity — cost if wrong: one manual Vercel secret setup remains necessary before live import.
+Task 6 preview-import helper RED: GitHub Actions run 35834623245 — parseRosterWorkbookBuffer absent and importRosterCandidates required raw admin phone.
+Ruling: add an adminCredential canonical-name+phone-HMAC selector alongside the CLI raw credential path — lets the authenticated Preview admin import without exposing the administrator phone again; existing CLI remains compatible — cost if wrong: importer API has two equivalent admin-selection paths to maintain.
