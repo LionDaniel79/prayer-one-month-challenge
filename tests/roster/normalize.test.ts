@@ -30,6 +30,7 @@ describe("roster normalization", () => {
 
   it("formats village and sam as village-sam", () => {
     expect(makeSamLabel("1마을", "6샘")).toBe("1-6");
+    expect(makeSamLabel("01마을", "06샘")).toBe("1-6");
     expect(makeSamLabel(" 12 마을 ", " 3 샘 ")).toBe("12-3");
     expect(makeSamLabel("1마을", null)).toBeNull();
   });

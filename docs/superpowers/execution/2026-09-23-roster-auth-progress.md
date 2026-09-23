@@ -19,3 +19,4 @@ Task 1: Ruling: defer SheetJS installation from Task 1 to Task 3 where it is fir
 Task 1: complete (commits 725685a..bc83b57, verification: GitHub Actions run 35822508617 — 16 test files / 59 tests PASS, lint PASS, production build PASS, E2E PASS).
 Task 2: RED observed in GitHub Actions run 35822662694 — member_roster export/users.rosterId/repository were absent.
 Task 2: complete (commits 2d7e0ba..0cfffbb, verification: GitHub Actions run 35822834677 PASS; Supabase migration member_roster applied; users=1/checkins=1 unchanged; Security Advisor 0 findings; only pre-production unused-index INFO notices).
+Task 1: Ruling: numeric village/sam components drop leading zeroes (e.g. 01마을 + 06샘 → 1-6) — actual XLS uses zero-padded sam values while the approved UI format is 1-6 — cost if wrong: display/group labels change from zero-padded source notation to human-readable numeric notation.
