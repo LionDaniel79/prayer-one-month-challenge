@@ -1,4 +1,4 @@
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -6,6 +6,7 @@ import { utils, write } from "xlsx";
 import {
   importRosterCandidates,
   parseRosterWorkbook,
+  parseRosterWorkbookBuffer,
   validateRosterCandidates,
 } from "../../src/features/roster/import";
 
@@ -42,6 +43,19 @@ describe("legacy XLS roster import parsing", () => {
     });
     expect(rows[2].phone).toBeNull();
     expect(rows[2].samLabel).toBe("1-7");
+  });
+
+  it("parses the same workbook from an in-memory upload buffer", () => {
+    const file = workbookFile([
+      ["이름", "교회직분", "핸드폰", "마을", "샘"],
+      ["김은희A", "집사", "010-1234-5678", "1마을", "06샘"],
+    ]);
+    const buffer = readFileSync(file);
+    expect(parseRosterWorkbookBuffer(buffer)[0]).toMatchObject({
+      canonicalName: "김은희",
+      phone: "01012345678",
+      samLabel: "1-6",
+    });
   });
 
   it("accepts defensive header aliases", () => {
@@ -195,5 +209,41 @@ describe("roster import transaction boundary", () => {
     });
     expect(JSON.stringify(captured[0])).not.toContain("01012345678");
     expect(captured[1]).toMatchObject({ phoneLookupHash: null, phoneCiphertext: null });
+  });
+});
+
+describe("admin credential matching during roster import", () => {
+  it("can mark the existing admin by canonical name and lookup hash without raw phone", async () => {
+    process.env.DATABASE_URL = "postgres://example";
+    process.env.SESSION_SECRET = "s".repeat(32);
+    process.env.PHONE_LOOKUP_PEPPER = "p".repeat(32);
+    process.env.ROSTER_ENCRYPTION_KEY = Buffer.alloc(32, 11).toString("base64");
+
+    const { phoneLookupHash } = await import("../../src/features/auth/crypto");
+    const captured: Array<{ isAdmin: boolean }> = [];
+    const rows = [{
+      sourceRow: 2,
+      sourceName: "관리자A",
+      canonicalName: "관리자",
+      position: "집사",
+      phone: "01012345678",
+      village: "1마을",
+      sam: "06샘",
+      samLabel: "1-6",
+    }];
+
+    await importRosterCandidates(rows, {
+      adminCredential: {
+        canonicalName: "관리자",
+        phoneLookupHash: phoneLookupHash("01012345678"),
+      },
+      repository: {
+        replaceXlsRoster: async (prepared) => {
+          captured.push(...prepared);
+        },
+      },
+    });
+
+    expect(captured).toEqual([expect.objectContaining({ isAdmin: true })]);
   });
 });
