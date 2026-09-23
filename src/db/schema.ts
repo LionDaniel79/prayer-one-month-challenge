@@ -45,6 +45,34 @@ export const sams = appSchema.table(
   (t) => [uniqueIndex("sams_name_uq").on(t.name)],
 );
 
+export const memberRoster = appSchema.table(
+  "member_roster",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    sourceName: varchar("source_name", { length: 120 }).notNull(),
+    canonicalName: varchar("canonical_name", { length: 80 }).notNull(),
+    position: varchar("position", { length: 80 }),
+    phoneLookupHash: varchar("phone_lookup_hash", { length: 64 }),
+    phoneCiphertext: text("phone_ciphertext"),
+    village: varchar("village", { length: 80 }),
+    sam: varchar("sam", { length: 80 }),
+    samLabel: varchar("sam_label", { length: 100 }),
+    isActive: boolean("is_active").notNull().default(true),
+    isAdmin: boolean("is_admin").notNull().default(false),
+    source: varchar("source", { length: 20 }).notNull(),
+    sourceRow: integer("source_row"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("member_roster_name_phone_uq")
+      .on(t.canonicalName, t.phoneLookupHash)
+      .where(sql`${t.phoneLookupHash} is not null`),
+    index("member_roster_name_idx").on(t.canonicalName),
+    index("member_roster_sam_idx").on(t.samLabel),
+  ],
+);
+
 export const users = appSchema.table(
   "users",
   {
@@ -54,6 +82,7 @@ export const users = appSchema.table(
     phoneLookupHash: varchar("phone_lookup_hash", { length: 64 }).notNull(),
     phonePasswordHash: text("phone_password_hash").notNull(),
     samId: uuid("sam_id").references(() => sams.id),
+    rosterId: uuid("roster_id").references(() => memberRoster.id),
     role: roleEnum("role").notNull().default("member"),
     isActive: boolean("is_active").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -61,6 +90,7 @@ export const users = appSchema.table(
   },
   (t) => [
     uniqueIndex("users_name_phone_uq").on(t.normalizedName, t.phoneLookupHash),
+    uniqueIndex("users_roster_uq").on(t.rosterId),
     index("users_sam_idx").on(t.samId),
   ],
 );
