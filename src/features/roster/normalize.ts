@@ -51,7 +51,13 @@ export function makeSamLabel(
   villageValue: string | null,
   samValue: string | null,
 ): string | null {
-  if (!villageValue || !samValue) return null;
+  if (!villageValue) return null;
+
+  if (!samValue) {
+    const special = villageValue.trim().replace(/\s+/g, "").normalize("NFC");
+    return special.endsWith("샘") ? special : null;
+  }
+
   const village = normalizeVillage(villageValue);
   const sam = normalizeSam(samValue);
   return village && sam ? `${village}-${sam}` : null;
