@@ -7,6 +7,7 @@ export type RosterCredential = {
   canonicalName: string;
   position: string | null;
   phoneLookupHash: string | null;
+  passwordHash: string | null;
   village: string | null;
   sam: string | null;
   samLabel: string | null;
@@ -34,22 +35,39 @@ export function isLoginEligibleRoster(
   );
 }
 
+const credentialSelect = {
+  id: memberRoster.id,
+  canonicalName: memberRoster.canonicalName,
+  position: memberRoster.position,
+  phoneLookupHash: memberRoster.phoneLookupHash,
+  passwordHash: memberRoster.passwordHash,
+  village: memberRoster.village,
+  sam: memberRoster.sam,
+  samLabel: memberRoster.samLabel,
+  isActive: memberRoster.isActive,
+  isAdmin: memberRoster.isAdmin,
+};
+
+export async function findActiveRosterCredentials(
+  canonicalName: string,
+): Promise<RosterCredential[]> {
+  return getDb()
+    .select(credentialSelect)
+    .from(memberRoster)
+    .where(
+      and(
+        eq(memberRoster.canonicalName, canonicalName),
+        eq(memberRoster.isActive, true),
+      ),
+    );
+}
+
 export async function findActiveRosterCredential(
   canonicalName: string,
   lookupHash: string,
 ): Promise<RosterCredential | null> {
   const [row] = await getDb()
-    .select({
-      id: memberRoster.id,
-      canonicalName: memberRoster.canonicalName,
-      position: memberRoster.position,
-      phoneLookupHash: memberRoster.phoneLookupHash,
-      village: memberRoster.village,
-      sam: memberRoster.sam,
-      samLabel: memberRoster.samLabel,
-      isActive: memberRoster.isActive,
-      isAdmin: memberRoster.isAdmin,
-    })
+    .select(credentialSelect)
     .from(memberRoster)
     .where(
       and(
@@ -71,6 +89,7 @@ export async function findRosterById(id: string): Promise<RosterRecord | null> {
       canonicalName: memberRoster.canonicalName,
       position: memberRoster.position,
       phoneLookupHash: memberRoster.phoneLookupHash,
+      passwordHash: memberRoster.passwordHash,
       phoneCiphertext: memberRoster.phoneCiphertext,
       village: memberRoster.village,
       sam: memberRoster.sam,
