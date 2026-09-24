@@ -45,6 +45,8 @@ export function AdminDashboard({
   const [challengeEnd, setChallengeEnd] = useState(initial.challenge?.endDate ?? "");
   const [importBusy, setImportBusy] = useState(false);
   const [importMessage, setImportMessage] = useState("");
+  const [selectedRosterIds, setSelectedRosterIds] = useState<Set<string>>(new Set());
+  const [rosterActionBusy, setRosterActionBusy] = useState(false);
 
   const filteredMembers = useMemo(() => {
     const needle = participantQuery.trim().toLocaleLowerCase("ko-KR");
@@ -99,6 +101,7 @@ export function AdminDashboard({
       const body = await jsonRequest(`/api/admin/roster?${params.toString()}`);
       const page = body as AdminRosterPage;
       setRosterRows((current) => reset ? page.rows : [...current, ...page.rows]);
+      if (reset) setSelectedRosterIds(new Set());
       setNextOffset(page.nextOffset);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "명단을 불러오지 못했습니다.");
@@ -118,6 +121,76 @@ export function AdminDashboard({
   function openEditRoster(row: AdminRosterRow) {
     setSelectedRosterId(row.id);
     setModal("roster");
+  }
+
+  const allVisibleRosterSelected =
+    rosterRows.length > 0 &&
+    rosterRows.every((row) => selectedRosterIds.has(row.id));
+
+  function toggleRosterSelection(id: string, checked: boolean) {
+    setSelectedRosterIds((current) => {
+      const next = new Set(current);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }
+
+  function toggleAllVisibleRoster(checked: boolean) {
+    setSelectedRosterIds(
+      checked ? new Set(rosterRows.map((row) => row.id)) : new Set(),
+    );
+  }
+
+  async function deleteSelectedRoster() {
+    const ids = [...selectedRosterIds];
+    if (ids.length === 0) return;
+    if (!window.confirm(`선택한 ${ids.length}명을 로그인 허용 명단에서 삭제할까요?`)) {
+      return;
+    }
+
+    setRosterActionBusy(true);
+    setError("");
+    try {
+      await jsonRequest("/api/admin/roster", {
+        method: "DELETE",
+        body: JSON.stringify({ ids }),
+      });
+      window.location.reload();
+    } catch (cause) {
+      setError(
+        cause instanceof Error && cause.message === "CANNOT_DELETE_SELF"
+          ? "현재 로그인한 관리자 본인은 삭제할 수 없습니다."
+          : cause instanceof Error
+            ? cause.message
+            : "선택 명단을 삭제하지 못했습니다.",
+      );
+    } finally {
+      setRosterActionBusy(false);
+    }
+  }
+
+  async function resetRosterToInitialPassword() {
+    if (!selectedRoster) return;
+    if (!window.confirm("비밀번호를 등록된 전화번호로 초기화할까요?")) return;
+
+    setRosterActionBusy(true);
+    setError("");
+    try {
+      await jsonRequest("/api/admin/roster/password", {
+        method: "POST",
+        body: JSON.stringify({ id: selectedRoster.id, mode: "initial" }),
+      });
+      window.location.reload();
+    } catch (cause) {
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : "비밀번호를 초기화하지 못했습니다.",
+      );
+    } finally {
+      setRosterActionBusy(false);
+    }
   }
 
   async function submitRosterImport(event: FormEvent<HTMLFormElement>) {
@@ -168,6 +241,7 @@ export function AdminDashboard({
 
   async function submitRoster(formData: FormData) {
     setError("");
+    const newPassword = String(formData.get("password") ?? "");
     const payload = {
       name: String(formData.get("name") ?? ""),
       position: String(formData.get("position") ?? "") || null,
@@ -179,12 +253,23 @@ export function AdminDashboard({
     };
 
     try {
-      await jsonRequest("/api/admin/roster", {
+      const saved = await jsonRequest("/api/admin/roster", {
         method: selectedRoster ? "PATCH" : "POST",
         body: JSON.stringify(
           selectedRoster ? { id: selectedRoster.id, ...payload } : payload,
         ),
       });
+      const rosterId = selectedRoster?.id ?? String(saved.id ?? "");
+      if (newPassword && rosterId) {
+        await jsonRequest("/api/admin/roster/password", {
+          method: "POST",
+          body: JSON.stringify({
+            id: rosterId,
+            mode: "custom",
+            password: newPassword,
+          }),
+        });
+      }
       window.location.reload();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "명단을 저장하지 못했습니다.");
@@ -290,9 +375,19 @@ export function AdminDashboard({
       <section className="card admin-section">
         <div className="section-heading">
           <h2>전체 로그인 허용 명단</h2>
-          <button className="primary-button compact-button" type="button" onClick={openCreateRoster}>
-            사용자 추가
-          </button>
+          <div className="header-actions">
+            <button
+              className="text-button danger-button"
+              type="button"
+              disabled={selectedRosterIds.size === 0 || rosterActionBusy}
+              onClick={() => void deleteSelectedRoster()}
+            >
+              삭제{selectedRosterIds.size > 0 ? ` (${selectedRosterIds.size})` : ""}
+            </button>
+            <button className="primary-button compact-button" type="button" onClick={openCreateRoster}>
+              사용자 추가
+            </button>
+          </div>
         </div>
 
         <form className="roster-import-form" onSubmit={submitRosterImport}>
@@ -333,14 +428,38 @@ export function AdminDashboard({
 
         <div className="admin-table roster-table">
           <div className="admin-row admin-row-head roster-row">
-            <span>이름</span><span>직분</span><span>전화번호</span><span>샘</span><span>상태</span><span>관리</span>
+            <span className="roster-select-cell">
+              <input
+                type="checkbox"
+                checked={allVisibleRosterSelected}
+                onChange={(event) => toggleAllVisibleRoster(event.target.checked)}
+                aria-label="현재 표시 명단 전체 선택"
+              />
+            </span>
+            <span>이름</span><span>직분</span><span>전화번호</span><span>샘</span>
+            <span>비밀번호</span><span>상태</span><span>관리</span>
           </div>
           {rosterRows.map((row) => (
             <div className="admin-row roster-row" key={row.id}>
+              <span className="roster-select-cell">
+                <input
+                  type="checkbox"
+                  checked={selectedRosterIds.has(row.id)}
+                  onChange={(event) =>
+                    toggleRosterSelection(row.id, event.target.checked)
+                  }
+                  aria-label={`${row.name} 선택`}
+                />
+              </span>
               <span><strong>{row.name}</strong>{row.isAdmin && <small>관리자</small>}</span>
               <span>{row.position ?? "미지정"}</span>
               <span>{row.phone ?? "미등록"}</span>
               <span>{row.samLabel ?? "미지정"}</span>
+              <span>
+                {row.passwordMode === "initial"
+                  ? "초기(전화번호)"
+                  : "변경됨"}
+              </span>
               <span>{row.joined ? "참여 중" : "미참여"}{row.isActive ? "" : " · 비활성"}</span>
               <span>
                 <button className="text-button" type="button" onClick={() => openEditRoster(row)}>
@@ -383,6 +502,35 @@ export function AdminDashboard({
                 <label>전화번호<input name="phone" type="tel" defaultValue={selectedRoster?.phone ?? ""} /></label>
                 <label>마을<input name="village" defaultValue={selectedRoster?.village ?? ""} placeholder="예: 1마을" /></label>
                 <label>샘<input name="sam" defaultValue={selectedRoster?.sam ?? ""} placeholder="예: 6샘" /></label>
+                {selectedRoster && (
+                  <div className="password-status-box">
+                    <strong>현재 비밀번호</strong>
+                    <span>
+                      {selectedRoster.passwordMode === "initial"
+                        ? selectedRoster.phone
+                          ? `초기값: ${selectedRoster.phone}`
+                          : "초기 비밀번호 사용 중 · 전화번호 미등록"
+                        : "변경됨 · 원문은 보안상 저장하지 않습니다."}
+                    </span>
+                    <button
+                      className="text-button"
+                      type="button"
+                      disabled={rosterActionBusy}
+                      onClick={() => void resetRosterToInitialPassword()}
+                    >
+                      전화번호로 초기화
+                    </button>
+                  </div>
+                )}
+                <label>
+                  새 비밀번호
+                  <input
+                    name="password"
+                    type="password"
+                    autoComplete="new-password"
+                    placeholder={selectedRoster ? "변경할 때만 입력" : "필요하면 입력"}
+                  />
+                </label>
                 <label className="checkbox-row"><input name="isActive" type="checkbox" defaultChecked={selectedRoster?.isActive ?? true} /> 로그인 허용</label>
                 <label className="checkbox-row"><input name="isAdmin" type="checkbox" defaultChecked={selectedRoster?.isAdmin ?? false} /> 관리자</label>
                 <button className="primary-button" type="submit">저장</button>
