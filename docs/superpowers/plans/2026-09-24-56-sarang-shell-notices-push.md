@@ -242,6 +242,7 @@ git commit -m "feat: add 56사랑 member shell and branding"
 - Produces: `getUnreadNoticeCount(userId: string): Promise<number>`
 - Produces: `markNoticeRead(noticeId: string, userId: string): Promise<void>`
 - Produces admin CRUD: `createNotice`, `updateNotice`, `deleteNotice`, `listNoticesForAdmin`.
+- `listNoticesForAdmin` includes `readCount` and `targetActiveUsers` for published notices so the admin UI can show 읽음/전체 대상 without loading member details.
 
 - [ ] **Step 1: Write RED schema/policy tests**
 
@@ -375,8 +376,8 @@ requireAdmin(await getCurrentSessionUser());
 ```
 
 Rules:
-- first transition to `published` sets `publishedAt`
-- editing an already published notice preserves reads
+- first transition from draft to `published` sets `publishedAt` and reports `didPublish: true`
+- editing an already published notice preserves reads and reports `didPublish: false`
 - draft uses `publishedAt = null`
 - deleting a notice cascades read rows
 
