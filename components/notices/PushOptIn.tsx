@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { decodeApplicationServerKey } from "../../src/features/push/browser-key";
 
 type PushState =
   | "idle"
@@ -10,17 +11,6 @@ type PushState =
   | "unsupported"
   | "unavailable"
   | "error";
-
-function applicationServerKey(value: string): Uint8Array {
-  const padding = "=".repeat((4 - (value.length % 4)) % 4);
-  const base64 = (value + padding).replace(/-/g, "+").replace(/_/g, "/");
-  const raw = window.atob(base64);
-  const bytes = new Uint8Array(raw.length);
-  for (let index = 0; index < raw.length; index += 1) {
-    bytes[index] = raw.charCodeAt(index);
-  }
-  return bytes;
-}
 
 export function PushOptIn() {
   const [state, setState] = useState<PushState>("idle");
@@ -64,7 +54,7 @@ export function PushOptIn() {
         existing ??
         (await registration.pushManager.subscribe({
           userVisibleOnly: true,
-          applicationServerKey: applicationServerKey(publicKey),
+          applicationServerKey: decodeApplicationServerKey(publicKey),
         }));
 
       const json = subscription.toJSON();
