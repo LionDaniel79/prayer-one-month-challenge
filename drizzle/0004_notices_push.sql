@@ -46,3 +46,7 @@ create policy deny_non_backend_access on prayer_app.notice_reads
   as restrictive for all to public using (false) with check (false);
 create policy deny_non_backend_access on prayer_app.push_subscriptions
   as restrictive for all to public using (false) with check (false);
+
+revoke all on prayer_app.notices from anon, authenticated;
+revoke all on prayer_app.notice_reads from anon, authenticated;
+revoke all on prayer_app.push_subscriptions from anon, authenticated;
