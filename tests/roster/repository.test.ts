@@ -9,6 +9,7 @@ const base: RosterCredential = {
   canonicalName: "김은희",
   position: "집사",
   phoneLookupHash: "a".repeat(64),
+  passwordHash: null,
   village: "1",
   sam: "6",
   samLabel: "1-6",
