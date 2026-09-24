@@ -7,9 +7,9 @@ export default async function LoginPage() {
   return (
     <main className="shell auth-shell">
       <header className="hero-copy">
-        <p className="eyebrow">함께 기도하는 한 달</p>
-        <h1>기도운동 1달 도전</h1>
-        <p>월요일부터 토요일까지 기도를 마치고 날짜를 체크해 주세요.</p>
+        <p className="eyebrow">56사랑</p>
+        <h1>56공동체</h1>
+        <p>성령이 하나 되게 하신 것을 힘써 지키라(엡 4:3)</p>
       </header>
       <LoginForm />
     </main>
