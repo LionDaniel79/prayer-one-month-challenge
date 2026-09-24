@@ -199,3 +199,22 @@ export const pushSubscriptions = appSchema.table(
     index("push_subscriptions_user_idx").on(t.userId),
   ],
 );
+
+
+export const prayerRequests = appSchema.table(
+  "prayer_requests",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    content: text("content").notNull(),
+    status: varchar("status", { length: 20 }).notNull().default("received"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("prayer_requests_status_created_idx").on(t.status, t.createdAt),
+    index("prayer_requests_user_created_idx").on(t.userId, t.createdAt),
+  ],
+);
