@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { phoneLookupHash } from "../../src/features/auth/crypto";
+import { hashPassword, phoneLookupHash } from "../../src/features/auth/crypto";
 import {
   authenticateRosterIdentity,
   type RosterAuthRepository,
@@ -22,6 +22,7 @@ function roster(
     canonicalName: "김은희",
     position: "집사",
     phoneLookupHash: phoneLookupHash(phone),
+    passwordHash: null,
     village: "1마을",
     sam: "6샘",
     samLabel: "1-6",
@@ -40,12 +41,8 @@ function fakeRepository(rows: RosterCredential[]) {
   let creates = 0;
 
   const repository: RosterAuthRepository = {
-    async findRosterCredential(name, lookupHash) {
-      return rows.find((row) =>
-        row.canonicalName === name &&
-        row.phoneLookupHash === lookupHash &&
-        row.isActive
-      ) ?? null;
+    async findRosterCredentials(name) {
+      return rows.filter((row) => row.canonicalName === name && row.isActive);
     },
     async findParticipantByRosterId(rosterId) {
       return participants.get(rosterId) ?? null;
@@ -71,13 +68,12 @@ function fakeRepository(rows: RosterCredential[]) {
     },
   };
 
-  return { repository, participants, createCount: () => creates };
+  return { repository, createCount: () => creates };
 }
 
 describe("roster allowlist authentication", () => {
-  it("accepts a trailing-letter name when canonical name and phone match", async () => {
-    const row = roster("r1", "01011112222");
-    const fake = fakeRepository([row]);
+  it("uses the phone as the initial password when no custom password exists", async () => {
+    const fake = fakeRepository([roster("r1", "01011112222")]);
     const result = await authenticateRosterIdentity(
       fake.repository,
       "김은희B",
@@ -86,7 +82,35 @@ describe("roster allowlist authentication", () => {
     expect(result?.roster.id).toBe("r1");
   });
 
-  it("distinguishes same Korean names by phone", async () => {
+  it("accepts an arbitrary custom password with no character-count maximum", async () => {
+    const password = "한글!x".repeat(100);
+    const fake = fakeRepository([
+      roster("r1", "01011112222", {
+        passwordHash: await hashPassword(password),
+      }),
+    ]);
+
+    const result = await authenticateRosterIdentity(
+      fake.repository,
+      "김은희",
+      password,
+    );
+    expect(result?.roster.id).toBe("r1");
+  });
+
+  it("stops accepting the phone after a custom password is set", async () => {
+    const fake = fakeRepository([
+      roster("r1", "01011112222", {
+        passwordHash: await hashPassword("새비밀번호"),
+      }),
+    ]);
+
+    await expect(
+      authenticateRosterIdentity(fake.repository, "김은희", "01011112222"),
+    ).resolves.toBeNull();
+  });
+
+  it("distinguishes same Korean names by their initial phone passwords", async () => {
     const first = roster("r1", "01011112222");
     const second = roster("r2", "01033334444", { position: "권사" });
     const fake = fakeRepository([first, second]);
@@ -99,10 +123,10 @@ describe("roster allowlist authentication", () => {
     expect(result?.roster.id).toBe("r2");
   });
 
-  it("rejects a matching name with a wrong phone", async () => {
+  it("rejects a wrong password and does not create a participant", async () => {
     const fake = fakeRepository([roster("r1", "01011112222")]);
     await expect(
-      authenticateRosterIdentity(fake.repository, "김은희", "01099998888"),
+      authenticateRosterIdentity(fake.repository, "김은희", "wrong"),
     ).resolves.toBeNull();
     expect(fake.createCount()).toBe(0);
   });
@@ -137,10 +161,13 @@ describe("roster allowlist authentication", () => {
     expect(result?.participant.role).toBe("admin");
   });
 
-  it("fails closed for inactive or phone-less roster rows", async () => {
+  it("fails closed for inactive or credential-less roster rows", async () => {
     const inactive = roster("r1", "01011112222", { isActive: false });
-    const phoneLess = roster("r2", "01022223333", { phoneLookupHash: null });
-    const fake = fakeRepository([inactive, phoneLess]);
+    const credentialLess = roster("r2", "01022223333", {
+      phoneLookupHash: null,
+      passwordHash: null,
+    });
+    const fake = fakeRepository([inactive, credentialLess]);
 
     await expect(
       authenticateRosterIdentity(fake.repository, "김은희", "01011112222"),
