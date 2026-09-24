@@ -8,6 +8,7 @@ export type ProfileData = {
   displayName: string;
   position: string | null;
   samLabel: string | null;
+  passwordMode: "initial" | "custom";
 };
 
 export type MemberDashboard = {
