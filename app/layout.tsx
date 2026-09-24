@@ -3,15 +3,18 @@ import "./globals.css";
 import { SessionHeartbeat } from "../components/auth/SessionHeartbeat";
 
 export const metadata: Metadata = {
-  title: "기도운동 1달 도전",
-  description: "한 달 동안 월~토 기도 완료를 기록하는 앱",
-  applicationName: "기도운동 1달 도전",
+  title: {
+    default: "56사랑",
+    template: "%s | 56사랑",
+  },
+  description: "56공동체 기도운동, 심방신청, 기도요청, 공지",
+  applicationName: "56사랑",
   icons: {
     icon: [
-      { url: "/icons/prayer-192.png", sizes: "192x192", type: "image/png" },
-      { url: "/icons/prayer-512.png", sizes: "512x512", type: "image/png" },
+      { url: "/icons/56-love-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/56-love-512.png", sizes: "512x512", type: "image/png" },
     ],
-    apple: "/icons/prayer-192.png",
+    apple: "/icons/56-love-192.png",
   },
 };
 
