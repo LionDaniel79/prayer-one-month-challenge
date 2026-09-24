@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import {
   createRosterMember,
+  deleteRosterMembers,
   listRosterForAdmin,
   updateRosterMember,
 } from "../../../../src/features/admin/roster-service";
@@ -21,6 +22,10 @@ const RosterInput = z.object({
 
 const RosterUpdate = RosterInput.extend({
   id: z.string().uuid(),
+});
+
+const RosterDelete = z.object({
+  ids: z.array(z.string().uuid()).min(1).max(500),
 });
 
 function errorResponse(error: unknown) {
@@ -77,6 +82,24 @@ export async function PATCH(request: Request) {
     const { id, ...input } = parsed.data;
     await updateRosterMember(id, input);
     return NextResponse.json({ status: "ok" });
+  } catch (error) {
+    return errorResponse(error);
+  }
+}
+
+
+export async function DELETE(request: Request) {
+  try {
+    const user = await getCurrentSessionUser();
+    requireAdmin(user);
+    const parsed = RosterDelete.safeParse(
+      await request.json().catch(() => null),
+    );
+    if (!parsed.success) {
+      return NextResponse.json({ code: "INVALID_INPUT" }, { status: 400 });
+    }
+    const deleted = await deleteRosterMembers(parsed.data.ids, user.id);
+    return NextResponse.json({ status: "ok", deleted });
   } catch (error) {
     return errorResponse(error);
   }
