@@ -10,4 +10,8 @@ describe("member roster schema", () => {
   it("links users to a roster identity", () => {
     expect(users.rosterId).toBeDefined();
   });
+
+  it("stores an optional custom password hash on the roster", () => {
+    expect(memberRoster.passwordHash).toBeDefined();
+  });
 });
