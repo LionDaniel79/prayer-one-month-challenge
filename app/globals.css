@@ -310,3 +310,101 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
     padding-top: 20px;
   }
 }
+
+
+/* Notices */
+.nav-badge {
+  margin-left: auto;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 999px;
+  display: inline-grid;
+  place-items: center;
+  background: #ef4444;
+  color: #fff;
+  font-size: .72rem;
+  font-weight: 800;
+  line-height: 1;
+}
+.notice-list {
+  padding: 0;
+  overflow: hidden;
+}
+.notice-list-row {
+  min-height: 72px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18px;
+  padding: 16px 20px;
+  border-top: 1px solid #e5e7eb;
+  text-decoration: none;
+}
+.notice-list-row:first-child { border-top: 0; }
+.notice-list-row:hover { background: #f8fafc; }
+.notice-list-row.is-unread { background: #f5f9ff; }
+.notice-title-line {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.notice-title-line > strong:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.notice-list-row time {
+  color: #667085;
+  font-size: .84rem;
+}
+.notice-new-badge {
+  flex: 0 0 auto;
+  padding: 4px 7px;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #fff;
+  font-size: .68rem;
+  line-height: 1;
+}
+.notice-detail { padding: 28px; }
+.notice-detail-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: flex-start;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #e5e7eb;
+}
+.notice-detail-heading h2 {
+  margin: 4px 0 8px;
+  font-size: clamp(1.5rem, 4vw, 2.2rem);
+}
+.notice-detail-heading time {
+  color: #667085;
+  font-size: .88rem;
+}
+.notice-body {
+  padding-top: 24px;
+  white-space: pre-wrap;
+  line-height: 1.75;
+  overflow-wrap: anywhere;
+}
+.text-link {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+@media (max-width: 620px) {
+  .notice-list-row {
+    grid-template-columns: 1fr;
+    gap: 7px;
+    padding: 15px 16px;
+  }
+  .notice-list-row time { padding-left: 0; }
+  .notice-detail { padding: 20px; }
+  .notice-detail-heading { display: grid; }
+}
