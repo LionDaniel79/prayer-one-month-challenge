@@ -130,7 +130,12 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .sam-edit-button { min-height: 32px; width: fit-content; color: #2563eb; font-size: .8rem; }
 
 .participant-row { grid-template-columns: minmax(110px, 1.2fr) minmax(90px, .8fr) minmax(140px, 1.2fr) minmax(70px, .7fr) minmax(60px, .5fr) minmax(125px, 1fr) minmax(70px, .6fr); }
-.roster-row { grid-template-columns: minmax(120px, 1.2fr) minmax(90px, .8fr) minmax(140px, 1.2fr) minmax(70px, .7fr) minmax(120px, 1fr) minmax(70px, .6fr); }
+.roster-row { grid-template-columns: 42px minmax(120px, 1.2fr) minmax(90px, .8fr) minmax(140px, 1.2fr) minmax(70px, .7fr) minmax(110px, .9fr) minmax(120px, 1fr) minmax(70px, .6fr); }
+.roster-select-cell { display: flex !important; align-items: center; justify-content: center; }
+.roster-select-cell input { width: 18px; height: 18px; }
+.danger-button { color: #b42318; }
+.password-status-box { display: grid; gap: 8px; padding: 12px; border: 1px solid #e5e7eb; border-radius: 12px; background: #f8fafc; }
+.password-status-box .text-button { width: fit-content; }
 .roster-filters { margin: 14px 0; }
 .compact-button { width: auto; padding-inline: 16px; }
 .load-more-button { margin-top: 12px; }
@@ -143,6 +148,14 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .participant-table .admin-row span:nth-child(5)::before { content: "순위"; }
   .participant-table .admin-row span:nth-child(6)::before { content: "달성률"; }
   .participant-table .admin-row span:nth-child(7)::before { content: "오늘"; }
+  .roster-table .admin-row span:nth-child(2)::before { content: "이름"; }
+  .roster-table .admin-row span:nth-child(3)::before { content: "직분"; }
+  .roster-table .admin-row span:nth-child(4)::before { content: "전화번호"; }
+  .roster-table .admin-row span:nth-child(5)::before { content: "샘"; }
+  .roster-table .admin-row span:nth-child(6)::before { content: "비밀번호"; }
+  .roster-table .admin-row span:nth-child(7)::before { content: "상태"; }
+  .roster-table .admin-row span:nth-child(8)::before { content: "관리"; }
+  .roster-select-cell::before { content: none !important; }
 }
 
 .calendar-cell.is-pending { opacity: .72; }
