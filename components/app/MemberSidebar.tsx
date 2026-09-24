@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { UnreadNoticeBadge } from "../notices/UnreadNoticeBadge";
 
 const memberNav = [
   { href: "/", label: "기도운동", icon: "🙏" },
@@ -32,6 +33,7 @@ export function MemberSidebar({ onNavigate }: { onNavigate?: () => void }) {
           >
             <span className="member-nav-icon" aria-hidden="true">{item.icon}</span>
             <span>{item.label}</span>
+            {item.href === "/notices" && <UnreadNoticeBadge />}
           </Link>
         );
       })}
