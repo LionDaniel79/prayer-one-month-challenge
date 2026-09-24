@@ -2,22 +2,22 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 describe("admin page runtime boundary", () => {
-  it("loads DB-backed admin data sequentially on the single-connection pool", () => {
+  it("keeps server rendering limited to authentication", () => {
     const page = readFileSync("app/admin/page.tsx", "utf8");
-    expect(page).not.toContain("Promise.all");
-    expect(page).toMatch(/await getAdminDashboard\(\)[\s\S]*await listRosterForAdmin\(\)/);
+    expect(page).not.toContain("getAdminDashboard");
+    expect(page).not.toContain("listRosterForAdmin");
+    expect(page).toContain("AdminDashboardLoader");
   });
 
-  it("renders the interactive admin dashboard client-only", () => {
-    const wrapper = readFileSync(
-      "components/admin/AdminDashboardNoSsr.tsx",
+  it("loads admin data through authenticated APIs after the page mounts", () => {
+    const loader = readFileSync(
+      "components/admin/AdminDashboardLoader.tsx",
       "utf8",
     );
-    const page = readFileSync("app/admin/page.tsx", "utf8");
 
-    expect(wrapper).toContain('"use client"');
-    expect(wrapper).toMatch(/ssr:\s*false/);
-    expect(page).toContain("AdminDashboardNoSsr");
-    expect(page).not.toContain("<AdminDashboard ");
+    expect(loader).toContain('"use client"');
+    expect(loader).toContain('fetch("/api/admin/dashboard"');
+    expect(loader).toContain('fetch("/api/admin/roster"');
+    expect(loader).toContain("관리자 데이터를 불러오지 못했습니다");
   });
 });
