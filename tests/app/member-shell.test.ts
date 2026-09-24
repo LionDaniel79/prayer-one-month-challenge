@@ -18,4 +18,15 @@ describe("56사랑 member shell", () => {
     expect(source).toContain("56공동체");
     expect(source).toContain("성령이 하나 되게 하신 것을 힘써 지키라(엡 4:3)");
   });
+
+  it("keeps each feature on its own route instead of one combined screen", () => {
+    for (const path of [
+      "app/(member)/page.tsx",
+      "app/(member)/visits/page.tsx",
+      "app/(member)/prayer-requests/page.tsx",
+      "app/(member)/notices/page.tsx",
+    ]) {
+      expect(readFileSync(path, "utf8").length).toBeGreaterThan(0);
+    }
+  });
 });
