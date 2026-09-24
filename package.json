@@ -27,7 +27,8 @@
     "postgres": "3.4.9",
     "react": "19.3.0",
     "react-dom": "19.3.0",
-    "zod": "4.6.5"
+    "zod": "4.6.5",
+    "web-push": "3.6.7"
   },
   "devDependencies": {
     "@playwright/test": "1.63.0",
@@ -41,6 +42,7 @@
     "tsx": "4.23.13",
     "typescript": "npm:@typescript/typescript6@6.0.2",
     "vitest": "5.0.1",
-    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
+    "@types/web-push": "3.6.4"
   }
 }
