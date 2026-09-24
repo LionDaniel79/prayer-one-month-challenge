@@ -1,0 +1,21 @@
+import { readFileSync } from "node:fs";
+import { describe, expect, it } from "vitest";
+
+describe("56사랑 member shell", () => {
+  it("pins the required menu order", () => {
+    const source = readFileSync("components/app/MemberSidebar.tsx", "utf8");
+    const labels = ["기도운동", "심방신청", "기도요청", "공지"];
+    let cursor = -1;
+    for (const label of labels) {
+      const next = source.indexOf(label);
+      expect(next).toBeGreaterThan(cursor);
+      cursor = next;
+    }
+  });
+
+  it("pins the exact brand copy", () => {
+    const source = readFileSync("components/app/MemberShell.tsx", "utf8");
+    expect(source).toContain("56공동체");
+    expect(source).toContain("성령이 하나 되게 하신 것을 힘써 지키라(엡 4:3)");
+  });
+});
