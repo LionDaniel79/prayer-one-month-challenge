@@ -1,8 +1,6 @@
 "use client";
 
-import Link from "next/link";
 import { useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import type { MemberDashboard } from "../../src/lib/types";
 import {
   optimisticToggleDashboard,
@@ -13,7 +11,6 @@ import { PrayerCalendar } from "../calendar/PrayerCalendar";
 import { ProgressCard } from "./ProgressCard";
 
 export function PrayerDashboardClient({ initial }: { initial: MemberDashboard }) {
-  const router = useRouter();
   const [dashboard, setDashboard] = useState(initial);
   const dashboardRef = useRef(initial);
   const [pendingDates, setPendingDates] = useState<Set<string>>(new Set());
@@ -96,28 +93,16 @@ export function PrayerDashboardClient({ initial }: { initial: MemberDashboard })
     }
   }
 
-  async function logout() {
-    await fetch("/api/auth/logout", { method: "POST" });
-    router.replace("/login");
-    router.refresh();
-  }
-
   return (
     <>
-      <header className="member-header">
-        <div>
-          <p className="eyebrow">{dashboard.user.samLabel ?? "샘 미지정"}</p>
-          <h1>{dashboard.challenge.title}</h1>
-          <p>
-            <strong>{dashboard.user.displayName}</strong>
-            {dashboard.user.position ? ` · ${dashboard.user.position}` : ""} 님의 기도 기록
-          </p>
-        </div>
-        <div className="header-actions">
-          <Link href="/profile">내 정보</Link>
-          <button type="button" className="text-button" onClick={logout}>로그아웃</button>
-        </div>
-      </header>
+      <section className="feature-heading">
+        <p className="eyebrow">{dashboard.user.samLabel ?? "샘 미지정"}</p>
+        <h2>{dashboard.challenge.title}</h2>
+        <p>
+          <strong>{dashboard.user.displayName}</strong>
+          {dashboard.user.position ? ` · ${dashboard.user.position}` : ""} 님의 기도 기록
+        </p>
+      </section>
       <ProgressCard dashboard={dashboard} />
       {message && <p className="error-text" role="alert">{message}</p>}
       <PrayerCalendar
