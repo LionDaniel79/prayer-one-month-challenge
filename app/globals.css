@@ -408,3 +408,39 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .notice-detail { padding: 20px; }
   .notice-detail-heading { display: grid; }
 }
+
+
+.push-opt-in {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: center;
+  margin-bottom: 14px;
+  padding: 16px 18px;
+  border: 1px solid #dbe5ef;
+  border-radius: 16px;
+  background: #f7fbff;
+}
+.push-opt-in p { margin: 5px 0 0; }
+.push-opt-in-button {
+  flex: 0 0 auto;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid #b8c9dc;
+  border-radius: 10px;
+  background: #fff;
+  color: #174a7e;
+  font-weight: 700;
+}
+.push-status {
+  margin: 0 0 14px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: #eefaf1;
+}
+@media (max-width: 620px) {
+  .push-opt-in {
+    display: grid;
+  }
+  .push-opt-in-button { width: 100%; }
+}
