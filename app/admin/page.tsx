@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { AdminDashboard } from "../../components/admin/AdminDashboard";
+import { AdminDashboardNoSsr } from "../../components/admin/AdminDashboardNoSsr";
 import { listRosterForAdmin } from "../../src/features/admin/roster-service";
 import { getAdminDashboard, requireAdmin } from "../../src/features/admin/service";
 import { getCurrentSessionUser } from "../../src/features/auth/http-session";
@@ -14,14 +14,12 @@ export default async function AdminPage() {
     redirect("/");
   }
 
-  const [dashboard, roster] = await Promise.all([
-    getAdminDashboard(),
-    listRosterForAdmin(),
-  ]);
+  const dashboard = await getAdminDashboard();
+  const roster = await listRosterForAdmin();
 
   return (
     <main className="admin-shell">
-      <AdminDashboard initial={dashboard} initialRoster={roster} />
+      <AdminDashboardNoSsr initial={dashboard} initialRoster={roster} />
     </main>
   );
 }
