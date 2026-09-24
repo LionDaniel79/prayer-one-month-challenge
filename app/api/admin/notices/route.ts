@@ -7,6 +7,7 @@ import {
   listNoticesForAdmin,
 } from "../../../../src/features/notices/service";
 import { DomainError } from "../../../../src/lib/http";
+import { sendNoticePush } from "../../../../src/features/push/service";
 
 const NoticeInputSchema = z.object({
   title: z.string().trim().min(1).max(200),
@@ -43,6 +44,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ code: "INVALID_INPUT" }, { status: 400 });
     }
     const result = await createNotice(user.id, parsed.data);
+    if (result.didPublish) {
+      try {
+        await sendNoticePush({
+          id: result.notice.id,
+          title: result.notice.title,
+          body: result.notice.body,
+        });
+      } catch {
+        // Notice publication succeeds even if push is unavailable.
+      }
+    }
     return NextResponse.json(
       {
         status: "ok",
