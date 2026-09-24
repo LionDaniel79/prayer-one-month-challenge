@@ -17,13 +17,27 @@ export function phoneLookupHash(phone: string): string {
     .digest("hex");
 }
 
+export async function hashPassword(value: string): Promise<string> {
+  if (!value) throw new Error("INVALID_PASSWORD");
+  return argon2.hash(value, { type: argon2.argon2id });
+}
+
+export async function verifyPassword(hash: string, value: string): Promise<boolean> {
+  if (!value) return false;
+  try {
+    return await argon2.verify(hash, value);
+  } catch {
+    return false;
+  }
+}
+
 export async function hashPhonePassword(phone: string): Promise<string> {
-  return argon2.hash(normalizePhone(phone), { type: argon2.argon2id });
+  return hashPassword(normalizePhone(phone));
 }
 
 export async function verifyPhonePassword(hash: string, phone: string): Promise<boolean> {
   try {
-    return await argon2.verify(hash, normalizePhone(phone));
+    return await verifyPassword(hash, normalizePhone(phone));
   } catch {
     return false;
   }
