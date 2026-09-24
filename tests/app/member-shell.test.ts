@@ -13,6 +13,19 @@ describe("56사랑 member shell", () => {
     }
   });
 
+  it("provides a page for every member tab", () => {
+    const pages = [
+      ["app/(member)/page.tsx", "PrayerDashboardNoSsr"],
+      ["app/(member)/visits/page.tsx", "심방신청"],
+      ["app/(member)/prayer-requests/page.tsx", "기도요청"],
+      ["app/(member)/notices/page.tsx", "공지"],
+    ] as const;
+
+    for (const [path, marker] of pages) {
+      expect(readFileSync(path, "utf8")).toContain(marker);
+    }
+  });
+
   it("pins the exact brand copy", () => {
     const source = readFileSync("components/app/MemberShell.tsx", "utf8");
     expect(source).toContain("56공동체");
