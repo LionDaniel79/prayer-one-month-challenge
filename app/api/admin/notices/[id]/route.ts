@@ -7,6 +7,7 @@ import {
   updateNotice,
 } from "../../../../../src/features/notices/service";
 import { DomainError } from "../../../../../src/lib/http";
+import { sendNoticePush } from "../../../../../src/features/push/service";
 
 const NoticeInputSchema = z.object({
   title: z.string().trim().min(1).max(200),
@@ -35,6 +36,17 @@ export async function PATCH(
     }
     const { id } = await context.params;
     const result = await updateNotice(id, parsed.data);
+    if (result.didPublish) {
+      try {
+        await sendNoticePush({
+          id: result.notice.id,
+          title: result.notice.title,
+          body: result.notice.body,
+        });
+      } catch {
+        // Notice edit/publish remains successful if push delivery fails.
+      }
+    }
     return NextResponse.json({
       status: "ok",
       notice: result.notice,
