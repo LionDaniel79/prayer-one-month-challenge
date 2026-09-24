@@ -7,9 +7,10 @@ import {
   hashPhonePassword,
   normalizeName,
   phoneLookupHash,
+  verifyPassword,
 } from "./crypto";
 import {
-  findActiveRosterCredential,
+  findActiveRosterCredentials,
   type RosterCredential,
 } from "../roster/repository";
 import { canonicalizeRosterName } from "../roster/normalize";
@@ -21,10 +22,9 @@ export type ParticipantRecord = {
 };
 
 export type RosterAuthRepository = {
-  findRosterCredential(
+  findRosterCredentials(
     canonicalName: string,
-    lookupHash: string,
-  ): Promise<RosterCredential | null>;
+  ): Promise<RosterCredential[]>;
   findParticipantByRosterId(rosterId: string): Promise<ParticipantRecord | null>;
   createParticipant(input: {
     roster: RosterCredential;
@@ -51,7 +51,7 @@ function participantValues(roster: RosterCredential, now: Date) {
 }
 
 export const dbRosterAuthRepository: RosterAuthRepository = {
-  findRosterCredential: findActiveRosterCredential,
+  findRosterCredentials: findActiveRosterCredentials,
 
   async findParticipantByRosterId(rosterId) {
     const [row] = await getDb()
@@ -108,17 +108,41 @@ export const dbRosterAuthRepository: RosterAuthRepository = {
   },
 };
 
+async function rosterPasswordMatches(
+  roster: RosterCredential,
+  password: string,
+): Promise<boolean> {
+  if (!roster.isActive || !roster.phoneLookupHash) return false;
+
+  if (roster.passwordHash) {
+    return verifyPassword(roster.passwordHash, password);
+  }
+
+  try {
+    return phoneLookupHash(password) === roster.phoneLookupHash;
+  } catch {
+    return false;
+  }
+}
+
 export async function authenticateRosterIdentity(
   repository: RosterAuthRepository,
   name: string,
-  phone: string,
+  password: string,
   now = new Date(),
 ): Promise<{ roster: RosterCredential; participant: ParticipantRecord } | null> {
   const canonicalName = canonicalizeRosterName(name);
-  const lookupHash = phoneLookupHash(phone);
-  const roster = await repository.findRosterCredential(canonicalName, lookupHash);
+  const candidates = await repository.findRosterCredentials(canonicalName);
+  const matching: RosterCredential[] = [];
 
-  if (!roster?.isActive || !roster.phoneLookupHash) return null;
+  for (const candidate of candidates) {
+    if (await rosterPasswordMatches(candidate, password)) {
+      matching.push(candidate);
+    }
+  }
+
+  if (matching.length !== 1) return null;
+  const roster = matching[0];
 
   const existing = await repository.findParticipantByRosterId(roster.id);
   if (existing) {
@@ -132,9 +156,11 @@ export async function authenticateRosterIdentity(
     };
   }
 
+  const phonePasswordHash =
+    roster.passwordHash ?? await hashPhonePassword(password);
   const participant = await repository.createParticipant({
     roster,
-    phonePasswordHash: await hashPhonePassword(phone),
+    phonePasswordHash,
     now,
   });
   return { roster, participant };
@@ -142,13 +168,13 @@ export async function authenticateRosterIdentity(
 
 export async function authenticateRosterLogin(
   name: string,
-  phone: string,
+  password: string,
   now = new Date(),
 ): Promise<{ user: SessionUser; token: string } | null> {
   const result = await authenticateRosterIdentity(
     dbRosterAuthRepository,
     name,
-    phone,
+    password,
     now,
   );
   if (!result) return null;
