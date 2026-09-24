@@ -5,7 +5,6 @@ import {
   integer,
   pgSchema,
   primaryKey,
-  primaryKey,
   text,
   timestamp,
   uniqueIndex,
