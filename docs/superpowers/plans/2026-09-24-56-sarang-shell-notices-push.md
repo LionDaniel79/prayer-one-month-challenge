@@ -669,14 +669,20 @@ Only user click calls `Notification.requestPermission()`. Unsupported/denied sta
 
 - [ ] **Step 7: Fire push after notice publication commit**
 
-After successful DB publication, invoke push outside the transaction and swallow/report delivery failures without changing the notice HTTP success:
+Only when the notice service reports a real draft-to-published transition (`didPublish === true`), invoke push outside the transaction and swallow/report delivery failures without changing the notice HTTP success:
 
 ```ts
-await publishNotice(...);
-try {
-  await sendNoticePush({ id: notice.id, title: notice.title, body: notice.body });
-} catch {
-  // Notice stays published; operational logging only.
+const result = await publishNotice(...);
+if (result.didPublish) {
+  try {
+    await sendNoticePush({
+      id: result.notice.id,
+      title: result.notice.title,
+      body: result.notice.body,
+    });
+  } catch {
+    // Notice stays published; operational logging only.
+  }
 }
 ```
 
