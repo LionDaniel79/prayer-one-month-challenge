@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { LogoutButton } from "../components/auth/LogoutButton";
-import { PrayerDashboardClient } from "../components/dashboard/PrayerDashboardClient";
+import { PrayerDashboardNoSsr } from "../components/dashboard/PrayerDashboardNoSsr";
 import { getCurrentSessionUser } from "../src/features/auth/http-session";
 import { getMemberDashboard } from "../src/features/checkins/service";
 
@@ -34,7 +34,7 @@ export default async function Home() {
 
   return (
     <main className="shell">
-      <PrayerDashboardClient initial={dashboard} />
+      <PrayerDashboardNoSsr initial={dashboard} />
     </main>
   );
 }
