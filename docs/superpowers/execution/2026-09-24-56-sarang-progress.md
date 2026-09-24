@@ -8,3 +8,5 @@ Pre-flight Task 1→Task 3: Task 1 produces MemberSidebar/MemberShell; Task 3 co
 Pre-flight Task 2→Task 3: Task 2 produces notice member APIs/services; Task 3 consumes published list/detail/unread-count. Interface is compatible.
 Pre-flight Task 2→Task 4: Task 2 creates push_subscriptions table; Task 4 consumes it. Interface is compatible.
 Pre-flight Task 2→Task 4: notice publish must distinguish first draft→published transition from later edits so Push is sent only once. Plan amended with didPublish signal.
+
+Task 1 Ruling: The four member items are navigation tabs/routes, not four simultaneous dashboard panels. The sidebar stays visible while the main content area renders exactly one selected feature: prayer at '/', visits at '/visits', prayer requests at '/prayer-requests', notices at '/notices'. The earlier multi-panel image was a presentation collage only. Cost if wrong: the app would violate the user's core navigation expectation and become cluttered on desktop/mobile.
