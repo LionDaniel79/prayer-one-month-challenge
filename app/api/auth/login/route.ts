@@ -14,7 +14,10 @@ import {
 
 const LoginSchema = z.object({
   name: z.string().trim().min(1).max(80),
-  phone: z.string().min(9).max(30),
+  password: z.string().min(1).optional(),
+  phone: z.string().min(1).optional(),
+}).refine((value) => Boolean(value.password ?? value.phone), {
+  message: "PASSWORD_REQUIRED",
 });
 
 function requestIp(request: NextRequest): string {
@@ -27,7 +30,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ code: "INVALID_INPUT" }, { status: 400 });
   }
 
-  const { name, phone } = parsed.data;
+  const name = parsed.data.name;
+  const password = parsed.data.password ?? parsed.data.phone!;
   const ip = requestIp(request);
 
   if (await isLoginBlocked(name, ip)) {
@@ -40,7 +44,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const result = await authenticateRosterLogin(name, phone);
+  const result = await authenticateRosterLogin(name, password);
   if (!result) {
     const failure = await recordLoginFailure(name, ip);
     if (failure.blockedUntil) {
@@ -49,7 +53,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         code: "ROSTER_MISMATCH",
-        message: "등록된 명단과 일치하지 않습니다. 이름과 전화번호를 확인해 주세요.",
+        message: "등록된 이름과 비밀번호를 확인해 주세요.",
       },
       { status: 401 },
     );
