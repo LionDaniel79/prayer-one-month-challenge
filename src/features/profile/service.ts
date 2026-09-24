@@ -73,34 +73,34 @@ export async function changeProfilePassword(
   if (!password) throw new DomainError("INVALID_PASSWORD", 400);
 
   const db = getDb();
+  const [target] = await db
+    .select({
+      rosterId: users.rosterId,
+      canonicalName: memberRoster.canonicalName,
+    })
+    .from(users)
+    .leftJoin(memberRoster, eq(memberRoster.id, users.rosterId))
+    .where(eq(users.id, userId))
+    .limit(1);
+
+  if (!target?.rosterId || !target.canonicalName) {
+    throw new DomainError("ROSTER_NOT_LINKED", 409);
+  }
+
+  if (await sameNamePasswordConflict(
+    target.rosterId,
+    target.canonicalName,
+    password,
+  )) {
+    throw new DomainError("PASSWORD_CONFLICT_SAME_NAME", 409);
+  }
+
+  const passwordHash = await hashPassword(password);
   await db.transaction(async (tx) => {
-    const [target] = await tx
-      .select({
-        rosterId: users.rosterId,
-        canonicalName: memberRoster.canonicalName,
-      })
-      .from(users)
-      .leftJoin(memberRoster, eq(memberRoster.id, users.rosterId))
-      .where(eq(users.id, userId))
-      .limit(1);
-
-    if (!target?.rosterId || !target.canonicalName) {
-      throw new DomainError("ROSTER_NOT_LINKED", 409);
-    }
-
-    if (await sameNamePasswordConflict(
-      target.rosterId,
-      target.canonicalName,
-      password,
-    )) {
-      throw new DomainError("PASSWORD_CONFLICT_SAME_NAME", 409);
-    }
-
-    const passwordHash = await hashPassword(password);
     await tx
       .update(memberRoster)
       .set({ passwordHash, updatedAt: new Date() })
-      .where(eq(memberRoster.id, target.rosterId));
+      .where(eq(memberRoster.id, target.rosterId!));
     await tx
       .update(users)
       .set({ phonePasswordHash: passwordHash, updatedAt: new Date() })
