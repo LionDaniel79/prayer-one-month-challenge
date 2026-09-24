@@ -4,6 +4,7 @@ import {
   index,
   integer,
   pgSchema,
+  primaryKey,
   text,
   timestamp,
   uniqueIndex,
@@ -142,3 +143,59 @@ export const authRateLimits = appSchema.table("auth_rate_limits", {
   failureCount: integer("failure_count").notNull().default(0),
   blockedUntil: timestamp("blocked_until", { withTimezone: true }),
 });
+
+
+export const notices = appSchema.table(
+  "notices",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    status: varchar("status", { length: 20 }).notNull(),
+    authorUserId: uuid("author_user_id")
+      .notNull()
+      .references(() => users.id),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("notices_status_published_idx").on(t.status, t.publishedAt),
+  ],
+);
+
+export const noticeReads = appSchema.table(
+  "notice_reads",
+  {
+    noticeId: uuid("notice_id")
+      .notNull()
+      .references(() => notices.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    readAt: timestamp("read_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.noticeId, t.userId] }),
+  ],
+);
+
+export const pushSubscriptions = appSchema.table(
+  "push_subscriptions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    endpoint: text("endpoint").notNull(),
+    p256dh: text("p256dh").notNull(),
+    auth: text("auth").notNull(),
+    userAgent: text("user_agent"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("push_subscriptions_endpoint_uq").on(t.endpoint),
+    index("push_subscriptions_user_idx").on(t.userId),
+  ],
+);
