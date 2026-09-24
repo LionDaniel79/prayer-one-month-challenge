@@ -16,8 +16,9 @@ describe("admin page runtime boundary", () => {
     );
 
     expect(loader).toContain('"use client"');
-    expect(loader).toContain('fetch("/api/admin/dashboard"');
-    expect(loader).toContain('fetch("/api/admin/roster"');
+    expect(loader).toContain('"/api/admin/dashboard"');
+    expect(loader).toContain('"/api/admin/roster"');
+    expect(loader).toContain("fetch(url");
     expect(loader).toContain("관리자 데이터를 불러오지 못했습니다");
   });
 });
