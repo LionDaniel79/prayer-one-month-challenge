@@ -139,7 +139,7 @@ export async function listRosterForAdmin({
   query = "",
   participation = "all",
   offset = 0,
-  limit = 100,
+  limit = 500,
 }: {
   query?: string;
   participation?: "all" | "joined" | "not_joined";
@@ -204,7 +204,7 @@ export async function listRosterForAdmin({
     );
   });
 
-  const safeLimit = Math.max(1, Math.min(100, limit));
+  const safeLimit = Math.max(1, Math.min(500, limit));
   const safeOffset = Math.max(0, offset);
   const page = filtered.slice(safeOffset, safeOffset + safeLimit);
 
