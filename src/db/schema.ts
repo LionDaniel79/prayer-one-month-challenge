@@ -54,6 +54,7 @@ export const memberRoster = appSchema.table(
     position: varchar("position", { length: 80 }),
     phoneLookupHash: varchar("phone_lookup_hash", { length: 64 }),
     phoneCiphertext: text("phone_ciphertext"),
+    passwordHash: text("password_hash"),
     village: varchar("village", { length: 80 }),
     sam: varchar("sam", { length: 80 }),
     samLabel: varchar("sam_label", { length: 100 }),
