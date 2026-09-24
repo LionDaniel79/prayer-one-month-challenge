@@ -43,6 +43,7 @@
 - Move/Modify: `app/profile/page.tsx` → `app/(member)/profile/page.tsx`
 - Modify: `components/dashboard/PrayerDashboardClient.tsx`
 - Modify: `app/layout.tsx`
+- Modify: `app/login/page.tsx`
 - Modify: `app/manifest.ts`
 - Modify: `app/globals.css`
 - Create: `public/icons/56-love-192.png`
@@ -164,6 +165,8 @@ title: { default: "56사랑", template: "%s | 56사랑" },
 description: "56공동체 기도운동, 심방신청, 기도요청, 공지",
 applicationName: "56사랑",
 ```
+
+Update `app/login/page.tsx` so the login hero uses the `56사랑` / `56공동체` brand. Update the existing e2e login expectation to the current `비밀번호` field label instead of the legacy phone-password label.
 
 Update `app/manifest.ts`:
 
