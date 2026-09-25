@@ -497,3 +497,211 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
     width: 100%;
   }
 }
+
+
+/* Visit booking */
+.visit-page-shell { width: min(100% - 40px, 1180px) !important; }
+.visit-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+.visit-layout.has-panel {
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 390px);
+}
+.visit-calendar-card { min-width: 0; }
+.visit-calendar-toolbar {
+  display: grid;
+  grid-template-columns: 44px 1fr 44px;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 14px;
+}
+.visit-calendar-toolbar h3 {
+  margin: 0;
+  text-align: center;
+  font-size: 1.25rem;
+}
+.visit-month-button {
+  min-width: 44px;
+  min-height: 44px;
+  text-align: center;
+  font-size: 1.8rem;
+}
+.visit-weekdays,
+.visit-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 7px;
+}
+.visit-weekdays {
+  margin-bottom: 7px;
+  text-align: center;
+  color: #667085;
+  font-size: .78rem;
+  font-weight: 700;
+}
+.visit-day-spacer { aspect-ratio: 1 / 1; }
+.visit-day {
+  min-width: 0;
+  aspect-ratio: 1 / 1;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 3px;
+  border: 1px solid #dfe5ec;
+  border-radius: 12px;
+  background: #fff;
+  color: #26384a;
+  cursor: pointer;
+}
+.visit-day span { font-weight: 800; }
+.visit-day small {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #6b7280;
+  font-size: .66rem;
+  white-space: nowrap;
+}
+.visit-day.is-available:hover {
+  border-color: #1976e9;
+  box-shadow: inset 0 0 0 1px #1976e9;
+}
+.visit-day.is-selected {
+  color: #fff;
+  border-color: #1976e9;
+  background: #1976e9;
+}
+.visit-day.is-selected small { color: #eaf3ff; }
+.visit-day.is-unavailable {
+  color: #98a2b3;
+  background: #f2f4f7;
+  cursor: default;
+}
+.visit-calendar-message {
+  min-height: 320px;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  text-align: center;
+  color: #667085;
+}
+.visit-calendar-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 16px;
+  color: #667085;
+  font-size: .82rem;
+}
+.visit-calendar-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.visit-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+}
+.visit-dot.is-free { background: #1976e9; }
+.visit-dot.is-busy { background: #98a2b3; }
+
+.visit-request-panel {
+  position: sticky;
+  top: 18px;
+  max-height: calc(100dvh - 36px);
+  overflow: auto;
+  padding: 22px;
+  border: 1px solid #dfe5ec;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 18px 50px rgba(31, 41, 55, .12);
+}
+.visit-panel-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  margin-bottom: 18px;
+}
+.visit-panel-heading h3 { margin: 4px 0 0; }
+.visit-panel-close {
+  min-width: 44px;
+  min-height: 44px;
+  text-align: center;
+  font-size: 1.6rem;
+}
+.visit-request-form { display: grid; gap: 14px; }
+.visit-request-form label { display: grid; gap: 7px; font-weight: 650; }
+.visit-request-form textarea {
+  width: 100%;
+  min-height: 100px;
+  resize: vertical;
+  border: 1px solid #d1d5db;
+  border-radius: 12px;
+  padding: 12px 14px;
+  font: inherit;
+}
+.visit-request-form fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.visit-request-form legend {
+  margin-bottom: 8px;
+  font-weight: 700;
+}
+.visit-type-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.visit-type-options label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 12px;
+  font-weight: 600;
+}
+.visit-type-options input {
+  width: 18px;
+  min-height: 18px;
+}
+.visit-confirmation-copy {
+  margin: 0;
+  padding: 12px;
+  border-radius: 12px;
+  color: #475467;
+  background: #f6f8fa;
+  font-size: .9rem;
+}
+
+@media (max-width: 980px) {
+  .visit-layout.has-panel { grid-template-columns: minmax(0, 1fr); }
+  .visit-request-panel {
+    position: fixed;
+    z-index: 55;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    top: auto;
+    max-height: 88dvh;
+    border-radius: 22px 22px 0 0;
+    box-shadow: 0 -18px 55px rgba(31, 41, 55, .2);
+  }
+}
+
+@media (max-width: 560px) {
+  .visit-page-shell { width: min(100% - 20px, 1180px) !important; }
+  .visit-weekdays,
+  .visit-calendar-grid { gap: 4px; }
+  .visit-day { border-radius: 9px; }
+  .visit-day small { display: none; }
+  .visit-calendar-message { min-height: 260px; }
+}
