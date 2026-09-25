@@ -22,3 +22,6 @@ Task 4 Ruling: WEB_PUSH_* values remain optional at process startup and are requ
 Task 4 Ruling: PushManager applicationServerKey is decoded to a real ArrayBuffer rather than Uint8Array<ArrayBufferLike> to satisfy TypeScript 6 DOM types; RED test application-key.test.ts pinned the boundary — cost if wrong: unsupported buffer typing would block production build.
 Task 5 Ruling: Vercel Hobby reached a deployment build-rate limit ("retry in 24 hours") during implementation. Continue using GitHub CI as the code verification gate and defer live Preview checks until the platform limit clears — cost if wrong: newest UI cannot be visually verified on Vercel until a later deployment.
 Task 5 pending: VAPID secret generation/installation and live Push verification are security-sensitive operational steps and remain for final integration.
+
+Visit Task 1: complete — visit schema/date policy implemented; CI run 36129944679 passed tests, lint, and build; Supabase migration visits_google_calendar applied and verified with all four tables present.
+Visit Task 1 Ruling: private visit/calendar tables revoke anon/authenticated privileges in the same additive migration because all access remains server-only through the existing app session model — cost if wrong: direct Data API clients cannot use these tables, which is intentional for sensitive visit/calendar data.
