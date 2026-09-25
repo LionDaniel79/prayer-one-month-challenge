@@ -317,12 +317,33 @@ export async function submitVisitRequest(
     status: "requested",
   };
 
+  let eventId: string;
   try {
     const created = await provider.createVisitEvent(calendarInput);
-    await repository.markSynced(pending.id, created.eventId);
+    eventId = created.eventId;
   } catch {
-    await repository.cancelAfterSyncFailure(pending.id);
+    try {
+      await repository.cancelAfterSyncFailure(pending.id);
+    } catch {
+      // Best-effort compensation; the request must never be reported as success.
+    }
     throw new DomainError("CALENDAR_EVENT_CREATE_FAILED", 502);
+  }
+
+  try {
+    await repository.markSynced(pending.id, eventId);
+  } catch {
+    try {
+      await provider.deleteVisitEvent(eventId);
+    } catch {
+      // Google cleanup is best-effort; DB compensation still runs below.
+    }
+    try {
+      await repository.cancelAfterSyncFailure(pending.id);
+    } catch {
+      // Never mask the original sync failure with a compensation error.
+    }
+    throw new DomainError("CALENDAR_EVENT_SYNC_FAILED", 502);
   }
 
   return { id: pending.id };
