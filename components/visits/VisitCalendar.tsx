@@ -56,8 +56,6 @@ export function VisitCalendar({
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    setMessage("");
 
     void fetch("/api/visits/availability?month=" + encodeURIComponent(month), {
       cache: "no-store",
@@ -93,6 +91,12 @@ export function VisitCalendar({
     };
   }, [month, refreshKey]);
 
+  function navigateMonth(amount: number) {
+    setLoading(true);
+    setMessage("");
+    setMonth((value) => moveMonth(value, amount));
+  }
+
   const leadingCells = useMemo(() => {
     if (dates.length === 0) return 0;
     return weekday(dates[0].date);
@@ -104,7 +108,7 @@ export function VisitCalendar({
         <button
           type="button"
           className="text-button visit-month-button"
-          onClick={() => setMonth((value) => moveMonth(value, -1))}
+          onClick={() => navigateMonth(-1)}
           aria-label="이전 달"
         >
           ‹
@@ -113,7 +117,7 @@ export function VisitCalendar({
         <button
           type="button"
           className="text-button visit-month-button"
-          onClick={() => setMonth((value) => moveMonth(value, 1))}
+          onClick={() => navigateMonth(1)
           aria-label="다음 달"
         >
           ›
