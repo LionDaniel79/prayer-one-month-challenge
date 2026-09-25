@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useState } from "react";
 
 export function VisitRequestPanel({
   visitDate,
@@ -20,10 +20,6 @@ export function VisitRequestPanel({
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
-
-  useEffect(() => {
-    setMessage("");
-  }, [visitDate]);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
