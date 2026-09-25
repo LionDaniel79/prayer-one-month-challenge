@@ -117,7 +117,7 @@ export function VisitCalendar({
         <button
           type="button"
           className="text-button visit-month-button"
-          onClick={() => navigateMonth(1)
+          onClick={() => navigateMonth(1)}
           aria-label="다음 달"
         >
           ›
