@@ -24,6 +24,7 @@ export function VisitBookingClient({
 
       {selectedDate && (
         <VisitRequestPanel
+          key={selectedDate}
           visitDate={selectedDate}
           requesterName={requesterName}
           onClose={() => setSelectedDate(null)}
