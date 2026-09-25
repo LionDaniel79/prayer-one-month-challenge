@@ -2,11 +2,21 @@ import { describe, expect, it } from "vitest";
 import type { CalendarProvider } from "../../src/features/visits/calendar-provider";
 import {
   canTransitionVisit,
+  findBlockedWeekdayConflicts,
   updateVisitDetails,
   type VisitAdminRepository,
 } from "../../src/features/visits/admin-service";
 
 describe("admin visit workflow", () => {
+  it("finds future visits that conflict with newly blocked weekdays", () => {
+    expect(
+      findBlockedWeekdayConflicts(
+        ["2026-10-04", "2026-10-05", "2026-10-11"],
+        new Set([0]),
+      ),
+    ).toEqual(["2026-10-04", "2026-10-11"]);
+  });
+
   it("allows only forward/cancel workflow transitions", () => {
     expect(canTransitionVisit("requested", "confirmed")).toBe(true);
     expect(canTransitionVisit("confirmed", "completed")).toBe(true);
