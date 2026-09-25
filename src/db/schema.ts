@@ -218,3 +218,71 @@ export const prayerRequests = appSchema.table(
     index("prayer_requests_user_created_idx").on(t.userId, t.createdAt),
   ],
 );
+
+
+export const visitRequests = appSchema.table(
+  "visit_requests",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    requesterUserId: uuid("requester_user_id")
+      .notNull()
+      .references(() => users.id),
+    visitDate: date("visit_date").notNull(),
+    visitType: varchar("visit_type", { length: 20 }).notNull(),
+    attendees: text("attendees").notNull(),
+    location: text("location").notNull(),
+    preferredTime: text("preferred_time").notNull(),
+    reason: text("reason").notNull(),
+    status: varchar("status", { length: 20 }).notNull().default("requested"),
+    calendarSyncStatus: varchar("calendar_sync_status", { length: 20 })
+      .notNull()
+      .default("pending"),
+    googleEventId: text("google_event_id"),
+    confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+    confirmedByUserId: uuid("confirmed_by_user_id").references(() => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("visit_requests_active_date_uq")
+      .on(t.visitDate)
+      .where(sql`${t.status} <> 'cancelled'`),
+    index("visit_requests_status_date_idx").on(t.status, t.visitDate),
+  ],
+);
+
+export const visitBlockedDates = appSchema.table("visit_blocked_dates", {
+  visitDate: date("visit_date").primaryKey(),
+  reason: text("reason"),
+  createdByUserId: uuid("created_by_user_id")
+    .notNull()
+    .references(() => users.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const visitBlockedWeekdays = appSchema.table("visit_blocked_weekdays", {
+  weekday: integer("weekday").primaryKey(),
+  createdByUserId: uuid("created_by_user_id")
+    .notNull()
+    .references(() => users.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const googleCalendarConnections = appSchema.table(
+  "google_calendar_connections",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    connectedByUserId: uuid("connected_by_user_id")
+      .notNull()
+      .references(() => users.id),
+    googleAccountEmail: text("google_account_email"),
+    refreshTokenCiphertext: text("refresh_token_ciphertext").notNull(),
+    selectedCalendarId: text("selected_calendar_id"),
+    selectedCalendarName: text("selected_calendar_name"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  () => [
+    uniqueIndex("google_calendar_single_connection_uq").on(sql`true`),
+  ],
+);
