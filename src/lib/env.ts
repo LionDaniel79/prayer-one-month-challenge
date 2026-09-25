@@ -1,5 +1,16 @@
 import { z } from "zod";
 
+const GoogleCalendarEncryptionKey = z.string().refine((value) => {
+  try {
+    const decoded = Buffer.from(value, "base64");
+    const normalizedInput = value.replace(/=+$/u, "");
+    const normalizedRoundTrip = decoded.toString("base64").replace(/=+$/u, "");
+    return decoded.length === 32 && normalizedRoundTrip === normalizedInput;
+  } catch {
+    return false;
+  }
+}, "GOOGLE_CALENDAR_TOKEN_ENCRYPTION_KEY must decode to 32 bytes");
+
 const RosterEncryptionKey = z.string().refine((value) => {
   try {
     const decoded = Buffer.from(value, "base64");
@@ -19,6 +30,9 @@ const EnvSchema = z.object({
   WEB_PUSH_VAPID_PUBLIC_KEY: z.string().min(1).optional(),
   WEB_PUSH_VAPID_PRIVATE_KEY: z.string().min(1).optional(),
   WEB_PUSH_SUBJECT: z.string().min(1).optional(),
+  GOOGLE_OAUTH_CLIENT_ID: z.string().min(1).optional(),
+  GOOGLE_OAUTH_CLIENT_SECRET: z.string().min(1).optional(),
+  GOOGLE_CALENDAR_TOKEN_ENCRYPTION_KEY: GoogleCalendarEncryptionKey.optional(),
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
 });
 
@@ -59,5 +73,27 @@ export function requireWebPushConfig(): {
     publicKey: current.WEB_PUSH_VAPID_PUBLIC_KEY,
     privateKey: current.WEB_PUSH_VAPID_PRIVATE_KEY,
     subject: current.WEB_PUSH_SUBJECT,
+  };
+}
+
+
+export function requireGoogleCalendarConfig(): {
+  clientId: string;
+  clientSecret: string;
+  tokenEncryptionKey: string;
+} {
+  const current = getEnv();
+  if (
+    !current.GOOGLE_OAUTH_CLIENT_ID ||
+    !current.GOOGLE_OAUTH_CLIENT_SECRET ||
+    !current.GOOGLE_CALENDAR_TOKEN_ENCRYPTION_KEY
+  ) {
+    throw new Error("MISSING_GOOGLE_CALENDAR_CONFIG");
+  }
+
+  return {
+    clientId: current.GOOGLE_OAUTH_CLIENT_ID,
+    clientSecret: current.GOOGLE_OAUTH_CLIENT_SECRET,
+    tokenEncryptionKey: current.GOOGLE_CALENDAR_TOKEN_ENCRYPTION_KEY,
   };
 }
