@@ -25,3 +25,8 @@ Task 5 pending: VAPID secret generation/installation and live Push verification 
 
 Visit Task 1: complete — visit schema/date policy implemented; CI run 36129944679 passed tests, lint, and build; Supabase migration visits_google_calendar applied and verified with all four tables present.
 Visit Task 1 Ruling: private visit/calendar tables revoke anon/authenticated privileges in the same additive migration because all access remains server-only through the existing app session model — cost if wrong: direct Data API clients cannot use these tables, which is intentional for sensitive visit/calendar data.
+
+Visit Task 2: complete — member availability API, date calendar, right-side/mobile request panel, request API, duplicate-date recheck, and private-reason exclusion implemented; CI run 36130816886 passed tests, lint, and build.
+Visit Task 2 Ruling: introduced VisitBookingClient as a small coordinator so VisitCalendar and VisitRequestPanel remain independent/testable — cost if wrong: one extra client component boundary, but no data-model impact.
+Visit Task 3: complete — Google Calendar OAuth scopes/state, AES-256-GCM refresh-token encryption, connection repository, calendar list/selection endpoints, googleapis provider, and selected-calendar factory implemented; CI run 36131441468 passed tests, lint, and build.
+Visit Task 3 Ruling: OAuth redirect URI is derived from request origin instead of stored as a secret/config value, allowing Preview and Production callbacks to use their actual host while Google Cloud still requires those callback URLs to be registered — cost if wrong: an unregistered host gets Google redirect_uri_mismatch rather than exposing or misrouting credentials.
