@@ -61,9 +61,38 @@ export function GoogleCalendarSettings({
   }
 
   useEffect(() => {
-    void load();
-    // Load once when the settings panel mounts.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (!configured) return;
+
+    let cancelled = false;
+    void readJson("/api/admin/google-calendar/status")
+      .then(async (body) => {
+        if (cancelled) return;
+        const next = body as CalendarStatus;
+        setStatus(next);
+        setSelection(next.selectedCalendarId ?? "");
+
+        if (next.connected) {
+          const list = await readJson("/api/admin/google-calendar/calendars");
+          if (!cancelled) {
+            setCalendars((list.calendars ?? []) as CalendarOption[]);
+          }
+        } else {
+          setCalendars([]);
+        }
+      })
+      .catch((cause) => {
+        if (!cancelled) {
+          setError(
+            cause instanceof Error
+              ? cause.message
+              : "Google Calendar 상태를 불러오지 못했습니다.",
+          );
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [configured]);
 
   async function saveSelection() {
