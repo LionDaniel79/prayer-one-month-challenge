@@ -61,14 +61,19 @@ export function evaluateVisitDate({
   blockedDates,
   blockedWeekdays,
   activeVisitDates,
+  today = todayInSeoul(),
 }: {
   date: string;
+  today?: string;
   calendarHealthy: boolean;
   googleBlockedDates: Set<string>;
   blockedDates: Set<string>;
   blockedWeekdays: Set<number>;
   activeVisitDates: Set<string>;
 }): VisitDateAvailability {
+  if (date < today) {
+    return { date, available: false, reason: "past_date" };
+  }
   if (!calendarHealthy) {
     return { date, available: false, reason: "calendar_unavailable" };
   }
