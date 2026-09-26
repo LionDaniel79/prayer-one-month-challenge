@@ -63,10 +63,35 @@ export function AdminVisitManagement({
   }
 
   useEffect(() => {
-    void load();
-    // Initial load is intentionally one-shot. Filters apply via 조회.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    let cancelled = false;
+    const params = new URLSearchParams();
+    if (initialStatus !== "all") params.set("status", initialStatus);
+
+    void readJson(
+      "/api/admin/visits" + (params.size ? "?" + params.toString() : ""),
+    )
+      .then((body) => {
+        if (cancelled) return;
+        const next = (body.visits ?? []) as AdminVisitRecord[];
+        setVisits(next);
+        setSelectedId(next[0]?.id ?? null);
+        setLoading(false);
+      })
+      .catch((cause) => {
+        if (!cancelled) {
+          setError(
+            cause instanceof Error
+              ? cause.message
+              : "심방 신청을 불러오지 못했습니다.",
+          );
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [initialStatus]);
 
   async function save(patch: VisitDetailPatch) {
     if (!selected || busy) return;
