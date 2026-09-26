@@ -5,6 +5,13 @@ import type { AdminNoticeRow, NoticeStatus } from "../../../src/features/notices
 import { AdminNoticeEditor } from "./AdminNoticeEditor";
 import { AdminNoticeList } from "./AdminNoticeList";
 
+async function fetchNotices(): Promise<AdminNoticeRow[]> {
+  const response = await fetch("/api/admin/notices", { cache: "no-store" });
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(body.code ?? "NOTICE_LOAD_FAILED");
+  return body.notices ?? [];
+}
+
 export function AdminNoticeManagement() {
   const [notices, setNotices] = useState<AdminNoticeRow[]>([]);
   const [selected, setSelected] = useState<AdminNoticeRow | null>(null);
@@ -12,21 +19,33 @@ export function AdminNoticeManagement() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  async function load() {
+  async function refresh() {
+    setError("");
     try {
-      const response = await fetch("/api/admin/notices", { cache: "no-store" });
-      const body = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(body.code ?? "NOTICE_LOAD_FAILED");
-      setNotices(body.notices ?? []);
+      setNotices(await fetchNotices());
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "NOTICE_LOAD_FAILED");
-    } finally {
-      setLoading(false);
     }
   }
 
   useEffect(() => {
-    void load();
+    let cancelled = false;
+    void fetchNotices()
+      .then((rows) => {
+        if (!cancelled) {
+          setNotices(rows);
+          setLoading(false);
+        }
+      })
+      .catch((cause) => {
+        if (!cancelled) {
+          setError(cause instanceof Error ? cause.message : "NOTICE_LOAD_FAILED");
+          setLoading(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   async function remove(notice: AdminNoticeRow) {
@@ -39,7 +58,7 @@ export function AdminNoticeManagement() {
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body.code ?? "NOTICE_DELETE_FAILED");
       if (selected?.id === notice.id) setSelected(null);
-      await load();
+      await refresh();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "NOTICE_DELETE_FAILED");
     }
@@ -64,7 +83,7 @@ export function AdminNoticeManagement() {
             onCancel={() => setSelected(null)}
             onSaved={() => {
               setSelected(null);
-              void load();
+              void refresh();
             }}
           />
           <AdminNoticeList
