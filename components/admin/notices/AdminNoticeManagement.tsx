@@ -13,7 +13,6 @@ export function AdminNoticeManagement() {
   const [error, setError] = useState("");
 
   async function load() {
-    setError("");
     try {
       const response = await fetch("/api/admin/notices", { cache: "no-store" });
       const body = await response.json().catch(() => ({}));
