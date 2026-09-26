@@ -1,21 +1,9 @@
-import { redirect } from "next/navigation";
-import { AdminDashboardLoader } from "../../components/admin/AdminDashboardLoader";
-import { requireAdmin } from "../../src/features/admin/service";
-import { getCurrentSessionUser } from "../../src/features/auth/http-session";
+import { AdminHubDashboardLoader } from "../../components/admin/AdminHubDashboardLoader";
 
-export default async function AdminPage() {
-  const user = await getCurrentSessionUser();
-  if (!user) redirect("/login");
-
-  try {
-    requireAdmin(user);
-  } catch {
-    redirect("/");
-  }
-
+export default function AdminPage() {
   return (
     <main className="admin-shell">
-      <AdminDashboardLoader />
+      <AdminHubDashboardLoader />
     </main>
   );
 }
