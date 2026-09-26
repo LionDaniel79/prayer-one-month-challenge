@@ -65,7 +65,29 @@ export function VisitAvailabilitySettings() {
   }
 
   useEffect(() => {
-    void load();
+    let cancelled = false;
+
+    void readJson("/api/admin/visits/blocked-weekdays")
+      .then(async (weekdayBody) => {
+        const dateBody = await readJson("/api/admin/visits/blocked-dates");
+        if (!cancelled) {
+          setWeekdays(new Set((weekdayBody.weekdays ?? []) as number[]));
+          setDates((dateBody.dates ?? []) as BlockedDate[]);
+        }
+      })
+      .catch((cause) => {
+        if (!cancelled) {
+          setError(
+            errorCopy(
+              cause instanceof Error ? cause.message : "설정을 불러오지 못했습니다.",
+            ),
+          );
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   function toggleWeekday(value: number, checked: boolean) {
