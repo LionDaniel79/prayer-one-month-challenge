@@ -5,6 +5,8 @@ import { getMemberDashboard, toggleCheckin } from "../../../src/features/checkin
 import { DomainError } from "../../../src/lib/http";
 
 const ToggleSchema = z.object({
+  checked: z.boolean().optional(),
+  challengeId: z.string().uuid().optional(),
   prayerDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
 });
 
@@ -24,6 +26,8 @@ export async function POST(request: Request) {
     const state = await toggleCheckin({
       userId: user.id,
       prayerDate: parsed.data.prayerDate,
+      checked: parsed.data.checked,
+      challengeId: parsed.data.challengeId,
     });
     return NextResponse.json({ state });
   } catch (error) {

@@ -58,7 +58,11 @@ export const dbCheckinRepository: CheckinRepository = {
     await getDb().delete(prayerCheckins).where(eq(prayerCheckins.id, id));
   },
   async insertCheckin(userId, challengeId, prayerDate) {
-    await getDb().insert(prayerCheckins).values({ userId, challengeId, prayerDate });
+    await getDb().insert(prayerCheckins)
+      .values({ userId, challengeId, prayerDate })
+      .onConflictDoNothing({
+        target: [prayerCheckins.challengeId, prayerCheckins.userId, prayerCheckins.prayerDate],
+      });
   },
   async getCompletedDates(userId, challengeId) {
     const rows = await getDb()
@@ -93,16 +97,24 @@ export async function toggleCheckin(
   {
     userId,
     prayerDate,
+    checked,
+    challengeId,
     now = new Date(),
   }: {
     userId: string;
     prayerDate: string;
+    // Explicit desired state makes retries safe. Omit only for legacy clients.
+    checked?: boolean;
+    challengeId?: string;
     now?: Date;
   },
   repository: CheckinRepository = dbCheckinRepository,
 ): Promise<"checked" | "unchecked"> {
   const challenge = await repository.getActiveChallenge();
   if (!challenge) throw new DomainError("NO_ACTIVE_CHALLENGE", 409);
+  if (challengeId !== undefined && challengeId !== challenge.id) {
+    throw new DomainError("CHALLENGE_CHANGED", 409);
+  }
 
   const today = todayInSeoul(now);
   if (!isMutablePrayerDate({
@@ -115,15 +127,18 @@ export async function toggleCheckin(
   }
 
   const existing = await repository.findCheckin(userId, challenge.id, prayerDate);
-  if (existing) {
-    await repository.deleteCheckin(existing.id);
+  const shouldCheck = checked ?? !existing;
+  if (!shouldCheck) {
+    if (existing) await repository.deleteCheckin(existing.id);
     return "unchecked";
   }
 
-  try {
-    await repository.insertCheckin(userId, challenge.id, prayerDate);
-  } catch (error) {
-    if ((error as { code?: string }).code !== "23505") throw error;
+  if (!existing) {
+    try {
+      await repository.insertCheckin(userId, challenge.id, prayerDate);
+    } catch (error) {
+      if ((error as { code?: string }).code !== "23505") throw error;
+    }
   }
   return "checked";
 }

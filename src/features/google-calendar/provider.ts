@@ -113,9 +113,20 @@ export class GoogleCalendarProvider implements CalendarProvider {
   }
 
   async deleteVisitEvent(eventId: string): Promise<void> {
-    await this.calendar.events.delete({
-      calendarId: this.calendarId,
-      eventId,
-    });
+    try {
+      await this.calendar.events.delete({
+        calendarId: this.calendarId,
+        eventId,
+      });
+    } catch (error) {
+      // A previous delete may have succeeded before its response/DB write failed.
+      // Only 410 means already deleted; 404 can also mean lost calendar access.
+      if (error && typeof error === "object") {
+        const failure = error as { response?: { status?: unknown }; code?: unknown };
+        const status = failure.response?.status ?? failure.code;
+        if (status === 410 || status === "410") return;
+      }
+      throw error;
+    }
   }
 }

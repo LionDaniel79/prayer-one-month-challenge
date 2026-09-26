@@ -48,6 +48,7 @@ export function PrayerDashboardClient({ initial }: { initial: MemberDashboard })
 
     const previouslyChecked =
       dashboardRef.current.completedDates.includes(prayerDate);
+    const challengeId = dashboardRef.current.challenge.id;
 
     addPending(prayerDate);
     setMessage("");
@@ -59,7 +60,7 @@ export function PrayerDashboardClient({ initial }: { initial: MemberDashboard })
       const response = await fetch("/api/checkins", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ prayerDate }),
+        body: JSON.stringify({ prayerDate, checked: !previouslyChecked, challengeId }),
       });
       const body = await response.json().catch(() => ({}));
       const state = body.state as CheckinState | undefined;
