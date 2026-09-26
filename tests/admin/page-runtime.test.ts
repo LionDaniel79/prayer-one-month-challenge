@@ -2,23 +2,22 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 describe("admin page runtime boundary", () => {
-  it("keeps server rendering limited to authentication", () => {
+  it("keeps server rendering free of dashboard data queries", () => {
     const page = readFileSync("app/admin/page.tsx", "utf8");
     expect(page).not.toContain("getAdminDashboard");
     expect(page).not.toContain("listRosterForAdmin");
-    expect(page).toContain("AdminDashboardLoader");
+    expect(page).not.toContain("getAdminHubDashboard");
+    expect(page).toContain("AdminHubDashboardLoader");
   });
 
-  it("loads admin data through authenticated APIs after the page mounts", () => {
+  it("loads only the lightweight admin hub API after mount", () => {
     const loader = readFileSync(
-      "components/admin/AdminDashboardLoader.tsx",
+      "components/admin/AdminHubDashboardLoader.tsx",
       "utf8",
     );
-
     expect(loader).toContain('"use client"');
     expect(loader).toContain('"/api/admin/dashboard"');
-    expect(loader).toContain('"/api/admin/roster"');
-    expect(loader).toContain("fetch(url");
-    expect(loader).toContain("관리자 데이터를 불러오지 못했습니다");
+    expect(loader).not.toContain('"/api/admin/roster"');
+    expect(loader).toContain("관리자 대시보드를 불러오지 못했습니다");
   });
 });
