@@ -40,8 +40,6 @@ export function AdminVisitManagement({
   );
 
   async function load() {
-    setLoading(true);
-    setError("");
     try {
       const params = new URLSearchParams();
       if (status !== "all") params.set("status", status);
