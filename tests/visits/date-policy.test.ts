@@ -37,6 +37,22 @@ describe("visit date policy", () => {
     }).size).toBe(0);
   });
 
+  it("blocks dates before today", () => {
+    expect(evaluateVisitDate({
+      date: "2026-09-26",
+      today: "2026-09-27",
+      calendarHealthy: true,
+      googleBlockedDates: new Set(),
+      blockedDates: new Set(),
+      blockedWeekdays: new Set(),
+      activeVisitDates: new Set(),
+    })).toEqual({
+      date: "2026-09-26",
+      available: false,
+      reason: "past_date",
+    });
+  });
+
   it("blocks an administrator-disabled weekday", () => {
     expect(evaluateVisitDate({
       date: "2026-10-04",
