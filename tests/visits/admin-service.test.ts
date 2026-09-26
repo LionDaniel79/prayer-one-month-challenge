@@ -98,6 +98,46 @@ describe("admin visit workflow", () => {
     expect(transitioned).toBe(false);
   });
 
+  it("does not update DB details when Google detail sync fails", async () => {
+    let detailsUpdated = false;
+    const provider: CalendarProvider = {
+      async listEvents() { return []; },
+      async createVisitEvent() { return { eventId: "unused" }; },
+      async updateVisitEvent() { throw new Error("google failed"); },
+      async deleteVisitEvent() {},
+    };
+    const repository: VisitAdminRepository = {
+      async getById() {
+        return {
+          id: "v1",
+          requesterName: "홍길동",
+          visitDate: "2026-10-08",
+          visitType: "personal",
+          attendees: "홍길동",
+          location: "교회",
+          preferredTime: "오후",
+          reason: "비공개 이유",
+          status: "requested",
+          calendarSyncStatus: "synced",
+          googleEventId: "g1",
+        };
+      },
+      async updateDetails() { detailsUpdated = true; },
+      async setSyncStatus() {},
+      async transition() {},
+    };
+
+    await expect(
+      updateVisitDetails(
+        "v1",
+        { location: "가정" },
+        provider,
+        repository,
+      ),
+    ).rejects.toMatchObject({ code: "CALENDAR_EVENT_UPDATE_FAILED" });
+    expect(detailsUpdated).toBe(false);
+  });
+
   it("updates Google when calendar-visible visit fields change", async () => {
     const updatedGoogle: string[] = [];
     const provider: CalendarProvider = {
