@@ -7,13 +7,12 @@ export function PushSettingsStatus({
 }: {
   configured: boolean;
 }) {
-  const [healthy, setHealthy] = useState<boolean | null>(null);
+  const [healthy, setHealthy] = useState<boolean | null>(
+    configured ? null : false,
+  );
 
   useEffect(() => {
-    if (!configured) {
-      setHealthy(false);
-      return;
-    }
+    if (!configured) return;
 
     let cancelled = false;
     void fetch("/api/push/public-key", { cache: "no-store" })
