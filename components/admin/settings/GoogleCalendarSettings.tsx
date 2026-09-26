@@ -43,7 +43,6 @@ export function GoogleCalendarSettings({
 
   async function load() {
     if (!configured) return;
-    setError("");
     try {
       const body = await readJson("/api/admin/google-calendar/status");
       const next = body as CalendarStatus;
