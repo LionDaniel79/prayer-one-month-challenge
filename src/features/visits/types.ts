@@ -19,6 +19,7 @@ export type CalendarEventLike = {
 };
 
 export type VisitUnavailableReason =
+  | "past_date"
   | "calendar_unavailable"
   | "google_event"
   | "blocked_date"
