@@ -314,6 +314,13 @@ function weekdayOfDateKey(date: string): number {
   return new Date(Date.UTC(year, month - 1, day)).getUTCDay();
 }
 
+export function findBlockedWeekdayConflicts(
+  visitDates: string[],
+  newlyBlocked: Set<number>,
+): string[] {
+  return visitDates.filter((date) => newlyBlocked.has(weekdayOfDateKey(date)));
+}
+
 export async function listVisitBlockedDates() {
   return getDb()
     .select({
@@ -395,9 +402,10 @@ export async function replaceVisitBlockedWeekdays(input: {
         ),
       );
 
-    const conflicts = futureVisits
-      .map((row) => row.visitDate)
-      .filter((date) => newlyBlocked.has(weekdayOfDateKey(date)));
+    const conflicts = findBlockedWeekdayConflicts(
+      futureVisits.map((row) => row.visitDate),
+      newlyBlocked,
+    );
 
     if (conflicts.length > 0) {
       throw new DomainError(
