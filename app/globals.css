@@ -935,3 +935,76 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .admin-notice-layout { grid-template-columns: 1fr; }
   .admin-notice-editor { position: static; }
 }
+
+
+.admin-prayer-request-layout {
+  display: grid;
+  grid-template-columns: minmax(420px, 1.2fr) minmax(320px, .8fr);
+  gap: 16px;
+  align-items: start;
+}
+.admin-prayer-request-list h2,
+.admin-request-detail h2 { margin: 0; }
+.admin-request-columns {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.4fr) 110px 76px;
+  gap: 12px;
+}
+.admin-request-columns-head {
+  padding: 14px 8px 8px;
+  color: #667085;
+  font-size: .78rem;
+  font-weight: 700;
+}
+.admin-request-rows { display: grid; }
+.admin-request-row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(180px, 1.4fr) 110px 76px;
+  gap: 12px;
+  align-items: center;
+  padding: 13px 8px;
+  border: 0;
+  border-top: 1px solid #edf0f4;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.admin-request-row:hover,
+.admin-request-row.is-selected { background: #f5f8fc; }
+.admin-request-row span:first-child { display: grid; gap: 4px; min-width: 0; }
+.admin-request-row small {
+  overflow: hidden;
+  color: #667085;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.admin-request-detail {
+  position: sticky;
+  top: 100px;
+  display: grid;
+  gap: 20px;
+}
+.admin-request-content {
+  min-height: 180px;
+  padding: 16px;
+  border-radius: 14px;
+  background: #f8fafc;
+  white-space: pre-wrap;
+}
+.admin-request-content p { margin: 0; line-height: 1.65; }
+.admin-request-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+@media (max-width: 960px) {
+  .admin-prayer-request-layout { grid-template-columns: 1fr; }
+  .admin-request-detail { position: static; }
+}
+@media (max-width: 620px) {
+  .admin-request-columns-head { display: none; }
+  .admin-request-row { grid-template-columns: 1fr auto; }
+  .admin-request-row span:nth-child(2) { display: none; }
+}
