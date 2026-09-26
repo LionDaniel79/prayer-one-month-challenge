@@ -1,0 +1,42 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+
+const adminNav = [
+  { href: "/admin", label: "대시보드" },
+  { href: "/admin/prayer", label: "기도운동 관리" },
+  { href: "/admin/visits", label: "심방 신청 관리" },
+  { href: "/admin/prayer-requests", label: "기도요청 관리" },
+  { href: "/admin/notices", label: "공지 관리" },
+  { href: "/admin/users", label: "사용자 관리" },
+  { href: "/admin/settings", label: "설정" },
+] as const;
+
+function activePath(pathname: string, href: string) {
+  if (href === "/admin") return pathname === "/admin";
+  return pathname === href || pathname.startsWith(href + "/");
+}
+
+export function AdminSidebar({ onNavigate }: { onNavigate?: () => void }) {
+  const pathname = usePathname();
+
+  return (
+    <nav className="admin-hub-nav" aria-label="관리자 메뉴">
+      {adminNav.map((item) => {
+        const active = activePath(pathname, item.href);
+        return (
+          <Link
+            key={item.href}
+            href={item.href}
+            className={active ? "admin-hub-link is-active" : "admin-hub-link"}
+            aria-current={active ? "page" : undefined}
+            onClick={onNavigate}
+          >
+            {item.label}
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}

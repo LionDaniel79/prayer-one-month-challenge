@@ -1,0 +1,24 @@
+import { redirect } from "next/navigation";
+import { NoticeList } from "../../../components/notices/NoticeList";
+import { PushOptIn } from "../../../components/notices/PushOptIn";
+import { getCurrentSessionUser } from "../../../src/features/auth/http-session";
+import { listPublishedNotices } from "../../../src/features/notices/service";
+
+export default async function NoticesPage() {
+  const user = await getCurrentSessionUser();
+  if (!user) redirect("/login");
+
+  const notices = await listPublishedNotices(user.id);
+
+  return (
+    <main className="shell">
+      <section className="feature-heading">
+        <p className="eyebrow">공동체 소식</p>
+        <h2>공지</h2>
+        <p>56공동체의 새로운 소식과 안내를 확인하세요.</p>
+      </section>
+      <PushOptIn />
+      <NoticeList notices={notices} />
+    </main>
+  );
+}

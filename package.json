@@ -1,0 +1,49 @@
+{
+  "name": "prayer-one-month-challenge",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "22.x"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "db:generate": "drizzle-kit generate",
+    "admin:bootstrap": "tsx scripts/bootstrap-admin.ts",
+    "admin:promote": "tsx scripts/promote-admin.ts",
+    "db:smoke": "tsx scripts/smoke-db.ts",
+    "roster:import": "tsx scripts/roster-import.ts"
+  },
+  "dependencies": {
+    "argon2": "0.45.1",
+    "drizzle-orm": "0.45.3",
+    "next": "16.3.5",
+    "postgres": "3.4.9",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "zod": "4.6.5",
+    "web-push": "3.6.7",
+    "googleapis": "182.0.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "@types/node": "22.20.4",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@typescript/native": "npm:typescript@7.0.2",
+    "drizzle-kit": "0.31.10",
+    "eslint": "9.39.5",
+    "eslint-config-next": "16.3.5",
+    "tsx": "4.23.13",
+    "typescript": "npm:@typescript/typescript6@6.0.2",
+    "vitest": "5.0.1",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
+    "@types/web-push": "3.6.4"
+  }
+}

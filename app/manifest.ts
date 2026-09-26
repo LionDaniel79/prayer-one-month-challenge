@@ -1,0 +1,18 @@
+import type { MetadataRoute } from "next";
+
+export default function manifest(): MetadataRoute.Manifest {
+  return {
+    name: "56사랑",
+    short_name: "56사랑",
+    description: "56공동체 기도운동, 심방신청, 기도요청, 공지",
+    start_url: "/",
+    display: "standalone",
+    background_color: "#ffffff",
+    theme_color: "#ffffff",
+    icons: [
+      { src: "/icons/56-love-192.png", sizes: "192x192", type: "image/png" },
+      { src: "/icons/56-love-512.png", sizes: "512x512", type: "image/png" },
+      { src: "/icons/56-love-maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+    ],
+  };
+}
