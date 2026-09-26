@@ -7,7 +7,7 @@ import {
   visitRequests,
 } from "../../db/schema";
 import { DomainError } from "../../lib/http";
-import { addDays } from "../challenge/date";
+import { addDays, todayInSeoul } from "../challenge/date";
 import type {
   CalendarProvider,
   VisitCalendarEventInput,
@@ -265,7 +265,11 @@ export async function submitVisitRequest(
   input: SubmitVisitInput,
   provider: CalendarProvider,
   repository: VisitRepository = dbVisitRepository,
+  today = todayInSeoul(),
 ): Promise<{ id: string }> {
+  if (input.visitDate < today) {
+    throw new DomainError("VISIT_DATE_UNAVAILABLE", 409);
+  }
   if (await repository.isDateBlocked(input.visitDate)) {
     throw new DomainError("VISIT_DATE_UNAVAILABLE", 409);
   }
