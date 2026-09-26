@@ -171,23 +171,45 @@ export async function updateVisitDetails(
   const visit = await repository.getById(id);
   if (!visit) throw new DomainError("VISIT_NOT_FOUND", 404);
 
-  await repository.updateDetails(id, patch);
-
-  if (
-    visit.googleEventId &&
+  const shouldSyncCalendar =
+    Boolean(visit.googleEventId) &&
     visit.status !== "cancelled" &&
-    calendarVisibleChanged(patch)
-  ) {
+    calendarVisibleChanged(patch);
+
+  if (shouldSyncCalendar && visit.googleEventId) {
     try {
       await provider.updateVisitEvent(
         visit.googleEventId,
         calendarInput(visit, patch),
       );
-      await repository.setSyncStatus(id, "synced");
     } catch {
       await repository.setSyncStatus(id, "failed");
       throw new DomainError("CALENDAR_EVENT_UPDATE_FAILED", 502);
     }
+  }
+
+  try {
+    await repository.updateDetails(id, patch);
+  } catch (error) {
+    if (shouldSyncCalendar && visit.googleEventId) {
+      try {
+        await provider.updateVisitEvent(
+          visit.googleEventId,
+          calendarInput(visit),
+        );
+      } catch {
+        try {
+          await repository.setSyncStatus(id, "failed");
+        } catch {
+          // Keep the original DB failure as the primary error.
+        }
+      }
+    }
+    throw error;
+  }
+
+  if (shouldSyncCalendar) {
+    await repository.setSyncStatus(id, "synced");
   }
 }
 
@@ -205,41 +227,70 @@ async function transitionVisit(
   }
 
   if (to === "cancelled") {
-    await repository.transition(id, { status: "cancelled" });
     if (visit.googleEventId) {
       try {
         await provider.deleteVisitEvent(visit.googleEventId);
-        await repository.setSyncStatus(id, "synced");
       } catch {
         await repository.setSyncStatus(id, "failed");
         throw new DomainError("CALENDAR_EVENT_DELETE_FAILED", 502);
       }
     }
+
+    await repository.transition(id, { status: "cancelled" });
+    if (visit.googleEventId) {
+      await repository.setSyncStatus(id, "synced");
+    }
     return;
   }
 
-  const confirmed = to === "confirmed";
-  await repository.transition(id, {
-    status: to,
-    confirmedAt: confirmed ? new Date() : undefined,
-    confirmedByUserId: confirmed ? adminUserId ?? null : undefined,
-  });
+  const nextCalendarStatus =
+    to === "completed" ? "completed" as const : "confirmed" as const;
 
   if (visit.googleEventId) {
     try {
       await provider.updateVisitEvent(
         visit.googleEventId,
-        calendarInput(
-          visit,
-          {},
-          to === "completed" ? "completed" : "confirmed",
-        ),
+        calendarInput(visit, {}, nextCalendarStatus),
       );
-      await repository.setSyncStatus(id, "synced");
     } catch {
       await repository.setSyncStatus(id, "failed");
       throw new DomainError("CALENDAR_EVENT_UPDATE_FAILED", 502);
     }
+  }
+
+  const confirmed = to === "confirmed";
+  try {
+    await repository.transition(id, {
+      status: to,
+      confirmedAt: confirmed ? new Date() : undefined,
+      confirmedByUserId: confirmed ? adminUserId ?? null : undefined,
+    });
+  } catch (error) {
+    if (visit.googleEventId) {
+      const originalCalendarStatus =
+        visit.status === "confirmed"
+          ? "confirmed" as const
+          : visit.status === "completed"
+            ? "completed" as const
+            : "requested" as const;
+      try {
+        await provider.updateVisitEvent(
+          visit.googleEventId,
+          calendarInput(visit, {}, originalCalendarStatus),
+        );
+      } catch {
+        try {
+          await repository.setSyncStatus(id, "failed");
+        } catch {
+          // Keep the DB transition failure as the primary error.
+        }
+      }
+    }
+    throw error;
+  }
+
+  if (visit.googleEventId) {
+    await repository.setSyncStatus(id, "synced");
   }
 }
 
