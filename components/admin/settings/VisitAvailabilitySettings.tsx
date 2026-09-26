@@ -52,7 +52,6 @@ export function VisitAvailabilitySettings() {
   const [error, setError] = useState("");
 
   async function load() {
-    setError("");
     try {
       const weekdayBody = await readJson("/api/admin/visits/blocked-weekdays");
       const dateBody = await readJson("/api/admin/visits/blocked-dates");
