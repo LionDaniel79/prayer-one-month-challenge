@@ -62,6 +62,35 @@ describe("visit booking service", () => {
     )).toBe(true);
   });
 
+  it("rejects a past date even when availability is bypassed", async () => {
+    let calendarRead = false;
+    await expect(
+      submitVisitRequest(
+        {
+          requesterUserId: "u1",
+          visitDate: "2026-09-26",
+          visitType: "personal",
+          attendees: "홍길동",
+          location: "교회",
+          preferredTime: "오후",
+          reason: "상담 요청",
+        },
+        provider({
+          async listEvents() {
+            calendarRead = true;
+            return [];
+          },
+        }),
+        repository(),
+        "2026-09-27",
+      ),
+    ).rejects.toMatchObject({
+      code: "VISIT_DATE_UNAVAILABLE",
+      status: 409,
+    });
+    expect(calendarRead).toBe(false);
+  });
+
   it("rechecks the selected date before creating a request", async () => {
     let created = false;
     const repo = repository({
