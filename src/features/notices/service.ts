@@ -24,6 +24,17 @@ export function transitionNoticePublication(
   };
 }
 
+export function nextNoticePublishedAt(
+  current: NoticeStatus,
+  next: NoticeStatus,
+  existingPublishedAt: Date | null,
+  now: Date,
+): Date | null {
+  if (next === "draft") return null;
+  if (current !== "published") return now;
+  return existingPublishedAt;
+}
+
 function normalizeNoticeInput(input: AdminNoticeInput): AdminNoticeInput {
   const title = input.title.trim();
   const body = input.body.trim();
@@ -192,7 +203,12 @@ export async function updateNotice(
       title: normalized.title,
       body: normalized.body,
       status: normalized.status,
-      publishedAt: transition.didPublish ? now : existing.publishedAt,
+      publishedAt: nextNoticePublishedAt(
+        existing.status as NoticeStatus,
+        normalized.status,
+        existing.publishedAt,
+        now,
+      ),
       updatedAt: now,
     })
     .where(eq(notices.id, id))
