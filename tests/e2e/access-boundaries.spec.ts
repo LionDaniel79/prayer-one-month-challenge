@@ -14,6 +14,7 @@ function adminRoutes(root = "app/api/admin"): Array<{ url: string; method: strin
 }
 
 test("every admin HTTP handler rejects unauthenticated requests with 403", async ({ request }) => {
+  expect((await request.get("/api/sams")).status()).toBe(401);
   for (const { url, method } of adminRoutes()) {
     const response = await request.fetch(url, { method, maxRedirects: 0 });
     expect.soft(response.status(), `${method} ${url}`).toBe(403);
@@ -24,6 +25,7 @@ test("every admin HTTP handler rejects unauthenticated requests with 403", async
 test("every admin HTTP handler rejects ordinary members with 403", async ({ page }) => {
   test.skip(process.env.E2E_DATABASE_READY !== "1", "Requires the disposable CI database.");
   await login(page);
+  expect((await page.request.get("/api/sams")).status()).toBe(200);
   for (const { url, method } of adminRoutes()) {
     const response = await page.request.fetch(url, { method, maxRedirects: 0 });
     expect.soft(response.status(), `${method} ${url}`).toBe(403);
