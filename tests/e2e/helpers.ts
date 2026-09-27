@@ -9,6 +9,8 @@ export async function login(page: Page, role: keyof typeof e2eAccounts = "member
   await page.getByRole("button", { name: "로그인", exact: true }).click();
   await expect(page).toHaveURL(/\/$/);
   await expect(page.getByRole("heading", { name: "56공동체", exact: true })).toBeVisible();
+  // Do not let an unauthenticated API client make role-denial tests pass falsely.
+  expect((await page.request.get("/api/checkins")).status()).toBe(200);
 }
 
 export async function expectNoOverflow(page: Page) {

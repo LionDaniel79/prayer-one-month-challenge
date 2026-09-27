@@ -35,6 +35,8 @@ Preview와 Production에 필요한 서버 환경변수:
 
 환경변수 값을 GitHub, Issue, 문서, 스크린샷, 채팅에 붙여넣지 않는다.
 
+사용하지 않는 선택 변수는 빈 문자열 대신 생략한다. 두 암호화 키는 각각 32바이트를 Base64로 인코딩한 별도 키다. `SESSION_SECRET` / `PHONE_LOOKUP_PEPPER`는 각각 최소 32자다. 이미 사용 중인 키를 임의로 재생성하지 않는다. 현재 환경변수 설치 여부는 값 조회 없이 설정 이름으로 확인한다.
+
 ---
 
 ## 2. PWA / 브랜드
@@ -447,3 +449,22 @@ Google 조회가 실패하면 날짜 신청을 막는 것이 정상 동작이다
 - Google/VAPID secret을 저장소에 추가하지 않음
 - 상담/심방 사유, 기도요청 본문, 전화번호, refresh token을 로그에 출력하지 않음
 - 실데이터를 이용한 테스트가 필요할 경우 최소한으로 사용하고 테스트 후 정리
+
+## 13. 통합 검증 실행과 2026-09-27 확인 범위
+
+`npm ci` → `npm test` → `npm run lint` → `npm run build` → `npm run test:e2e` 순서로 실행한다. E2E는 production build를 `http://localhost:3000`의 `next start`로 구동한다. 개발 서버를 재사용하지 않는다. 숫자 loopback 주소는 Playwright의 API 클라이언트가 Secure 세션 쿠키를 보내지 않으므로 사용하지 않는다. 실제 Production의 Secure 쿠키 옵션은 유지한다.
+
+DB 통합 검증에는 별도 일회용 PostgreSQL 17, TLS, 가상 명단을 사용한다. `scripts/seed-e2e.ts`는 `CI=true`, `E2E_DATABASE_READY=1`, 로컬 `prayer_e2e` DB를 요구하고, 앱 스키마가 이미 있으면 거부한다. 전체 검증을 재실행할 때 새 DB를 준비한다. 운영 Supabase에는 시드를 실행하지 않는다. DB 설정 없이 건너뛴 검사는 완료 근거로 삼지 않는다.
+
+이번 로컬 검증: 단위 검사 226개, 브라우저 검사 13개 모두 통과, 건너뜀 0. 빌드 통과, lint 오류 0 / 기존 경고 2. 포함 범위는 실제 로그인/보안 세션/로그아웃, 기도 저장 응답 유실과 재시도, 공지 비공개 초안/읽음 유지, 비공개 기도요청, 모든 관리자 HTTP 핸들러의 권한, 7개 관리자 화면, 360px 회원/관리자 메뉴, Calendar 설정 오류와 미연결 심방 차단이다.
+
+운영 Supabase 읽기 전용 확인: Security Advisor 0건, `anon` / `authenticated`의 `prayer_app` 스키마 사용 권한 없음 및 명시적 테이블 권한 0건. Calendar 연결/선택, Push 구독은 각각 0건이다. 운영 데이터와 스키마는 변경하지 않았다.
+
+현재 Vercel 커넥터는 `ditto0310-2413` 프로젝트 범위에 조회 권한이 없어 403을 반환한다. GitHub의 Vercel 배포 상태와 공개 Preview 접근은 별도로 확인할 수 있지만, 비공개 빌드 로그/환경변수 설치 여부는 이 연결로 확정할 수 없다. 이 범위에 접근 가능한 계정으로 Vercel 연결을 다시 인증해야 한다.
+
+출시 전 사용자 확인:
+
+1. Vercel의 해당 프로젝트 범위 접근을 복구하고 기존 서버 환경변수의 설치 여부를 확인한다. 비밀값을 채팅에 보내지 않는다.
+2. Google Cloud Calendar API/OAuth Web client와 실제 Preview/Production callback URI를 설정한 뒤, 앱 관리자 설정에서 직접 Google 계정 승인 및 쓰기 가능한 캘린더 선택을 완료한다.
+3. 승인된 테스트 일정으로 심방 생성/수정/취소와 사유 비전송을 확인한다. 지원 휴대폰에서 알림 수신을 허용하고 Web Push를 확인한다.
+4. 실제 모바일 화면을 검토하고 별도로 출시를 승인한다. 그 전에는 PR #1을 병합하지 않는다.

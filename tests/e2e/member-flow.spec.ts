@@ -12,6 +12,7 @@ test.describe("database-backed member flows", () => {
     await expect(page.getByText("최초검증", { exact: true })).toBeVisible();
     const session = (await context.cookies()).find((cookie) => cookie.name === "prayer_session");
     expect(session?.httpOnly).toBe(true);
+    expect(session?.secure).toBe(true);
     expect(session?.sameSite).toBe("Lax");
     expect(session?.expires).toBeGreaterThan(Date.now() / 1000 + 179 * 86400);
     await page.reload();
@@ -38,7 +39,7 @@ test.describe("database-backed member flows", () => {
       await route.abort("failed"); // DB commit succeeded; only the response was lost.
     });
     await check.click();
-    await expect(page.getByRole("alert")).toContainText("저장하지 못했습니다");
+    await expect(page.getByRole("main").getByRole("alert")).toContainText("저장하지 못했습니다");
     await page.unroute("**/api/checkins");
     await expect(check).toBeEnabled();
     await check.click();
@@ -92,5 +93,18 @@ test.describe("database-backed member flows", () => {
       await expect(page.locator(".community-sidebar")).not.toHaveClass(/is-open/);
       await expectNoOverflow(page);
     }
+  });
+
+  test("visits fail closed until an administrator connects a Calendar", async ({ page }) => {
+    await login(page);
+    const { dashboard } = await (await page.request.get("/api/checkins")).json() as { dashboard: MemberDashboard };
+    const response = await page.request.get(`/api/visits/availability?month=${dashboard.today.slice(0, 7)}`);
+    expect(response.status()).toBe(409);
+    expect(await response.json()).toEqual({ code: "CALENDAR_NOT_CONNECTED" });
+    const booking = await page.request.post("/api/visits", { data: {
+      visitDate: addDays(dashboard.today, 1), visitType: "personal", attendees: "검증", location: "교회", preferredTime: "오후", reason: "비공개 검증",
+    } });
+    expect(booking.status()).toBe(409);
+    expect(await booking.json()).toEqual({ code: "CALENDAR_NOT_CONNECTED" });
   });
 });

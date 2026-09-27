@@ -7,12 +7,12 @@ import {
   newGoogleOAuthState,
 } from "../../../../../src/features/google-calendar/oauth";
 import { getEnv } from "../../../../../src/lib/env";
+import { DomainError } from "../../../../../src/lib/http";
 
 export async function GET(request: NextRequest) {
-  const user = await getCurrentSessionUser();
-  requireAdmin(user);
-
   try {
+    const user = await getCurrentSessionUser();
+    requireAdmin(user);
     const redirectUri =
       request.nextUrl.origin + "/api/admin/google-calendar/callback";
     const oauth = createGoogleOAuthClient(redirectUri);
@@ -29,6 +29,9 @@ export async function GET(request: NextRequest) {
     });
     return response;
   } catch (error) {
+    if (error instanceof DomainError) {
+      return NextResponse.json({ code: error.code }, { status: error.status });
+    }
     if (
       error instanceof Error &&
       error.message === "MISSING_GOOGLE_CALENDAR_CONFIG"

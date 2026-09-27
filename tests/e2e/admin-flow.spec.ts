@@ -39,4 +39,20 @@ test.describe("database-backed administrator flows", () => {
     await expectNoOverflow(page);
     await page.screenshot({ path: testInfo.outputPath("admin-mobile.png"), fullPage: true });
   });
+
+  test("Calendar setup reports missing configuration and invalid OAuth state safely", async ({ page }) => {
+    await login(page, "admin");
+    const status = await page.request.get("/api/admin/google-calendar/status");
+    expect(status.status()).toBe(200);
+    expect(await status.json()).toEqual({ connected: false, accountEmail: null, selectedCalendarId: null, selectedCalendarName: null });
+    const connect = await page.request.get("/api/admin/google-calendar/connect", { maxRedirects: 0 });
+    expect(connect.status()).toBe(503);
+    expect(await connect.json()).toEqual({ code: "GOOGLE_CALENDAR_NOT_CONFIGURED" });
+    const callback = await page.request.get("/api/admin/google-calendar/callback?code=synthetic&state=invalid", { maxRedirects: 0 });
+    expect(callback.status()).toBe(400);
+    expect(await callback.json()).toEqual({ code: "GOOGLE_OAUTH_STATE_MISMATCH" });
+    const disconnect = await page.request.delete("/api/admin/google-calendar/connection");
+    expect(disconnect.status()).toBe(200);
+    expect(await disconnect.json()).toEqual({ status: "ok" });
+  });
 });

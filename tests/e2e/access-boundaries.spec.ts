@@ -8,15 +8,16 @@ function adminRoutes(root = "app/api/admin"): Array<{ url: string; method: strin
     const path = join(root, name);
     if (statSync(path).isDirectory()) return adminRoutes(path);
     if (name !== "route.ts") return [];
-    const url = "/" + path.replace(/^app\//, "").replace(/\/route\.ts$/, "").replace(/\[id\]/g, "00000000-0000-4000-8000-000000000999");
+    const url = "/" + path.replace(/\\/g, "/").replace(/^app\//, "").replace(/\/route\.ts$/, "").replace(/\[id\]/g, "00000000-0000-4000-8000-000000000999");
     return Array.from(readFileSync(path, "utf8").matchAll(/export async function (GET|POST|PUT|PATCH|DELETE)\(/g), (match) => ({ url, method: match[1] }));
   });
 }
 
-test("every admin HTTP handler rejects unauthenticated requests with 401", async ({ request }) => {
+test("every admin HTTP handler rejects unauthenticated requests with 403", async ({ request }) => {
   for (const { url, method } of adminRoutes()) {
     const response = await request.fetch(url, { method, maxRedirects: 0 });
-    expect.soft(response.status(), `${method} ${url}`).toBe(401);
+    expect.soft(response.status(), `${method} ${url}`).toBe(403);
+    expect.soft(await response.json(), `${method} ${url}`).toEqual({ code: "FORBIDDEN" });
   }
 });
 

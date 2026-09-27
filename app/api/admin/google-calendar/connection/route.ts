@@ -7,23 +7,31 @@ import {
   deleteGoogleCalendarConnection,
   getGoogleCalendarConnection,
 } from "../../../../../src/features/google-calendar/repository";
+import { DomainError } from "../../../../../src/lib/http";
 
 export async function DELETE() {
-  const user = await getCurrentSessionUser();
-  requireAdmin(user);
+  try {
+    const user = await getCurrentSessionUser();
+    requireAdmin(user);
 
-  const current = await getGoogleCalendarConnection();
-  if (current) {
-    try {
-      const oauth = createGoogleOAuthClient();
-      await oauth.revokeToken(
-        decryptGoogleRefreshToken(current.refreshTokenCiphertext),
-      );
-    } catch {
-      // Remote revocation is best-effort; local removal must still succeed.
+    const current = await getGoogleCalendarConnection();
+    if (current) {
+      try {
+        const oauth = createGoogleOAuthClient();
+        await oauth.revokeToken(
+          decryptGoogleRefreshToken(current.refreshTokenCiphertext),
+        );
+      } catch {
+        // Remote revocation is best-effort; local removal must still succeed.
+      }
     }
-  }
 
-  await deleteGoogleCalendarConnection();
-  return NextResponse.json({ status: "ok" });
+    await deleteGoogleCalendarConnection();
+    return NextResponse.json({ status: "ok" });
+  } catch (error) {
+    if (error instanceof DomainError) {
+      return NextResponse.json({ code: error.code }, { status: error.status });
+    }
+    throw error;
+  }
 }
