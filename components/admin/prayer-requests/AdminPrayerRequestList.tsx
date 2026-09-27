@@ -24,12 +24,14 @@ export function AdminPrayerRequestList({
   requests,
   filter,
   selectedId,
+  busy,
   onFilterChange,
   onSelect,
 }: {
   requests: AdminPrayerRequestSummary[];
   filter: "all" | PrayerRequestStatus;
   selectedId: string | null;
+  busy: boolean;
   onFilterChange: (value: "all" | PrayerRequestStatus) => void;
   onSelect: (id: string) => void;
 }) {
@@ -39,6 +41,7 @@ export function AdminPrayerRequestList({
         <h2>요청 목록</h2>
         <select
           value={filter}
+          disabled={busy}
           onChange={(event) =>
             onFilterChange(event.target.value as "all" | PrayerRequestStatus)
           }
@@ -65,6 +68,7 @@ export function AdminPrayerRequestList({
             <button
               key={request.id}
               type="button"
+              disabled={busy}
               className={
                 selectedId === request.id
                   ? "admin-request-row is-selected"

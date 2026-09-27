@@ -3,17 +3,15 @@
 import type { MemberDashboard } from "../../src/lib/types";
 import { addDays, isMutablePrayerDate, isPrayerDay } from "../../src/features/challenge/date";
 
-const WEEKDAYS = ["월", "화", "수", "목", "금", "토", "일"];
+const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
 
 function utcDay(date: string) {
   return new Date(`${date}T00:00:00Z`).getUTCDay();
 }
 
 function calendarBounds(start: string, end: string) {
-  const startDay = utcDay(start);
-  const startOffset = startDay === 0 ? 6 : startDay - 1;
-  const endDay = utcDay(end);
-  const endOffset = endDay === 0 ? 0 : 7 - endDay;
+  const startOffset = utcDay(start);
+  const endOffset = 6 - utcDay(end);
   return { first: addDays(start, -startOffset), last: addDays(end, endOffset) };
 }
 
@@ -89,6 +87,10 @@ export function PrayerCalendar({
         <span>✓ 기도 완료</span>
         <span>테두리: 오늘</span>
       </div>
+      <p className="helper-text">
+        오늘과 어제 날짜를 눌러 기도 완료를 체크·취소할 수 있습니다.
+        {" "}일요일은 체크하지 않습니다. (한국 시간 기준)
+      </p>
     </section>
   );
 }

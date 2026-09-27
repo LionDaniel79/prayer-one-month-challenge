@@ -7,6 +7,7 @@ import { defaultEndDate, todayInSeoul } from "../challenge/date";
 import { calculateProgress } from "../challenge/progress";
 import { decryptRosterPhone } from "../roster/crypto";
 import { formatPhoneForDisplay } from "../roster/normalize";
+import { prayerParticipantNotExcluded } from "./prayer-participants";
 
 export type AdminMemberSource = {
   userId: string;
@@ -183,7 +184,10 @@ export async function getAdminDashboard(now = new Date()): Promise<AdminDashboar
     })
     .from(users)
     .leftJoin(memberRoster, eq(memberRoster.id, users.rosterId))
-    .where(eq(users.isActive, true))
+    .where(and(
+      eq(users.isActive, true),
+      activeChallenge ? prayerParticipantNotExcluded(activeChallenge.id) : undefined,
+    ))
     .orderBy(asc(users.displayName));
 
   const identities = userRows.map((row) => ({

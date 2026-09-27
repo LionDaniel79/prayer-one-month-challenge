@@ -4,6 +4,7 @@ import { requireAdmin } from "../../../../../src/features/admin/service";
 import { getCurrentSessionUser } from "../../../../../src/features/auth/http-session";
 import {
   dbVisitAdminRepository,
+  deleteVisit,
   updateVisitDetails,
 } from "../../../../../src/features/visits/admin-service";
 import { getSelectedCalendarProvider } from "../../../../../src/features/visits/provider-factory";
@@ -56,6 +57,21 @@ export async function PATCH(
     const { id } = await context.params;
     const provider = await getSelectedCalendarProvider();
     await updateVisitDetails(id, parsed.data, provider);
+    return NextResponse.json({ status: "ok" });
+  } catch (error) {
+    return errorResponse(error);
+  }
+}
+
+export async function DELETE(
+  _request: Request,
+  context: { params: Promise<{ id: string }> },
+) {
+  try {
+    requireAdmin(await getCurrentSessionUser());
+    const parsed = z.uuid().safeParse((await context.params).id);
+    if (!parsed.success) return NextResponse.json({ code: "INVALID_INPUT" }, { status: 400 });
+    await deleteVisit(parsed.data, getSelectedCalendarProvider);
     return NextResponse.json({ status: "ok" });
   } catch (error) {
     return errorResponse(error);

@@ -51,6 +51,24 @@ function fakeCalendar() {
 }
 
 describe("Google Calendar provider", () => {
+  it.each([
+    ["personal", "5-3샘 심방"],
+    ["sam", "5-3샘 심방(샘)"],
+  ] as const)("uses the requester's sam and leader for %s visits, including updates", async (visitType, title) => {
+    const fake = fakeCalendar();
+    const provider = new GoogleCalendarProvider(fake.client, "calendar-id");
+    const input = {
+      requesterName: "신청자", samLabel: "5-3", leaderName: "샘리더",
+      visitDate: "2026-10-08", visitType, attendees: "참석자", location: "가정", preferredTime: "오후",
+    };
+    await provider.createVisitEvent(input);
+    await provider.updateVisitEvent("event", { ...input, status: "confirmed" });
+    for (const call of fake.calls) {
+      expect(call.args).toMatchObject({ requestBody: { summary: title } });
+      expect(JSON.stringify(call.args)).toContain("리더: 샘리더");
+      expect(JSON.stringify(call.args)).not.toContain("심방 유형:");
+    }
+  });
   it("paginates event listing with recurring instances expanded", async () => {
     const fake = fakeCalendar();
     const provider = new GoogleCalendarProvider(fake.client, "calendar-id");

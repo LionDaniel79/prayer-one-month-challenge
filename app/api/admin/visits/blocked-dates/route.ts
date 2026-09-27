@@ -10,7 +10,8 @@ import {
 import { DomainError } from "../../../../../src/lib/http";
 
 const DateInput = z.object({
-  visitDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  visitDate: z.iso.date(),
+  isEnabled: z.boolean().default(false),
   reason: z.string().trim().max(500).nullable().optional(),
 });
 
@@ -45,6 +46,7 @@ export async function POST(request: Request) {
     }
     await blockVisitDate({
       visitDate: parsed.data.visitDate,
+      isEnabled: parsed.data.isEnabled,
       reason: parsed.data.reason ?? null,
       adminUserId: user.id,
     });

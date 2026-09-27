@@ -253,6 +253,7 @@ export const visitRequests = appSchema.table(
 
 export const visitBlockedDates = appSchema.table("visit_blocked_dates", {
   visitDate: date("visit_date").primaryKey(),
+  isEnabled: boolean("is_enabled").notNull().default(false),
   reason: text("reason"),
   createdByUserId: uuid("created_by_user_id")
     .notNull()
@@ -267,6 +268,15 @@ export const visitBlockedWeekdays = appSchema.table("visit_blocked_weekdays", {
     .references(() => users.id),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+export const prayerParticipantExclusions = appSchema.table("prayer_participant_exclusions", {
+  challengeId: uuid("challenge_id").notNull().references(() => challenges.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  primaryKey({ columns: [t.challengeId, t.userId] }),
+  index("prayer_participant_exclusions_user_idx").on(t.userId),
+]);
 
 export const googleCalendarConnections = appSchema.table(
   "google_calendar_connections",

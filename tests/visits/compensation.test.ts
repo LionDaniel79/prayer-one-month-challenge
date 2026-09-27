@@ -11,9 +11,11 @@ import {
 function repo(overrides: Partial<VisitRepository> = {}): VisitRepository {
   return {
     async listBlockedDates() { return []; },
+    async listEnabledDates() { return []; },
     async listBlockedWeekdays() { return []; },
     async listActiveVisitDates() { return []; },
     async isDateBlocked() { return false; },
+    async isDateEnabled() { return false; },
     async isWeekdayBlocked() { return false; },
     async hasActiveVisit() { return false; },
     async getRequester(userId) {

@@ -15,10 +15,12 @@ export function AdminPrayerRequestDetail({
   request,
   busy,
   onStatusChange,
+  onDelete,
 }: {
   request: AdminPrayerRequestDetail | null;
   busy: boolean;
   onStatusChange: (status: PrayerRequestStatus) => void;
+  onDelete: () => void;
 }) {
   if (!request) {
     return (
@@ -29,7 +31,7 @@ export function AdminPrayerRequestDetail({
   }
 
   return (
-    <section className="card admin-request-detail">
+    <section className="card admin-request-detail" aria-busy={busy || undefined}>
       <div>
         <p className="eyebrow">요청자</p>
         <h2>{request.requesterName}</h2>
@@ -59,6 +61,9 @@ export function AdminPrayerRequestDetail({
           ))}
         </div>
       </div>
+      <button type="button" className="text-button danger-button" disabled={busy} onClick={onDelete}>
+        기도요청 삭제
+      </button>
     </section>
   );
 }

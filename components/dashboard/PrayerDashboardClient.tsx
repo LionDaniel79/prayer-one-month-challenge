@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import type { MemberDashboard } from "../../src/lib/types";
+import { fetchJson } from "../../src/lib/fetch-json";
 import {
   optimisticToggleDashboard,
   reconcileCheckinState,
@@ -57,30 +58,21 @@ export function PrayerDashboardClient({ initial }: { initial: MemberDashboard })
     );
 
     try {
-      const response = await fetch("/api/checkins", {
+      const body = await fetchJson<{ state?: CheckinState }>("/api/checkins", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ prayerDate, checked: !previouslyChecked, challengeId }),
       });
-      const body = await response.json().catch(() => ({}));
-      const state = body.state as CheckinState | undefined;
+      const state = body.state;
 
-      if (!response.ok || (state !== "checked" && state !== "unchecked")) {
-        updateDashboard((current) =>
-          reconcileCheckinState(
-            current,
-            prayerDate,
-            previouslyChecked ? "checked" : "unchecked",
-          ),
-        );
-        setMessage("저장하지 못했습니다. 해당 날짜를 다시 눌러 주세요.");
-        return;
+      if (state !== "checked" && state !== "unchecked") {
+        throw new Error("INVALID_CHECKIN_RESPONSE");
       }
 
       updateDashboard((current) =>
         reconcileCheckinState(current, prayerDate, state),
       );
-    } catch {
+    } catch (error) {
       updateDashboard((current) =>
         reconcileCheckinState(
           current,
@@ -88,7 +80,9 @@ export function PrayerDashboardClient({ initial }: { initial: MemberDashboard })
           previouslyChecked ? "checked" : "unchecked",
         ),
       );
-      setMessage("저장하지 못했습니다. 해당 날짜를 다시 눌러 주세요.");
+      setMessage(error instanceof Error && error.name === "TimeoutError"
+        ? "응답이 지연되어 저장 결과를 확인하지 못했습니다. 해당 날짜를 다시 눌러 주세요."
+        : "저장하지 못했습니다. 해당 날짜를 다시 눌러 주세요.");
     } finally {
       removePending(prayerDate);
     }

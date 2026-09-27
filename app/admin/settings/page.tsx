@@ -1,3 +1,4 @@
+import { SamLeaderSettings } from "../../../components/admin/settings/SamLeaderSettings";
 import {
   requireGoogleCalendarConfig,
   requireWebPushConfig,
@@ -30,6 +31,7 @@ export default function AdminSettingsPage() {
 
         <GoogleCalendarSettings configured={googleConfigured} />
         <VisitAvailabilitySettings />
+        <SamLeaderSettings />
         <PushSettingsStatus configured={pushConfigured} />
       </div>
     </main>

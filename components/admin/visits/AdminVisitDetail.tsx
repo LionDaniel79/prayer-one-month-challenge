@@ -15,7 +15,7 @@ export function AdminVisitDetail({
   visit: AdminVisitRecord | null;
   busy: boolean;
   onSave: (patch: VisitDetailPatch) => Promise<void>;
-  onAction: (action: "confirm" | "complete" | "cancel") => Promise<void>;
+  onAction: (action: "confirm" | "complete" | "cancel" | "delete") => Promise<void>;
 }) {
   const [visitType, setVisitType] = useState<"personal" | "sam">(
     visit?.visitType ?? "personal",
@@ -131,6 +131,9 @@ export function AdminVisitDetail({
       )}
 
       <div className="admin-visit-actions">
+        <button className="text-button danger-button" type="button"
+          disabled={busy || (visit.calendarSyncStatus === "pending" && !visit.googleEventId)}
+          onClick={() => void onAction("delete")}>신청 삭제</button>
         {visit.status === "requested" && (
           <button
             className="primary-button compact-button"

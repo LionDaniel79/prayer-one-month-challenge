@@ -2,6 +2,8 @@ import type { CalendarEventLike } from "./types";
 
 export type VisitCalendarEventInput = {
   requesterName: string;
+  samLabel?: string | null;
+  leaderName?: string | null;
   visitDate: string;
   visitType: "personal" | "sam";
   attendees: string;

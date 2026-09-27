@@ -129,3 +129,7 @@ export async function updatePrayerRequestStatus(
     throw new DomainError("PRAYER_REQUEST_NOT_FOUND", 404);
   }
 }
+
+export async function deletePrayerRequest(id: string): Promise<void> {
+  await getDb().delete(prayerRequests).where(eq(prayerRequests.id, id));
+}

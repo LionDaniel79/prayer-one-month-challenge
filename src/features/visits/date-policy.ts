@@ -61,6 +61,7 @@ export function evaluateVisitDate({
   blockedDates,
   blockedWeekdays,
   activeVisitDates,
+  enabledDates = new Set(),
   today = todayInSeoul(),
 }: {
   date: string;
@@ -70,6 +71,7 @@ export function evaluateVisitDate({
   blockedDates: Set<string>;
   blockedWeekdays: Set<number>;
   activeVisitDates: Set<string>;
+  enabledDates?: Set<string>;
 }): VisitDateAvailability {
   if (date < today) {
     return { date, available: false, reason: "past_date" };
@@ -77,6 +79,10 @@ export function evaluateVisitDate({
   if (!calendarHealthy) {
     return { date, available: false, reason: "calendar_unavailable" };
   }
+  if (activeVisitDates.has(date)) {
+    return { date, available: false, reason: "existing_visit" };
+  }
+  if (enabledDates.has(date)) return { date, available: true };
   if (googleBlockedDates.has(date)) {
     return { date, available: false, reason: "google_event" };
   }
@@ -85,9 +91,6 @@ export function evaluateVisitDate({
   }
   if (blockedWeekdays.has(weekdayOfDateKey(date))) {
     return { date, available: false, reason: "blocked_weekday" };
-  }
-  if (activeVisitDates.has(date)) {
-    return { date, available: false, reason: "existing_visit" };
   }
   return { date, available: true };
 }

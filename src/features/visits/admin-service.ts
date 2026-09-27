@@ -5,10 +5,12 @@ import {
   gte,
   lt,
   ne,
+  isNull,
 } from "drizzle-orm";
 import { getDb } from "../../db/client";
 import {
   users,
+  memberRoster,
   visitBlockedDates,
   visitBlockedWeekdays,
   visitRequests,
@@ -23,9 +25,13 @@ import type {
   VisitStatus,
 } from "./types";
 
+import { requesterSam, requesterSamJoin, requesterSamLabel } from "./requester-identity";
+
 export type AdminVisitRecord = {
   id: string;
   requesterName: string;
+  samLabel?: string | null;
+  leaderName?: string | null;
   visitDate: string;
   visitType: "personal" | "sam";
   attendees: string;
@@ -81,6 +87,8 @@ function calendarInput(
 ): VisitCalendarEventInput {
   return {
     requesterName: visit.requesterName,
+    samLabel: visit.samLabel,
+    leaderName: visit.leaderName,
     visitDate: visit.visitDate,
     visitType: patch.visitType ?? visit.visitType,
     attendees: patch.attendees ?? visit.attendees,
@@ -90,12 +98,21 @@ function calendarInput(
   };
 }
 
-export const dbVisitAdminRepository: VisitAdminRepository = {
+export type VisitDeleteRepository = Pick<VisitAdminRepository, "getById" | "setSyncStatus"> & {
+  deleteById(id: string): Promise<void>;
+};
+
+export const dbVisitAdminRepository: VisitAdminRepository & VisitDeleteRepository = {
+  async deleteById(id) {
+    await getDb().delete(visitRequests).where(eq(visitRequests.id, id));
+  },
   async getById(id) {
     const [row] = await getDb()
       .select({
         id: visitRequests.id,
         requesterName: users.displayName,
+        samLabel: requesterSamLabel,
+        leaderName: requesterSam.leaderName,
         visitDate: visitRequests.visitDate,
         visitType: visitRequests.visitType,
         attendees: visitRequests.attendees,
@@ -108,6 +125,8 @@ export const dbVisitAdminRepository: VisitAdminRepository = {
       })
       .from(visitRequests)
       .innerJoin(users, eq(users.id, visitRequests.requesterUserId))
+      .leftJoin(memberRoster, eq(memberRoster.id, users.rosterId))
+      .leftJoin(requesterSam, requesterSamJoin)
       .where(eq(visitRequests.id, id))
       .limit(1);
 
@@ -222,6 +241,9 @@ async function transitionVisit(
 ): Promise<void> {
   const visit = await repository.getById(id);
   if (!visit) throw new DomainError("VISIT_NOT_FOUND", 404);
+  if (visit.calendarSyncStatus === "pending" && !visit.googleEventId) {
+    throw new DomainError("VISIT_SYNC_PENDING", 409);
+  }
   if (!canTransitionVisit(visit.status, to)) {
     throw new DomainError("INVALID_VISIT_STATUS_TRANSITION", 409);
   }
@@ -319,6 +341,28 @@ export async function cancelVisit(
   return transitionVisit(id, "cancelled", provider, repository);
 }
 
+export async function deleteVisit(
+  id: string,
+  resolveProvider: () => Promise<Pick<CalendarProvider, "deleteVisitEvent">>,
+  repository: VisitDeleteRepository = dbVisitAdminRepository,
+): Promise<void> {
+  const visit = await repository.getById(id);
+  if (!visit) return;
+  if (visit.calendarSyncStatus === "pending" && !visit.googleEventId) {
+    throw new DomainError("VISIT_SYNC_PENDING", 409);
+  }
+  if (visit.googleEventId) {
+    const provider = await resolveProvider();
+    try {
+      await provider.deleteVisitEvent(visit.googleEventId);
+    } catch {
+      await repository.setSyncStatus(id, "failed");
+      throw new DomainError("CALENDAR_EVENT_DELETE_FAILED", 502);
+    }
+  }
+  await repository.deleteById(id);
+}
+
 export async function listVisitsForAdmin({
   status,
   from,
@@ -337,6 +381,8 @@ export async function listVisitsForAdmin({
     .select({
       id: visitRequests.id,
       requesterName: users.displayName,
+      samLabel: requesterSamLabel,
+      leaderName: requesterSam.leaderName,
       visitDate: visitRequests.visitDate,
       visitType: visitRequests.visitType,
       attendees: visitRequests.attendees,
@@ -349,6 +395,8 @@ export async function listVisitsForAdmin({
     })
     .from(visitRequests)
     .innerJoin(users, eq(users.id, visitRequests.requesterUserId))
+    .leftJoin(memberRoster, eq(memberRoster.id, users.rosterId))
+    .leftJoin(requesterSam, requesterSamJoin)
     .where(conditions.length > 0 ? and(...conditions) : undefined)
     .orderBy(asc(visitRequests.visitDate));
 
@@ -377,6 +425,7 @@ export async function listVisitBlockedDates() {
     .select({
       visitDate: visitBlockedDates.visitDate,
       reason: visitBlockedDates.reason,
+      isEnabled: visitBlockedDates.isEnabled,
     })
     .from(visitBlockedDates)
     .orderBy(asc(visitBlockedDates.visitDate));
@@ -386,6 +435,7 @@ export async function blockVisitDate(input: {
   visitDate: string;
   reason: string | null;
   adminUserId: string;
+  isEnabled?: boolean;
 }): Promise<void> {
   const [conflict] = await getDb()
     .select({ id: visitRequests.id })
@@ -398,7 +448,7 @@ export async function blockVisitDate(input: {
     )
     .limit(1);
 
-  if (conflict) {
+  if (conflict && !input.isEnabled) {
     throw new DomainError("BLOCK_CONFLICTS_WITH_VISIT", 409);
   }
 
@@ -407,12 +457,14 @@ export async function blockVisitDate(input: {
     .values({
       visitDate: input.visitDate,
       reason: input.reason,
+      isEnabled: input.isEnabled ?? false,
       createdByUserId: input.adminUserId,
     })
     .onConflictDoUpdate({
       target: visitBlockedDates.visitDate,
       set: {
         reason: input.reason,
+        isEnabled: input.isEnabled ?? false,
         createdByUserId: input.adminUserId,
       },
     });
@@ -446,8 +498,10 @@ export async function replaceVisitBlockedWeekdays(input: {
     const futureVisits = await getDb()
       .select({ visitDate: visitRequests.visitDate })
       .from(visitRequests)
+      .leftJoin(visitBlockedDates, and(eq(visitBlockedDates.visitDate, visitRequests.visitDate), eq(visitBlockedDates.isEnabled, true)))
       .where(
         and(
+          isNull(visitBlockedDates.visitDate),
           gte(visitRequests.visitDate, input.today),
           ne(visitRequests.status, "cancelled"),
         ),

@@ -1,10 +1,12 @@
 "use client";
 
+import { fetchJson } from "../../../src/lib/fetch-json";
 import { useEffect, useState } from "react";
 
 type BlockedDate = {
   visitDate: string;
   reason: string | null;
+  isEnabled: boolean;
 };
 
 const weekdayOptions = [
@@ -18,19 +20,10 @@ const weekdayOptions = [
 ] as const;
 
 async function readJson(url: string, init?: RequestInit) {
-  const response = await fetch(url, {
-    cache: "no-store",
-    ...init,
-    headers: {
-      ...(init?.body ? { "content-type": "application/json" } : {}),
-      ...(init?.headers ?? {}),
-    },
+  return fetchJson<{ weekdays?: number[]; dates?: BlockedDate[] }>(url, {
+    cache: "no-store", ...init,
+    headers: { ...(init?.body ? { "content-type": "application/json" } : {}), ...(init?.headers ?? {}) },
   });
-  const body = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(body.code ?? "VISIT_AVAILABILITY_SETTINGS_FAILED");
-  }
-  return body;
 }
 
 function errorCopy(code: string) {
@@ -53,8 +46,7 @@ export function VisitAvailabilitySettings() {
 
   async function load() {
     try {
-      const weekdayBody = await readJson("/api/admin/visits/blocked-weekdays");
-      const dateBody = await readJson("/api/admin/visits/blocked-dates");
+      const [weekdayBody, dateBody] = await Promise.all([readJson("/api/admin/visits/blocked-weekdays"), readJson("/api/admin/visits/blocked-dates")]);
       setWeekdays(new Set((weekdayBody.weekdays ?? []) as number[]));
       setDates((dateBody.dates ?? []) as BlockedDate[]);
     } catch (cause) {
@@ -67,9 +59,8 @@ export function VisitAvailabilitySettings() {
   useEffect(() => {
     let cancelled = false;
 
-    void readJson("/api/admin/visits/blocked-weekdays")
-      .then(async (weekdayBody) => {
-        const dateBody = await readJson("/api/admin/visits/blocked-dates");
+    void Promise.all([readJson("/api/admin/visits/blocked-weekdays"), readJson("/api/admin/visits/blocked-dates")])
+      .then(([weekdayBody, dateBody]) => {
         if (!cancelled) {
           setWeekdays(new Set((weekdayBody.weekdays ?? []) as number[]));
           setDates((dateBody.dates ?? []) as BlockedDate[]);
@@ -119,7 +110,7 @@ export function VisitAvailabilitySettings() {
     }
   }
 
-  async function addDate() {
+  async function addDate(isEnabled: boolean) {
     if (!visitDate || busy) return;
     setBusy(true);
     setError("");
@@ -128,6 +119,7 @@ export function VisitAvailabilitySettings() {
         method: "POST",
         body: JSON.stringify({
           visitDate,
+          isEnabled,
           reason: reason.trim() || null,
         }),
       });
@@ -136,7 +128,7 @@ export function VisitAvailabilitySettings() {
       await load();
     } catch (cause) {
       setError(
-        errorCopy(cause instanceof Error ? cause.message : "날짜를 비활성화하지 못했습니다."),
+        errorCopy(cause instanceof Error ? cause.message : "날짜 설정을 저장하지 못했습니다."),
       );
     } finally {
       setBusy(false);
@@ -155,7 +147,7 @@ export function VisitAvailabilitySettings() {
       await load();
     } catch (cause) {
       setError(
-        errorCopy(cause instanceof Error ? cause.message : "비활성 날짜를 해제하지 못했습니다."),
+        errorCopy(cause instanceof Error ? cause.message : "날짜 설정을 해제하지 못했습니다."),
       );
     } finally {
       setBusy(false);
@@ -199,7 +191,8 @@ export function VisitAvailabilitySettings() {
         </fieldset>
 
         <div className="specific-date-setting">
-          <h3>특정 날짜 비활성화</h3>
+          <h3>특정 날짜 설정</h3>
+          <p className="helper-text">활성화한 날짜는 반복 비활성 요일과 Google 일정이 있어도 신청할 수 있습니다. 이미 심방이 있는 날짜에는 중복 신청할 수 없습니다.</p>
           <div className="specific-date-form">
             <label>
               날짜
@@ -218,24 +211,27 @@ export function VisitAvailabilitySettings() {
                 placeholder="선택 사항"
               />
             </label>
+            <div className="specific-date-actions">
+            <button className="primary-button compact-button" type="button" disabled={busy || !visitDate} onClick={() => void addDate(true)}>날짜 활성화</button>
             <button
-              className="primary-button compact-button"
+              className="text-button compact-button"
               type="button"
               disabled={busy || !visitDate}
-              onClick={() => void addDate()}
+              onClick={() => void addDate(false)}
             >
               날짜 비활성화
             </button>
+            </div>
           </div>
 
           <div className="blocked-date-list">
             {dates.length === 0 ? (
-              <p className="helper-text">별도로 비활성화한 날짜가 없습니다.</p>
+              <p className="helper-text">별도로 설정한 날짜가 없습니다.</p>
             ) : (
               dates.map((date) => (
                 <div className="blocked-date-row" key={date.visitDate}>
                   <span>
-                    <strong>{date.visitDate}</strong>
+                    <strong>{date.visitDate} · {date.isEnabled ? "활성" : "비활성"}</strong>
                     {date.reason && <small>{date.reason}</small>}
                   </span>
                   <button
@@ -244,7 +240,7 @@ export function VisitAvailabilitySettings() {
                     disabled={busy}
                     onClick={() => void removeDate(date.visitDate)}
                   >
-                    해제
+                    설정 해제
                   </button>
                 </div>
               ))

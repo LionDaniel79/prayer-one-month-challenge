@@ -23,18 +23,10 @@ export type CalendarClientLike = {
   };
 };
 
-function typeLabel(value: "personal" | "sam"): string {
-  return value === "personal" ? "개인심방" : "샘심방";
-}
-
 function summary(input: VisitCalendarEventInput): string {
-  const state =
-    input.status === "confirmed"
-      ? " 확정"
-      : input.status === "completed"
-        ? " 완료"
-        : "";
-  return `[56사랑 심방${state}] ${input.requesterName} - ${typeLabel(input.visitType)}`;
+  const label = input.samLabel?.trim() || "미지정";
+  const samName = label.endsWith("샘") ? label : label + "샘";
+  return `${samName} 심방${input.visitType === "sam" ? "(샘)" : ""}`;
 }
 
 function requestBody(input: VisitCalendarEventInput) {
@@ -44,7 +36,7 @@ function requestBody(input: VisitCalendarEventInput) {
     end: { date: addDays(input.visitDate, 1) },
     description: [
       "신청자: " + input.requesterName,
-      "심방 유형: " + typeLabel(input.visitType),
+      "리더: " + (input.leaderName?.trim() || "미등록"),
       "장소: " + input.location,
       "희망 시간: " + input.preferredTime,
       "참석자 명단: " + input.attendees,

@@ -2,11 +2,13 @@ import { and, eq, gte, lt, ne } from "drizzle-orm";
 import { getDb } from "../../db/client";
 import {
   users,
+  memberRoster,
   visitBlockedDates,
   visitBlockedWeekdays,
   visitRequests,
 } from "../../db/schema";
 import { DomainError } from "../../lib/http";
+import { requesterSam, requesterSamJoin, requesterSamLabel } from "./requester-identity";
 import { withDeadline } from "../../lib/deadline";
 import { addDays, todayInSeoul } from "../challenge/date";
 import type {
@@ -39,12 +41,14 @@ export type NewVisit = SubmitVisitInput & {
 
 export type VisitRepository = {
   listBlockedDates(startDate: string, endDateExclusive: string): Promise<string[]>;
+  listEnabledDates(startDate: string, endDateExclusive: string): Promise<string[]>;
   listBlockedWeekdays(): Promise<number[]>;
   listActiveVisitDates(startDate: string, endDateExclusive: string): Promise<string[]>;
   isDateBlocked(date: string): Promise<boolean>;
+  isDateEnabled(date: string): Promise<boolean>;
   isWeekdayBlocked(weekday: number): Promise<boolean>;
   hasActiveVisit(date: string): Promise<boolean>;
-  getRequester(userId: string): Promise<{ id: string; displayName: string } | null>;
+  getRequester(userId: string): Promise<{ id: string; displayName: string; samLabel?: string | null; leaderName?: string | null } | null>;
   createPending(input: NewVisit): Promise<{ id: string; status: VisitStatus }>;
   markSynced(id: string, eventId: string): Promise<void>;
   cancelAfterSyncFailure(id: string): Promise<void>;
@@ -102,8 +106,18 @@ export const dbVisitRepository: VisitRepository = {
         and(
           gte(visitBlockedDates.visitDate, startDate),
           lt(visitBlockedDates.visitDate, endDateExclusive),
+          eq(visitBlockedDates.isEnabled, false),
         ),
       );
+    return rows.map((row) => row.date);
+  },
+
+  async listEnabledDates(startDate, endDateExclusive) {
+    const rows = await getDb().select({ date: visitBlockedDates.visitDate })
+      .from(visitBlockedDates).where(and(
+        gte(visitBlockedDates.visitDate, startDate), lt(visitBlockedDates.visitDate, endDateExclusive),
+        eq(visitBlockedDates.isEnabled, true),
+      ));
     return rows.map((row) => row.date);
   },
 
@@ -132,8 +146,14 @@ export const dbVisitRepository: VisitRepository = {
     const [row] = await getDb()
       .select({ date: visitBlockedDates.visitDate })
       .from(visitBlockedDates)
-      .where(eq(visitBlockedDates.visitDate, date))
+      .where(and(eq(visitBlockedDates.visitDate, date), eq(visitBlockedDates.isEnabled, false)))
       .limit(1);
+    return Boolean(row);
+  },
+
+  async isDateEnabled(date) {
+    const [row] = await getDb().select({ date: visitBlockedDates.visitDate })
+      .from(visitBlockedDates).where(and(eq(visitBlockedDates.visitDate, date), eq(visitBlockedDates.isEnabled, true))).limit(1);
     return Boolean(row);
   },
 
@@ -162,8 +182,10 @@ export const dbVisitRepository: VisitRepository = {
 
   async getRequester(userId) {
     const [row] = await getDb()
-      .select({ id: users.id, displayName: users.displayName })
+      .select({ id: users.id, displayName: users.displayName, samLabel: requesterSamLabel, leaderName: requesterSam.leaderName })
       .from(users)
+      .leftJoin(memberRoster, eq(memberRoster.id, users.rosterId))
+      .leftJoin(requesterSam, requesterSamJoin)
       .where(eq(users.id, userId))
       .limit(1);
     return row ?? null;
@@ -231,6 +253,7 @@ export async function getMonthAvailability(
       repository.listBlockedDates(startDate, endDateExclusive),
       repository.listBlockedWeekdays(),
       repository.listActiveVisitDates(startDate, endDateExclusive),
+      repository.listEnabledDates(startDate, endDateExclusive),
     ]), 8_000);
   } catch {
     return dates.map((date) => ({
@@ -240,7 +263,8 @@ export async function getMonthAvailability(
     }));
   }
 
-  const [events, blocked, weekdays, active] = inputs;
+  const [events, blocked, weekdays, active, enabled] = inputs;
+  const enabledDates = new Set(enabled);
   const blockedDates = new Set(blocked);
   const blockedWeekdays = new Set(weekdays);
   const activeVisitDates = new Set(active);
@@ -260,6 +284,7 @@ export async function getMonthAvailability(
       blockedDates,
       blockedWeekdays,
       activeVisitDates,
+      enabledDates,
     }),
   );
 }
@@ -273,10 +298,11 @@ export async function submitVisitRequest(
   if (input.visitDate < today) {
     throw new DomainError("VISIT_DATE_UNAVAILABLE", 409);
   }
-  if (await repository.isDateBlocked(input.visitDate)) {
+  const dateEnabled = await repository.isDateEnabled(input.visitDate);
+  if (!dateEnabled && await repository.isDateBlocked(input.visitDate)) {
     throw new DomainError("VISIT_DATE_UNAVAILABLE", 409);
   }
-  if (await repository.isWeekdayBlocked(weekdayOfDateKey(input.visitDate))) {
+  if (!dateEnabled && await repository.isWeekdayBlocked(weekdayOfDateKey(input.visitDate))) {
     throw new DomainError("VISIT_DATE_UNAVAILABLE", 409);
   }
   if (await repository.hasActiveVisit(input.visitDate)) {
@@ -293,7 +319,7 @@ export async function submitVisitRequest(
   const googleBusy = events.some((event) =>
     googleEventBlockedDates(event).has(input.visitDate),
   );
-  if (googleBusy) {
+  if (googleBusy && !dateEnabled) {
     throw new DomainError("VISIT_DATE_UNAVAILABLE", 409);
   }
 
@@ -308,7 +334,8 @@ export async function submitVisitRequest(
       calendarSyncStatus: "pending",
     });
   } catch (error) {
-    if ((error as { code?: string }).code === "23505") {
+    const dbError = error as { code?: string; cause?: { code?: string } };
+    if ((dbError.code ?? dbError.cause?.code) === "23505") {
       throw new DomainError("VISIT_ALREADY_EXISTS", 409);
     }
     throw error;
@@ -316,6 +343,8 @@ export async function submitVisitRequest(
 
   const calendarInput: VisitCalendarEventInput = {
     requesterName: requester.displayName,
+    samLabel: requester.samLabel,
+    leaderName: requester.leaderName,
     visitDate: input.visitDate,
     visitType: input.visitType,
     attendees: input.attendees,

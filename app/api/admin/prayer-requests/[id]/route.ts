@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireAdmin } from "../../../../../src/features/admin/service";
 import { getCurrentSessionUser } from "../../../../../src/features/auth/http-session";
 import {
+  deletePrayerRequest,
   getPrayerRequestForAdmin,
   updatePrayerRequestStatus,
 } from "../../../../../src/features/prayer-requests/service";
@@ -11,6 +12,7 @@ import { DomainError } from "../../../../../src/lib/http";
 const StatusPatch = z.object({
   status: z.enum(["received", "praying", "completed"]),
 });
+const RequestId = z.string().uuid();
 
 function errorResponse(error: unknown) {
   if (error instanceof DomainError) {
@@ -26,6 +28,9 @@ export async function GET(
   try {
     requireAdmin(await getCurrentSessionUser());
     const { id } = await context.params;
+    if (!RequestId.safeParse(id).success) {
+      return NextResponse.json({ code: "INVALID_INPUT" }, { status: 400 });
+    }
     const request = await getPrayerRequestForAdmin(id);
     if (!request) {
       return NextResponse.json(
@@ -53,7 +58,27 @@ export async function PATCH(
     }
 
     const { id } = await context.params;
+    if (!RequestId.safeParse(id).success) {
+      return NextResponse.json({ code: "INVALID_INPUT" }, { status: 400 });
+    }
     await updatePrayerRequestStatus(id, parsed.data.status);
+    return NextResponse.json({ status: "ok" });
+  } catch (error) {
+    return errorResponse(error);
+  }
+}
+
+export async function DELETE(
+  _request: Request,
+  context: { params: Promise<{ id: string }> },
+) {
+  try {
+    requireAdmin(await getCurrentSessionUser());
+    const { id } = await context.params;
+    if (!RequestId.safeParse(id).success) {
+      return NextResponse.json({ code: "INVALID_INPUT" }, { status: 400 });
+    }
+    await deletePrayerRequest(id);
     return NextResponse.json({ status: "ok" });
   } catch (error) {
     return errorResponse(error);

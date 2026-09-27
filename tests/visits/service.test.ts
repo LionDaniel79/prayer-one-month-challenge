@@ -25,9 +25,11 @@ function provider(overrides: Partial<CalendarProvider> = {}): CalendarProvider {
 function repository(overrides: Partial<VisitRepository> = {}): VisitRepository {
   return {
     async listBlockedDates() { return []; },
+    async listEnabledDates() { return []; },
     async listBlockedWeekdays() { return []; },
     async listActiveVisitDates() { return []; },
     async isDateBlocked() { return false; },
+    async isDateEnabled() { return false; },
     async isWeekdayBlocked() { return false; },
     async hasActiveVisit() { return false; },
     async getRequester(userId) {
@@ -204,6 +206,25 @@ describe("visit booking service", () => {
     );
 
     expect(JSON.stringify(calendarInput)).not.toContain("민감한 심방 이유");
+  });
+
+  it("allows an enabled date over weekday and Google events, retaining the duplicate guard and leader", async () => {
+    const input = { requesterUserId: "u1", visitDate: "2026-10-04", visitType: "sam" as const,
+      attendees: "검증", location: "교회", preferredTime: "오후", reason: "비공개" };
+    const create = vi.fn(async (_input: VisitCalendarEventInput) => ({ eventId: "g1" }));
+    const calendar = provider({ createVisitEvent: create, async listEvents() {
+      return [{ id: "busy", start: { date: "2026-10-04" }, end: { date: "2026-10-05" } }];
+    } });
+    const repo = repository({ async isDateEnabled() { return true; }, async isWeekdayBlocked() { return true; },
+      async getRequester() { return { id: "u1", displayName: "검증", samLabel: "1-2", leaderName: "검증리더A" }; } });
+    await submitVisitRequest(input, calendar, repo, "2026-09-27");
+    expect(create).toHaveBeenCalledWith(expect.objectContaining({ samLabel: "1-2", leaderName: "검증리더A" }));
+    expect(create.mock.calls[0][0]).not.toHaveProperty("reason");
+    await expect(submitVisitRequest(input, calendar, { ...repo, async hasActiveVisit() { return true; } }, "2026-09-27"))
+      .rejects.toMatchObject({ code: "VISIT_ALREADY_EXISTS" });
+    expect(create).toHaveBeenCalledTimes(1);
+    await expect(submitVisitRequest(input, provider({ async listEvents() { throw new Error("offline"); } }), repo, "2026-09-27"))
+      .rejects.toMatchObject({ code: "CALENDAR_AVAILABILITY_UNAVAILABLE" });
   });
 
   it("creates member requests in requested state", async () => {

@@ -16,6 +16,7 @@ import {
   visitRequests,
 } from "../../db/schema";
 import { addDays, todayInSeoul } from "../challenge/date";
+import { prayerParticipantNotExcluded } from "./prayer-participants";
 
 export type AdminActivityItem = {
   kind: "notice" | "visit" | "prayer_request";
@@ -112,17 +113,20 @@ export async function getAdminHubDashboard(
   const today = todayInSeoul(now);
   const week = weekRangeInSeoul(now);
 
-  const [participantRow] = await db
-    .select({ count: sql<number>`count(*)::int` })
-    .from(users)
-    .where(eq(users.isActive, true));
-  const participants = Number(participantRow?.count ?? 0);
-
   const [activeChallenge] = await db
     .select({ id: challenges.id })
     .from(challenges)
     .where(eq(challenges.isActive, true))
     .limit(1);
+
+  const [participantRow] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(users)
+    .where(and(
+      eq(users.isActive, true),
+      activeChallenge ? prayerParticipantNotExcluded(activeChallenge.id) : undefined,
+    ));
+  const participants = Number(participantRow?.count ?? 0);
 
   let todayCompleted = 0;
   if (activeChallenge) {
@@ -135,6 +139,7 @@ export async function getAdminHubDashboard(
           eq(prayerCheckins.challengeId, activeChallenge.id),
           eq(prayerCheckins.prayerDate, today),
           eq(users.isActive, true),
+          prayerParticipantNotExcluded(activeChallenge.id),
         ),
       );
     todayCompleted = Number(todayRow?.count ?? 0);

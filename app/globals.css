@@ -129,7 +129,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 
 .sam-edit-button { min-height: 32px; width: fit-content; color: #2563eb; font-size: .8rem; }
 
-.participant-row { grid-template-columns: minmax(110px, 1.2fr) minmax(90px, .8fr) minmax(140px, 1.2fr) minmax(70px, .7fr) minmax(60px, .5fr) minmax(125px, 1fr) minmax(70px, .6fr); }
+.participant-row { grid-template-columns: minmax(110px, 1.2fr) minmax(90px, .8fr) minmax(140px, 1.2fr) minmax(70px, .7fr) minmax(60px, .5fr) minmax(125px, 1fr) minmax(70px, .6fr) minmax(55px, .5fr); }
 .roster-row { grid-template-columns: 42px minmax(120px, 1.2fr) minmax(90px, .8fr) minmax(140px, 1.2fr) minmax(70px, .7fr) minmax(110px, .9fr) minmax(120px, 1fr) minmax(70px, .6fr); }
 .roster-select-cell { display: flex !important; align-items: center; justify-content: center; }
 .roster-select-cell input { width: 18px; height: 18px; }
@@ -1206,3 +1206,5 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
+
+.specific-date-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }

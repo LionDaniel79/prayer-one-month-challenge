@@ -1,5 +1,6 @@
 "use client";
 
+import { fetchJson } from "../../../src/lib/fetch-json";
 import { useEffect, useMemo, useState } from "react";
 import type { AdminVisitRecord, VisitDetailPatch } from "../../../src/features/visits/admin-service";
 import type { VisitStatus } from "../../../src/features/visits/types";
@@ -7,17 +8,18 @@ import { AdminVisitDetail } from "./AdminVisitDetail";
 import { AdminVisitList } from "./AdminVisitList";
 
 async function readJson(url: string, init?: RequestInit) {
-  const response = await fetch(url, {
-    cache: "no-store",
-    ...init,
-    headers: {
-      ...(init?.body ? { "content-type": "application/json" } : {}),
-      ...(init?.headers ?? {}),
-    },
+  return fetchJson<{ visits?: AdminVisitRecord[] }>(url, {
+    cache: "no-store", ...init,
+    headers: { ...(init?.body ? { "content-type": "application/json" } : {}), ...(init?.headers ?? {}) },
   });
-  const body = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(body.code ?? "VISIT_ADMIN_REQUEST_FAILED");
-  return body;
+}
+
+function errorCopy(cause: unknown): string {
+  const code = cause instanceof Error ? cause.message : "";
+  if (code === "VISIT_SYNC_PENDING") return "Google 일정 생성 중입니다. 잠시 후 다시 조회해 주세요.";
+  if (code === "CALENDAR_EVENT_DELETE_FAILED") return "Google 일정 삭제를 확인하지 못해 신청을 남겨 두었습니다. 다시 시도해 주세요.";
+  if (code === "CALENDAR_NOT_CONNECTED" || code === "CALENDAR_NOT_SELECTED") return "관리자 설정에서 Google Calendar 연결과 캘린더 선택을 확인해 주세요.";
+  return "처리 결과를 확인하지 못했습니다. 다시 조회한 뒤 시도해 주세요.";
 }
 
 export function AdminVisitManagement({
@@ -110,8 +112,9 @@ export function AdminVisitManagement({
     }
   }
 
-  async function action(actionName: "confirm" | "complete" | "cancel") {
+  async function action(actionName: "confirm" | "complete" | "cancel" | "delete") {
     if (!selected || busy) return;
+    if (actionName === "delete" && !window.confirm(`${selected.requesterName}님의 ${selected.visitDate} 심방 신청과 연결된 Google 일정을 삭제할까요? 삭제한 신청 내용은 복구할 수 없습니다.`)) return;
     if (actionName === "cancel" && !window.confirm("이 심방 신청을 취소할까요?")) {
       return;
     }
@@ -119,12 +122,12 @@ export function AdminVisitManagement({
     setError("");
     try {
       await readJson(
-        "/api/admin/visits/" + selected.id + "/" + actionName,
-        { method: "POST" },
+        "/api/admin/visits/" + selected.id + (actionName === "delete" ? "" : "/" + actionName),
+        { method: actionName === "delete" ? "DELETE" : "POST" },
       );
       await load();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "상태를 변경하지 못했습니다.");
+      setError(errorCopy(cause));
     } finally {
       setBusy(false);
     }
@@ -155,7 +158,7 @@ export function AdminVisitManagement({
             onFromChange={setFrom}
             onToChange={setTo}
             onSearch={() => void load()}
-            onSelect={(visit) => setSelectedId(visit.id)}
+            onSelect={(visit) => { if (!busy) setSelectedId(visit.id); }}
           />
           <AdminVisitDetail
             key={selected?.id ?? "none"}

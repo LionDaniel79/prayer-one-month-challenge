@@ -5,6 +5,18 @@ import {
 } from "../../src/features/visits/date-policy";
 
 describe("visit date policy", () => {
+  it("allows an explicitly enabled date despite Google events and a blocked weekday", () => {
+    const policy = {
+      date: "2026-10-04", today: "2026-09-27", calendarHealthy: true,
+      googleBlockedDates: new Set(["2026-10-04"]), blockedDates: new Set<string>(),
+      blockedWeekdays: new Set([0]), activeVisitDates: new Set<string>(),
+      enabledDates: new Set(["2026-10-04"]),
+    };
+    expect(evaluateVisitDate(policy)).toEqual({ date: policy.date, available: true });
+    expect(evaluateVisitDate({ ...policy, activeVisitDates: new Set([policy.date]) })).toMatchObject({ available: false, reason: "existing_visit" });
+    expect(evaluateVisitDate({ ...policy, calendarHealthy: false })).toMatchObject({ available: false, reason: "calendar_unavailable" });
+    expect(evaluateVisitDate({ ...policy, today: "2026-10-05" })).toMatchObject({ available: false, reason: "past_date" });
+  });
   it("blocks one Seoul date for a normal timed event", () => {
     expect([...googleEventBlockedDates({
       status: "confirmed",
