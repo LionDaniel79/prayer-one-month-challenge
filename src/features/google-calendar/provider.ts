@@ -9,7 +9,7 @@ type CalendarResponse<T> = Promise<{ data: T }>;
 
 export type CalendarClientLike = {
   events: {
-    list(args: Record<string, unknown>): CalendarResponse<{
+    list(args: Record<string, unknown>, options?: { signal: AbortSignal; timeout: number; retry: boolean }): CalendarResponse<{
       items?: Array<{
         status?: string | null;
         start?: { date?: string | null; dateTime?: string | null } | null;
@@ -63,6 +63,7 @@ export class GoogleCalendarProvider implements CalendarProvider {
     timeMax: string;
   }): Promise<CalendarEventLike[]> {
     const events: CalendarEventLike[] = [];
+    const signal = AbortSignal.timeout(8_000);
     let pageToken: string | undefined;
 
     do {
@@ -72,8 +73,10 @@ export class GoogleCalendarProvider implements CalendarProvider {
         timeMax: input.timeMax,
         singleEvents: true,
         showDeleted: false,
+        maxResults: 2500,
+        fields: "items(status,start,end),nextPageToken",
         pageToken,
-      });
+      }, { signal, timeout: 5_000, retry: false });
 
       for (const item of response.data.items ?? []) {
         events.push({

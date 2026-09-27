@@ -63,6 +63,7 @@ jobs:
           echo "ROSTER_ENCRYPTION_KEY=$(openssl rand -base64 32)" >> "$GITHUB_ENV"
           echo "E2E_DATABASE_READY=1" >> "$GITHUB_ENV"
       - run: npx tsx scripts/seed-e2e.ts
+      - run: npm test -- tests/db/connection-resilience.test.ts
       - run: npm run test:e2e
         env:
           CI: "true"

@@ -6,25 +6,44 @@ import { getGoogleCalendarConnection } from "./repository";
 
 export function createGoogleOAuthClient(redirectUri?: string) {
   const config = requireGoogleCalendarConfig();
-  return new google.auth.OAuth2(
+  const oauth = new google.auth.OAuth2(
     config.clientId,
     config.clientSecret,
     redirectUri,
   );
+  // Include token exchange/refresh, which runs before Calendar's own request.
+  oauth.transporter.interceptors.request.add({ resolved: async (options) => {
+    if (options.url.toString() === oauth.endpoints.oauth2TokenUrl.toString()) {
+      options.timeout = 5_000;
+      options.retry = false;
+    }
+    return options;
+  } });
+  return oauth;
 }
+
+let authorized: {
+  connectionId: string;
+  ciphertext: string;
+  oauth: ReturnType<typeof createGoogleOAuthClient>;
+} | undefined;
 
 export async function getAuthorizedGoogleCalendarContext() {
   const connection = await getGoogleCalendarConnection();
   if (!connection) {
+    authorized = undefined;
     throw new DomainError("CALENDAR_NOT_CONNECTED", 409);
   }
 
-  const oauth = createGoogleOAuthClient();
-  oauth.setCredentials({
-    refresh_token: decryptGoogleRefreshToken(
-      connection.refreshTokenCiphertext,
-    ),
-  });
+  // Recheck the connection each time so disconnects/reconnections take effect.
+  // Reuse only the SDK's expiring access token and in-flight refresh promise.
+  if (!authorized || authorized.connectionId !== connection.id ||
+      authorized.ciphertext !== connection.refreshTokenCiphertext) {
+    const oauth = createGoogleOAuthClient();
+    oauth.setCredentials({ refresh_token: decryptGoogleRefreshToken(connection.refreshTokenCiphertext) });
+    authorized = { connectionId: connection.id, ciphertext: connection.refreshTokenCiphertext, oauth };
+  }
+  const { oauth } = authorized;
 
   return {
     connection,

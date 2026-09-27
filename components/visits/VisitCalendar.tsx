@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import type { VisitDateAvailability } from "../../src/features/visits/types";
+import { fetchJson } from "../../src/lib/fetch-json";
 
 function currentSeoulMonth(): string {
   const parts = new Intl.DateTimeFormat("en-US", {
@@ -51,57 +52,50 @@ export function VisitCalendar({
   refreshKey?: number;
 }) {
   const [month, setMonth] = useState(currentSeoulMonth);
-  const [dates, setDates] = useState<VisitDateAvailability[]>([]);
-  const [message, setMessage] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [retryKey, setRetryKey] = useState(0);
+  const [result, setResult] = useState<{
+    key: string; dates: VisitDateAvailability[]; message: string;
+  } | null>(null);
+  const requestKey = `${month}:${refreshKey}:${retryKey}`;
+  const loading = result?.key !== requestKey;
+  const dates = !loading && result ? result.dates : [];
+  const message = !loading && result ? result.message : "";
 
   useEffect(() => {
-    let cancelled = false;
+    const controller = new AbortController();
 
-    void fetch("/api/visits/availability?month=" + encodeURIComponent(month), {
+    void fetchJson<{ dates: VisitDateAvailability[] }>("/api/visits/availability?month=" + encodeURIComponent(month), {
       cache: "no-store",
+      signal: controller.signal,
     })
-      .then(async (response) => {
-        const body = await response.json().catch(() => ({}));
-        if (!response.ok) {
-          throw new Error(body.code ?? "VISIT_AVAILABILITY_FAILED");
-        }
-        return body;
-      })
       .then((body) => {
-        if (!cancelled) {
-          setDates(Array.isArray(body.dates) ? body.dates : []);
+        if (!controller.signal.aborted) {
+          const dates = Array.isArray(body.dates) ? body.dates : [];
+          const unavailable = dates.some((date) => !date.available && date.reason === "calendar_unavailable");
+          setResult({ key: requestKey, dates, message: unavailable
+            ? "일정 조회가 지연되고 있습니다. 다시 확인해 주세요." : "" });
         }
       })
       .catch((error) => {
-        if (cancelled) return;
+        if (controller.signal.aborted) return;
         const code = error instanceof Error ? error.message : "";
-        setDates([]);
-        setMessage(
-          code === "CALENDAR_NOT_CONNECTED"
+        setResult({ key: requestKey, dates: [], message:
+          code === "CALENDAR_NOT_CONNECTED" || code === "CALENDAR_NOT_SELECTED"
             ? "관리자가 Google Calendar를 연결하면 심방 신청을 시작할 수 있습니다."
             : "일정을 확인하기 어렵습니다. 잠시 후 다시 시도해 주세요.",
-        );
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
+        });
       });
 
     return () => {
-      cancelled = true;
+      controller.abort();
     };
-  }, [month, refreshKey]);
+  }, [month, requestKey]);
 
   function navigateMonth(amount: number) {
-    setLoading(true);
-    setMessage("");
     setMonth((value) => moveMonth(value, amount));
   }
 
-  const leadingCells = useMemo(() => {
-    if (dates.length === 0) return 0;
-    return weekday(dates[0].date);
-  }, [dates]);
+  const leadingCells = dates.length === 0 ? 0 : weekday(dates[0].date);
 
   return (
     <section className="card visit-calendar-card">
@@ -134,7 +128,10 @@ export function VisitCalendar({
       {loading ? (
         <div className="visit-calendar-message">일정을 확인하고 있습니다.</div>
       ) : message ? (
-        <div className="visit-calendar-message" role="status">{message}</div>
+        <div className="visit-calendar-message" role="status">
+          <p>{message}</p>
+          <button className="text-button" type="button" onClick={() => setRetryKey((value) => value + 1)}>다시 확인</button>
+        </div>
       ) : (
         <div className="visit-calendar-grid">
           {Array.from({ length: leadingCells }, (_, index) => (

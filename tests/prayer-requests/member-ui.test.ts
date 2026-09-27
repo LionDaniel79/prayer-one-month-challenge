@@ -12,12 +12,4 @@ describe("member prayer request UI", () => {
     expect(source).toContain("기도요청이 전달되었습니다.");
   });
 
-  it("posts only to the private member submission endpoint", () => {
-    const source = readFileSync(
-      "components/prayer-requests/PrayerRequestForm.tsx",
-      "utf8",
-    );
-    expect(source).toContain('fetch("/api/prayer-requests"');
-    expect(source).toContain('method: "POST"');
-  });
 });

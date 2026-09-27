@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { fetchJson } from "../../src/lib/fetch-json";
 
 export function PrayerRequestForm() {
   const [content, setContent] = useState("");
@@ -17,20 +18,18 @@ export function PrayerRequestForm() {
     setError("");
 
     try {
-      const response = await fetch("/api/prayer-requests", {
+      await fetchJson("/api/prayer-requests", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ content }),
       });
-      const body = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(body.code ?? "PRAYER_REQUEST_FAILED");
-      }
 
       setContent("");
       setMessage("기도요청이 전달되었습니다.");
-    } catch {
-      setError("기도요청을 전달하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+    } catch (error) {
+      setError(error instanceof Error && error.name === "TimeoutError"
+        ? "응답이 지연되어 전송 결과를 확인하지 못했습니다. 입력 내용은 보존했습니다. 다시 보내기 전에 관리자에게 접수 여부를 확인해 주세요."
+        : "기도요청을 전달하지 못했습니다. 잠시 후 다시 시도해 주세요.");
     } finally {
       setBusy(false);
     }

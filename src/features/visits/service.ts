@@ -7,6 +7,7 @@ import {
   visitRequests,
 } from "../../db/schema";
 import { DomainError } from "../../lib/http";
+import { withDeadline } from "../../lib/deadline";
 import { addDays, todayInSeoul } from "../challenge/date";
 import type {
   CalendarProvider,
@@ -220,12 +221,17 @@ export async function getMonthAvailability(
 ): Promise<VisitDateAvailability[]> {
   const { startDate, endDateExclusive, dates } = monthRange(month);
 
-  let events;
+  let inputs;
   try {
-    events = await provider.listEvents({
-      timeMin: startDate + "T00:00:00+09:00",
-      timeMax: endDateExclusive + "T00:00:00+09:00",
-    });
+    inputs = await withDeadline(Promise.all([
+      provider.listEvents({
+        timeMin: startDate + "T00:00:00+09:00",
+        timeMax: endDateExclusive + "T00:00:00+09:00",
+      }),
+      repository.listBlockedDates(startDate, endDateExclusive),
+      repository.listBlockedWeekdays(),
+      repository.listActiveVisitDates(startDate, endDateExclusive),
+    ]), 8_000);
   } catch {
     return dates.map((date) => ({
       date,
@@ -234,13 +240,10 @@ export async function getMonthAvailability(
     }));
   }
 
-  const blockedDates = new Set(
-    await repository.listBlockedDates(startDate, endDateExclusive),
-  );
-  const blockedWeekdays = new Set(await repository.listBlockedWeekdays());
-  const activeVisitDates = new Set(
-    await repository.listActiveVisitDates(startDate, endDateExclusive),
-  );
+  const [events, blocked, weekdays, active] = inputs;
+  const blockedDates = new Set(blocked);
+  const blockedWeekdays = new Set(weekdays);
+  const activeVisitDates = new Set(active);
   const googleBlockedDates = new Set<string>();
 
   for (const event of events) {
@@ -282,7 +285,7 @@ export async function submitVisitRequest(
 
   let events;
   try {
-    events = await provider.listEvents(seoulDayBounds(input.visitDate));
+    events = await withDeadline(provider.listEvents(seoulDayBounds(input.visitDate)), 8_000);
   } catch {
     throw new DomainError("CALENDAR_AVAILABILITY_UNAVAILABLE", 503);
   }

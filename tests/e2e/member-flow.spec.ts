@@ -75,7 +75,10 @@ test.describe("database-backed member flows", () => {
     await login(page);
     await page.goto("/prayer-requests");
     await page.getByLabel("기도 요청 내용").fill("자동 검증용 비공개 기도 내용");
+    const submitted = page.waitForResponse((response) =>
+      response.url().endsWith("/api/prayer-requests") && response.request().method() === "POST");
     await page.getByRole("button", { name: "전송", exact: true }).click();
+    expect((await submitted).status()).toBe(201);
     await expect(page.getByRole("status")).toHaveText("기도요청이 전달되었습니다.");
     await expect(page.getByLabel("기도 요청 내용")).toHaveValue("");
     expect((await page.request.get("/api/prayer-requests")).status()).toBe(405);

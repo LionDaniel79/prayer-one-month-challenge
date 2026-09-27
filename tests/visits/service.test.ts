@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { DomainError } from "../../src/lib/http";
 import type {
   CalendarProvider,
@@ -43,6 +43,37 @@ function repository(overrides: Partial<VisitRepository> = {}): VisitRepository {
 }
 
 describe("visit booking service", () => {
+  afterEach(() => vi.useRealTimers());
+
+  it("loads independent availability inputs together", async () => {
+    let release!: (value: []) => void;
+    const started: string[] = [];
+    const pending = getMonthAvailability("2026-10", provider({
+      listEvents: () => new Promise<[]>((resolve) => { release = resolve; }),
+    }), repository({
+      async listBlockedDates() { started.push("dates"); return ["2026-10-08"]; },
+      async listBlockedWeekdays() { started.push("weekdays"); return []; },
+      async listActiveVisitDates() { started.push("visits"); return []; },
+    }));
+    const concurrent = [...started];
+    release([]);
+    const dates = await pending;
+    expect(concurrent).toEqual(["dates", "weekdays", "visits"]);
+    expect(dates.find((day) => day.date === "2026-10-08")).toMatchObject({ available: false, reason: "blocked_date" });
+  });
+
+  it("stops waiting for a hung calendar and never opens booking dates", async () => {
+    vi.useFakeTimers();
+    let settled = false;
+    const pending = getMonthAvailability("2026-10", provider({
+      listEvents: () => new Promise(() => {}),
+    }), repository()).then((dates) => { settled = true; return dates; });
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(settled).toBe(true);
+    const dates = await pending;
+    expect(dates.every((date) => !date.available && date.reason === "calendar_unavailable")).toBe(true);
+  });
+
   it("fails closed for a month when Google availability cannot be read", async () => {
     const calendar = provider({
       async listEvents() {
