@@ -25,9 +25,12 @@ describe("admin roster upload boundary", () => {
     ).not.toThrow();
   });
 
-  it("rejects non-xls files and oversized uploads", () => {
+  it("accepts xlsx templates and rejects other files and oversized uploads", () => {
     expect(() =>
       validateRosterUploadMeta({ name: "roster.xlsx", size: 1000 }),
+    ).not.toThrow();
+    expect(() =>
+      validateRosterUploadMeta({ name: "roster.csv", size: 1000 }),
     ).toThrow("ROSTER_FILE_TYPE");
     expect(() =>
       validateRosterUploadMeta({

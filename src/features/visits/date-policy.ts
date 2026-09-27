@@ -1,4 +1,5 @@
 import { addDays, todayInSeoul } from "../challenge/date";
+import { withinBookingPeriod, type BookingPeriod } from "./booking-period";
 import type {
   CalendarEventLike,
   VisitDateAvailability,
@@ -62,6 +63,7 @@ export function evaluateVisitDate({
   blockedWeekdays,
   activeVisitDates,
   enabledDates = new Set(),
+  bookingPeriod = { startDate: null, endDate: null },
   today = todayInSeoul(),
 }: {
   date: string;
@@ -72,12 +74,16 @@ export function evaluateVisitDate({
   blockedWeekdays: Set<number>;
   activeVisitDates: Set<string>;
   enabledDates?: Set<string>;
+  bookingPeriod?: BookingPeriod;
 }): VisitDateAvailability {
   if (date < today) {
     return { date, available: false, reason: "past_date" };
   }
   if (!calendarHealthy) {
     return { date, available: false, reason: "calendar_unavailable" };
+  }
+  if (!withinBookingPeriod(date, bookingPeriod)) {
+    return { date, available: false, reason: "outside_booking_period" };
   }
   if (activeVisitDates.has(date)) {
     return { date, available: false, reason: "existing_visit" };

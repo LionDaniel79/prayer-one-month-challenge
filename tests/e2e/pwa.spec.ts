@@ -8,6 +8,8 @@ test.describe("mobile and PWA shell", () => {
     await expect(page.getByRole("heading", { name: "56공동체" })).toBeVisible();
     await expect(page.getByLabel("이름 (아이디)")).toBeVisible();
     await expect(page.getByLabel("비밀번호")).toBeVisible();
+    await expect(page.locator('meta[name="apple-mobile-web-app-title"]')).toHaveAttribute("content", "56사랑");
+    await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveAttribute("href", "/icons/56-heart-apple-180.png");
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
     expect(overflow).toBe(false);
   });
@@ -20,9 +22,10 @@ test.describe("mobile and PWA shell", () => {
     expect(body.display).toBe("standalone");
 
     for (const path of [
-      "/icons/56-love-192.png",
-      "/icons/56-love-512.png",
-      "/icons/56-love-maskable-512.png",
+      "/icons/56-heart-192.png",
+      "/icons/56-heart-512.png",
+      "/icons/56-heart-maskable-512.png",
+      "/icons/56-heart-apple-180.png",
     ]) {
       const response = await request.get(path);
       expect(response.ok()).toBe(true);

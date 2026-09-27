@@ -1,11 +1,9 @@
-import { SamLeaderSettings } from "../../../components/admin/settings/SamLeaderSettings";
 import {
   requireGoogleCalendarConfig,
   requireWebPushConfig,
 } from "../../../src/lib/env";
 import { GoogleCalendarSettings } from "../../../components/admin/settings/GoogleCalendarSettings";
 import { PushSettingsStatus } from "../../../components/admin/settings/PushSettingsStatus";
-import { VisitAvailabilitySettings } from "../../../components/admin/settings/VisitAvailabilitySettings";
 
 function hasConfig(check: () => unknown) {
   try {
@@ -26,12 +24,10 @@ export default function AdminSettingsPage() {
         <section className="admin-page-heading">
           <p className="eyebrow">운영 설정</p>
           <h1>설정</h1>
-          <p>심방 일정 연동과 신청 가능일, 공지 알림 상태를 관리합니다.</p>
+          <p>Google Calendar 연동과 서버 알림 상태를 관리합니다.</p>
         </section>
 
         <GoogleCalendarSettings configured={googleConfigured} />
-        <VisitAvailabilitySettings />
-        <SamLeaderSettings />
         <PushSettingsStatus configured={pushConfigured} />
       </div>
     </main>

@@ -10,6 +10,7 @@ import {
 
 function repo(overrides: Partial<VisitRepository> = {}): VisitRepository {
   return {
+    async getBookingPeriod() { return { startDate: null, endDate: null }; },
     async listBlockedDates() { return []; },
     async listEnabledDates() { return []; },
     async listBlockedWeekdays() { return []; },

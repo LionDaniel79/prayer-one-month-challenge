@@ -19,6 +19,7 @@ export type CalendarEventLike = {
 };
 
 export type VisitUnavailableReason =
+  | "outside_booking_period"
   | "past_date"
   | "calendar_unavailable"
   | "google_event"

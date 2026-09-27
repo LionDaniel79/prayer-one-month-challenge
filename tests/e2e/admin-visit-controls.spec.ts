@@ -10,7 +10,7 @@ test.describe("administrative visit controls", () => {
   test("specific dates can be enabled, disabled, and reset at mobile width", async ({ page }) => {
     await login(page, "admin");
     await page.setViewportSize({ width: 360, height: 800 });
-    await page.goto("/admin/settings");
+    await page.goto("/admin/visits");
     const settings = page.locator("section").filter({ has: page.getByRole("heading", { name: "심방 신청 가능일", exact: true }) });
     const date = "2099-10-04";
     await settings.getByLabel("날짜", { exact: true }).fill(date);
@@ -34,7 +34,7 @@ test.describe("administrative visit controls", () => {
     XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([
       ["마을", "마을장", "샘", "샘리더"], ["", "사용하지않음", "검증샘", "검증리더A 집사"],
     ]), "리더");
-    await page.goto("/admin/settings");
+    await page.goto("/admin/users");
     await page.getByLabel("샘 리더 엑셀 파일").setInputFiles({ name: "leaders.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer: XLSX.write(workbook, { type: "buffer", bookType: "xlsx" }) });
     await page.getByRole("button", { name: "가져오기", exact: true }).click();
     await expect(page.getByRole("status")).toContainText("1개 샘");

@@ -34,6 +34,7 @@ function weekday(date: string): number {
 }
 
 const unavailableLabel: Record<string, string> = {
+  outside_booking_period: "신청 기간 밖",
   past_date: "지난 날짜",
   calendar_unavailable: "일정 확인 불가",
   google_event: "기존 일정 있음",

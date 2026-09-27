@@ -2,6 +2,7 @@
 
 import { fetchJson } from "../../../src/lib/fetch-json";
 import { useEffect, useState } from "react";
+import { VisitBookingPeriodSettings } from "../visits/VisitBookingPeriodSettings";
 
 type BlockedDate = {
   visitDate: string;
@@ -164,6 +165,7 @@ export function VisitAvailabilitySettings() {
       </div>
 
       <div className="admin-setting-stack">
+        <VisitBookingPeriodSettings />
         <fieldset className="weekday-setting">
           <legend>반복 비활성 요일</legend>
           <div className="weekday-setting-options">

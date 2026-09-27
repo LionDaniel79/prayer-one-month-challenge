@@ -212,18 +212,19 @@ export function AdminUserManagement({ initial }: { initial: AdminRosterPage }) {
         <form className="roster-import-form" onSubmit={submitImport}>
           <div>
             <strong>56공동체 명단 가져오기</strong>
-            <p className="helper-text">구형 .xls 파일만 허용합니다. 기존 기도기록은 유지됩니다.</p>
+            <p className="helper-text">.xls 또는 .xlsx 파일을 가져옵니다. 예제의 이름 · 교회직분 · 핸드폰 · 마을 · 샘 열을 유지하고, 현재 관리자도 명단에 포함해 주세요. 기존 기도기록은 유지됩니다.</p>
+            <a className="text-button" href="/templates/community-roster-example.xlsx" download="56공동체-명단-예제.xlsx">56공동체 명단 엑셀 예제 다운로드</a>
           </div>
           <input
             name="file"
             type="file"
-            accept=".xls,application/vnd.ms-excel"
-            aria-label="56공동체 XLS 파일"
+            accept=".xls,.xlsx,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            aria-label="56공동체 엑셀 파일"
             required
             disabled={importBusy}
           />
           <button className="text-button" type="submit" disabled={importBusy}>
-            {importBusy ? "가져오는 중..." : "XLS 가져오기"}
+            {importBusy ? "가져오는 중..." : "명단 가져오기"}
           </button>
         </form>
         {importMessage && <p className="success-text" role="status">{importMessage}</p>}

@@ -10,6 +10,7 @@ import {
 import { DomainError } from "../../lib/http";
 import { requesterSam, requesterSamJoin, requesterSamLabel } from "./requester-identity";
 import { withDeadline } from "../../lib/deadline";
+import { getBookingPeriod, withinBookingPeriod, type BookingPeriod } from "./booking-period";
 import { addDays, todayInSeoul } from "../challenge/date";
 import type {
   CalendarProvider,
@@ -40,6 +41,7 @@ export type NewVisit = SubmitVisitInput & {
 };
 
 export type VisitRepository = {
+  getBookingPeriod(): Promise<BookingPeriod>;
   listBlockedDates(startDate: string, endDateExclusive: string): Promise<string[]>;
   listEnabledDates(startDate: string, endDateExclusive: string): Promise<string[]>;
   listBlockedWeekdays(): Promise<number[]>;
@@ -98,6 +100,7 @@ function seoulDayBounds(date: string) {
 }
 
 export const dbVisitRepository: VisitRepository = {
+  getBookingPeriod,
   async listBlockedDates(startDate, endDateExclusive) {
     const rows = await getDb()
       .select({ date: visitBlockedDates.visitDate })
@@ -254,6 +257,7 @@ export async function getMonthAvailability(
       repository.listBlockedWeekdays(),
       repository.listActiveVisitDates(startDate, endDateExclusive),
       repository.listEnabledDates(startDate, endDateExclusive),
+      repository.getBookingPeriod(),
     ]), 8_000);
   } catch {
     return dates.map((date) => ({
@@ -263,7 +267,7 @@ export async function getMonthAvailability(
     }));
   }
 
-  const [events, blocked, weekdays, active, enabled] = inputs;
+  const [events, blocked, weekdays, active, enabled, bookingPeriod] = inputs;
   const enabledDates = new Set(enabled);
   const blockedDates = new Set(blocked);
   const blockedWeekdays = new Set(weekdays);
@@ -285,6 +289,7 @@ export async function getMonthAvailability(
       blockedWeekdays,
       activeVisitDates,
       enabledDates,
+      bookingPeriod,
     }),
   );
 }
@@ -297,6 +302,9 @@ export async function submitVisitRequest(
 ): Promise<{ id: string }> {
   if (input.visitDate < today) {
     throw new DomainError("VISIT_DATE_UNAVAILABLE", 409);
+  }
+  if (!withinBookingPeriod(input.visitDate, await repository.getBookingPeriod())) {
+    throw new DomainError("VISIT_OUTSIDE_BOOKING_PERIOD", 409);
   }
   const dateEnabled = await repository.isDateEnabled(input.visitDate);
   if (!dateEnabled && await repository.isDateBlocked(input.visitDate)) {

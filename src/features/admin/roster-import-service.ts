@@ -15,7 +15,7 @@ export function validateRosterUploadMeta({
   name: string;
   size: number;
 }): void {
-  if (!name.toLocaleLowerCase("en-US").endsWith(".xls")) {
+  if (!/\.xlsx?$/i.test(name)) {
     throw new DomainError("ROSTER_FILE_TYPE", 400);
   }
   if (size <= 0 || size > MAX_ROSTER_FILE_BYTES) {

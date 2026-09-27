@@ -24,6 +24,7 @@ function provider(overrides: Partial<CalendarProvider> = {}): CalendarProvider {
 
 function repository(overrides: Partial<VisitRepository> = {}): VisitRepository {
   return {
+    async getBookingPeriod() { return { startDate: null, endDate: null }; },
     async listBlockedDates() { return []; },
     async listEnabledDates() { return []; },
     async listBlockedWeekdays() { return []; },
@@ -46,6 +47,31 @@ function repository(overrides: Partial<VisitRepository> = {}): VisitRepository {
 
 describe("visit booking service", () => {
   afterEach(() => vi.useRealTimers());
+
+  it("limits availability to the inclusive booking period, including enabled dates", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-27T03:00:00Z"));
+    const dates = await getMonthAvailability("2026-10", provider(), repository({
+      async getBookingPeriod() { return { startDate: "2026-10-02", endDate: "2026-10-30" }; },
+      async listEnabledDates() { return ["2026-10-01", "2026-10-31"]; },
+    }));
+    expect(dates[0]).toMatchObject({ available: false, reason: "outside_booking_period" });
+    expect(dates[1].available).toBe(true);
+    expect(dates[29].available).toBe(true);
+    expect(dates[30]).toMatchObject({ available: false, reason: "outside_booking_period" });
+  });
+
+  it.each(["2026-09-30", "2026-12-01"])("rejects %s outside the booking period before Google or writes", async (visitDate) => {
+    const listEvents = vi.fn(async () => []);
+    const createPending = vi.fn(async () => ({ id: "v1", status: "requested" as const }));
+    await expect(submitVisitRequest({ requesterUserId: "u1", visitDate, visitType: "personal", attendees: "", location: "", preferredTime: "", reason: "" },
+      provider({ listEvents }), repository({
+        async getBookingPeriod() { return { startDate: "2026-10-01", endDate: "2026-11-30" }; },
+        async isDateEnabled() { return true; }, createPending,
+      }), "2026-09-01")).rejects.toMatchObject({ code: "VISIT_OUTSIDE_BOOKING_PERIOD", status: 409 });
+    expect(listEvents).not.toHaveBeenCalled();
+    expect(createPending).not.toHaveBeenCalled();
+  });
 
   it("loads independent availability inputs together", async () => {
     let release!: (value: []) => void;

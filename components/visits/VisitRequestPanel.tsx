@@ -46,7 +46,9 @@ export function VisitRequestPanel({
     } catch (cause) {
       const code = cause instanceof Error ? cause.message : "";
       setMessage(
-        code === "VISIT_ALREADY_EXISTS" || code === "VISIT_DATE_UNAVAILABLE"
+        code === "VISIT_OUTSIDE_BOOKING_PERIOD"
+          ? "신청 가능한 기간이 변경되었습니다. 달력에서 다른 날짜를 선택해 주세요."
+          : code === "VISIT_ALREADY_EXISTS" || code === "VISIT_DATE_UNAVAILABLE"
           ? "방금 다른 일정이 등록되었습니다. 다른 날짜를 선택해 주세요."
           : code === "CALENDAR_NOT_CONNECTED" || code === "CALENDAR_NOT_SELECTED"
             ? "관리자가 Google Calendar를 연결한 뒤 신청할 수 있습니다."

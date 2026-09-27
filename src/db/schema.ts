@@ -14,6 +14,12 @@ import {
 import { sql } from "drizzle-orm";
 
 export const appSchema = pgSchema("prayer_app");
+export const visitBookingSettings = appSchema.table("visit_booking_settings", {
+  id: integer("id").primaryKey(),
+  startDate: date("start_date"),
+  endDate: date("end_date"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
 export const roleEnum = appSchema.enum("prayer_role", ["member", "admin"]);
 
 export const challenges = appSchema.table(

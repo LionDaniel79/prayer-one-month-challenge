@@ -1,5 +1,6 @@
 import type { VisitStatus } from "../../../src/features/visits/types";
 import { AdminVisitManagement } from "../../../components/admin/visits/AdminVisitManagement";
+import { VisitAvailabilitySettings } from "../../../components/admin/settings/VisitAvailabilitySettings";
 
 function parseStatus(value: unknown): "all" | VisitStatus {
   return value === "requested" ||
@@ -21,6 +22,7 @@ export default async function AdminVisitsPage({
   return (
     <main className="admin-shell">
       <AdminVisitManagement initialStatus={parseStatus(rawStatus)} />
+      <VisitAvailabilitySettings />
     </main>
   );
 }
