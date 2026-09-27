@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { fetchJson } from "../../src/lib/fetch-json";
 
 export function VisitRequestPanel({
   visitDate,
@@ -28,7 +29,7 @@ export function VisitRequestPanel({
     setBusy(true);
     setMessage("");
     try {
-      const response = await fetch("/api/visits", {
+      await fetchJson<{ id: string }>("/api/visits", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -40,22 +41,19 @@ export function VisitRequestPanel({
           reason,
         }),
       });
-      const body = await response.json().catch(() => ({}));
-
-      if (!response.ok) {
-        const code = body.code ?? "VISIT_REQUEST_FAILED";
-        setMessage(
-          code === "VISIT_ALREADY_EXISTS" || code === "VISIT_DATE_UNAVAILABLE"
-            ? "방금 다른 일정이 등록되었습니다. 다른 날짜를 선택해 주세요."
-            : code === "CALENDAR_NOT_CONNECTED"
-              ? "관리자가 Google Calendar를 연결한 뒤 신청할 수 있습니다."
-              : "신청을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.",
-        );
-        return;
-      }
-
       setMessage("심방 신청이 전달되었습니다.");
       onSuccess();
+    } catch (cause) {
+      const code = cause instanceof Error ? cause.message : "";
+      setMessage(
+        code === "VISIT_ALREADY_EXISTS" || code === "VISIT_DATE_UNAVAILABLE"
+          ? "방금 다른 일정이 등록되었습니다. 다른 날짜를 선택해 주세요."
+          : code === "CALENDAR_NOT_CONNECTED" || code === "CALENDAR_NOT_SELECTED"
+            ? "관리자가 Google Calendar를 연결한 뒤 신청할 수 있습니다."
+            : cause instanceof Error && cause.name === "TimeoutError"
+              ? "응답이 지연되어 신청 결과를 확인하지 못했습니다. 달력을 다시 확인해 주세요."
+              : "신청을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      );
     } finally {
       setBusy(false);
     }
@@ -109,9 +107,9 @@ export function VisitRequestPanel({
         </label>
 
         <label>
-          참석자 명단
+          참석자 명단 (선택)
           <textarea
-            required
+            maxLength={3000}
             value={attendees}
             onChange={(event) => setAttendees(event.target.value)}
             placeholder="함께 참석하는 분의 이름을 적어주세요."
@@ -119,9 +117,9 @@ export function VisitRequestPanel({
         </label>
 
         <label>
-          장소
+          장소 (선택)
           <input
-            required
+            maxLength={500}
             value={location}
             onChange={(event) => setLocation(event.target.value)}
             placeholder="예: 가정, 교회, 카페"
@@ -129,9 +127,9 @@ export function VisitRequestPanel({
         </label>
 
         <label>
-          희망 시간
+          희망 시간 (선택)
           <input
-            required
+            maxLength={200}
             value={preferredTime}
             onChange={(event) => setPreferredTime(event.target.value)}
             placeholder="예: 오후 3시 이후"
@@ -139,15 +137,16 @@ export function VisitRequestPanel({
         </label>
 
         <label>
-          심방 요청 이유
+          심방 요청 이유 (선택)
           <textarea
-            required
+            maxLength={10000}
             value={reason}
             onChange={(event) => setReason(event.target.value)}
             placeholder="심방을 요청하는 이유를 자유롭게 적어주세요."
           />
         </label>
 
+        <p className="helper-text">항목을 입력하지 않아도 신청할 수 있습니다.</p>
         <p className="visit-confirmation-copy">
           신청한 내용을 확인 후 유선으로 확정합니다.
         </p>
@@ -161,15 +160,9 @@ export function VisitRequestPanel({
         <button
           className="primary-button"
           type="submit"
-          disabled={
-            busy ||
-            !attendees.trim() ||
-            !location.trim() ||
-            !preferredTime.trim() ||
-            !reason.trim()
-          }
+          disabled={busy}
         >
-          {busy ? "신청 중…" : "확정"}
+          {busy ? "신청 중…" : "신청"}
         </button>
       </form>
     </aside>

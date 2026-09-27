@@ -12,10 +12,10 @@ import { DomainError } from "../../../../../src/lib/http";
 
 const VisitPatch = z.object({
   visitType: z.enum(["personal", "sam"]).optional(),
-  attendees: z.string().trim().min(1).max(3000).optional(),
-  location: z.string().trim().min(1).max(500).optional(),
-  preferredTime: z.string().trim().min(1).max(200).optional(),
-  reason: z.string().trim().min(1).max(10000).optional(),
+  attendees: z.string().trim().max(3000).optional(),
+  location: z.string().trim().max(500).optional(),
+  preferredTime: z.string().trim().max(200).optional(),
+  reason: z.string().trim().max(10000).optional(),
 }).refine((value) => Object.keys(value).length > 0, {
   message: "EMPTY_PATCH",
 });

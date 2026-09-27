@@ -12,7 +12,7 @@ describe("visit member UI", () => {
       "희망 시간",
       "심방 요청 이유",
       "신청한 내용을 확인 후 유선으로 확정합니다.",
-      "확정",
+      "신청",
     ]) {
       expect(source).toContain(copy);
     }

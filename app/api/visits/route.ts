@@ -6,12 +6,12 @@ import { getSelectedCalendarProvider } from "../../../src/features/visits/provid
 import { submitVisitRequest } from "../../../src/features/visits/service";
 
 const VisitInput = z.object({
-  visitDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  visitDate: z.iso.date(),
   visitType: z.enum(["personal", "sam"]),
-  attendees: z.string().trim().min(1).max(3000),
-  location: z.string().trim().min(1).max(500),
-  preferredTime: z.string().trim().min(1).max(200),
-  reason: z.string().trim().min(1).max(10000),
+  attendees: z.string().trim().max(3000).default(""),
+  location: z.string().trim().max(500).default(""),
+  preferredTime: z.string().trim().max(200).default(""),
+  reason: z.string().trim().max(10000).default(""),
 });
 
 export async function POST(request: Request) {
