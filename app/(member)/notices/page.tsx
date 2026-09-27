@@ -12,7 +12,6 @@ export default async function NoticesPage() {
   return (
     <main className="shell">
       <section className="feature-heading">
-        <p className="eyebrow">공동체 소식</p>
         <h2>공지</h2>
         <p>56공동체의 새로운 소식과 안내를 확인하세요.</p>
       </section>

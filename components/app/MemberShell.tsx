@@ -58,7 +58,7 @@ export function MemberShell({
           </button>
           <div>
             <h1>56공동체</h1>
-            <p>성령이 하나 되게 하신 것을 힘써 지키라(엡 4:3)</p>
+            <p className="community-verse">성령이 하나 되게 하신 것을 힘써 지키라(엡 4:3)</p>
           </div>
         </header>
         <div className="community-content">{children}</div>

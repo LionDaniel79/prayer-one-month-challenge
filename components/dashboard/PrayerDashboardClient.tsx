@@ -91,7 +91,6 @@ export function PrayerDashboardClient({ initial }: { initial: MemberDashboard })
   return (
     <>
       <section className="feature-heading">
-        <p className="eyebrow">{dashboard.user.samLabel ?? "샘 미지정"}</p>
         <h2>{dashboard.challenge.title}</h2>
         <p>
           <strong>{dashboard.user.displayName}</strong>

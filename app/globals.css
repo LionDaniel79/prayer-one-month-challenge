@@ -249,6 +249,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 }
 .community-main { min-width: 0; }
 .community-header {
+  position: relative;
   min-height: 150px;
   padding: 34px clamp(20px, 5vw, 64px);
   display: flex;
@@ -312,11 +313,50 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
     border: 0;
     background: rgba(15,23,42,.4);
   }
-  .community-menu-button { display: inline-grid; place-items: center; }
-  .community-header { min-height: 128px; padding: 26px 64px; }
+  .community-menu-button { display: inline-grid; place-items: center; top: 8px; left: 12px; }
+  .community-header { min-height: 0; padding: 8px 12px 12px; }
+  .community-header > div { width: 100%; min-width: 0; }
+  .community-header h1 {
+    display: grid;
+    place-items: center;
+    min-height: 44px;
+    margin: 0 48px 4px;
+    font-size: 1.75rem;
+    line-height: 1.25;
+  }
+  .community-verse,
+  .community-header .community-verse {
+    white-space: nowrap;
+    font-size: clamp(.75rem, 3.5vw, .875rem);
+    line-height: 1.4;
+    letter-spacing: -.015em;
+  }
   .community-content > .shell {
     width: min(100% - 20px, 1080px);
-    padding-top: 20px;
+    padding-top: 12px;
+  }
+  .community-content .feature-heading { margin-bottom: 12px; }
+  .community-content .feature-heading h2 { margin: 0; font-size: 1.5rem; line-height: 1.3; }
+  .community-content .feature-heading > p { margin: 6px 0 0; font-size: .95rem; line-height: 1.45; }
+  .community-content .progress-card { padding: 12px 14px; gap: 12px; margin-bottom: 12px; }
+  .community-content .progress-card .eyebrow { margin: 0 0 5px; font-size: .875rem; }
+  .community-content .progress-percent { font-size: 2rem; }
+  .community-content .progress-copy { gap: 4px; }
+  .community-content .progress-copy span { font-size: .75rem; }
+  .community-content .calendar-card .helper-text { margin-bottom: 0; line-height: 1.45; }
+  .community-content .visit-calendar-card { padding: 12px; }
+  .community-content .visit-calendar-toolbar { margin-bottom: 8px; }
+  .community-content .visit-day { min-height: 44px; }
+  .community-content .visit-calendar-legend { margin-top: 12px; }
+  .community-content .prayer-request-form { padding: 16px; gap: 12px; }
+  .community-content .prayer-request-guidance { font-size: .95rem; line-height: 1.45; }
+  .community-content .prayer-request-actions {
+    display: flex;
+    justify-content: space-between;
+  }
+  .community-content .prayer-request-actions .primary-button {
+    width: auto;
+    min-width: 100px;
   }
 }
 

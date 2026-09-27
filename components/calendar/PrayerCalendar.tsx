@@ -89,7 +89,7 @@ export function PrayerCalendar({
       </div>
       <p className="helper-text">
         오늘과 어제 날짜를 눌러 기도 완료를 체크·취소할 수 있습니다.
-        {" "}일요일은 체크하지 않습니다. (한국 시간 기준)
+        {" "}일요일은 체크하지 않습니다.
       </p>
     </section>
   );
