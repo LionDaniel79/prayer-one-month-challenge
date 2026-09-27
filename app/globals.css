@@ -327,6 +327,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   font-weight: 800;
   line-height: 1;
 }
+.community-menu-button .nav-badge { position: absolute; top: -7px; right: -7px; }
 .notice-list {
   padding: 0;
   overflow: hidden;

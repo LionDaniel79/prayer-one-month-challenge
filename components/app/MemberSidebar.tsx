@@ -16,7 +16,7 @@ function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function MemberSidebar({ onNavigate }: { onNavigate?: () => void }) {
+export function MemberSidebar({ onNavigate, unreadCount }: { onNavigate?: () => void; unreadCount: number }) {
   const pathname = usePathname();
 
   return (
@@ -33,7 +33,7 @@ export function MemberSidebar({ onNavigate }: { onNavigate?: () => void }) {
           >
             <span className="member-nav-icon" aria-hidden="true">{item.icon}</span>
             <span>{item.label}</span>
-            {item.href === "/notices" && <UnreadNoticeBadge />}
+            {item.href === "/notices" && <UnreadNoticeBadge count={unreadCount} />}
           </Link>
         );
       })}

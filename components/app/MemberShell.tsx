@@ -5,6 +5,7 @@ import { useState } from "react";
 import type { SessionUser } from "../../src/features/auth/session";
 import { LogoutButton } from "../auth/LogoutButton";
 import { MemberSidebar } from "./MemberSidebar";
+import { UnreadNoticeBadge, useUnreadNoticeCount } from "../notices/UnreadNoticeBadge";
 
 export function MemberShell({
   user,
@@ -14,16 +15,17 @@ export function MemberShell({
   children: React.ReactNode;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const unreadCount = useUnreadNoticeCount();
 
   return (
     <div className="community-app">
       <aside className={`community-sidebar${menuOpen ? " is-open" : ""}`}>
         <div className="sidebar-brand">
-          <img src="/icons/56-love-192.png" alt="" width={44} height={44} />
+          <img src="/icons/56-heart-192.png" alt="" width={44} height={44} />
           <strong>56사랑</strong>
         </div>
 
-        <MemberSidebar onNavigate={() => setMenuOpen(false)} />
+        <MemberSidebar unreadCount={unreadCount} onNavigate={() => setMenuOpen(false)} />
 
         <div className="sidebar-footer">
           <Link href="/profile" onClick={() => setMenuOpen(false)}>내 정보</Link>
@@ -52,6 +54,7 @@ export function MemberShell({
             onClick={() => setMenuOpen((value) => !value)}
           >
             ☰
+            <UnreadNoticeBadge count={unreadCount} />
           </button>
           <div>
             <h1>56공동체</h1>

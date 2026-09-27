@@ -30,6 +30,7 @@ export function NoticeList({
         <Link
           className={notice.isUnread ? "notice-list-row is-unread" : "notice-list-row"}
           href={`/notices/${notice.id}`}
+          prefetch={false}
           key={notice.id}
         >
           <span className="notice-title-line">
