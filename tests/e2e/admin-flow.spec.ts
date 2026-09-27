@@ -19,7 +19,10 @@ test.describe("database-backed administrator flows", () => {
       await expect(page.getByRole("heading", { name: heading, exact: true })).toBeVisible();
       await expectNoOverflow(page);
       if (path === "/admin/prayer") await expect(page.getByRole("heading", { name: "참여자 명단" })).toBeVisible();
-      if (path === "/admin/users") await expect(page.getByLabel("허용 명단 검색")).toBeVisible();
+      if (path === "/admin/users") {
+        await page.locator("summary", { hasText: "사용자 명단" }).click();
+        await expect(page.getByLabel("허용 명단 검색")).toBeVisible();
+      }
     }
     await page.goto("/admin");
     await expect(page.getByRole("heading", { name: "대시보드", exact: true })).toBeVisible();

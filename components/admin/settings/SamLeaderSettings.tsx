@@ -4,8 +4,10 @@ import { fetchJson } from "../../../src/lib/fetch-json";
 import { useEffect, useState, type FormEvent } from "react";
 import type { AdminSamLeader } from "../../../src/features/sams/admin-service";
 
+const MAX_SELECTED_LEADERS = 500;
+
 async function readJson(url: string, init?: RequestInit) {
-  return fetchJson<{ rows?: AdminSamLeader[]; summary: { imported: number } }>(url, { cache: "no-store", ...init });
+  return fetchJson<{ rows?: AdminSamLeader[]; summary: { imported: number }; deleted: number }>(url, { cache: "no-store", ...init });
 }
 
 function errorCopy(code: string): string {
@@ -19,6 +21,7 @@ function errorCopy(code: string): string {
     SAM_LEADER_FILE_EMPTY: "파일에 가져올 샘 리더 정보가 없습니다.",
     SAM_LEADER_DUPLICATE: "같은 샘이 중복되어 있습니다. 샘 이름을 확인해 주세요.",
     INVALID_INPUT: "샘과 리더 이름을 확인해 주세요.",
+    SAM_LEADER_DELETE_FAILED: "샘 리더를 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.",
   };
   return messages[code] ?? "샘 리더 정보를 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.";
 }
@@ -30,6 +33,9 @@ export function SamLeaderSettings() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [editing, setEditing] = useState<AdminSamLeader | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const selectableRows = rows.slice(0, MAX_SELECTED_LEADERS);
+  const allSelected = selectableRows.length > 0 && selectableRows.every((row) => selectedIds.has(row.id));
 
   useEffect(() => {
     let cancelled = false;
@@ -43,6 +49,42 @@ export function SamLeaderSettings() {
   async function refresh() {
     const body = await readJson("/api/admin/sams");
     setRows(body.rows ?? []);
+    setSelectedIds(new Set());
+  }
+
+  function toggle(id: string, checked: boolean) {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (checked) {
+        if (next.size >= MAX_SELECTED_LEADERS) return current;
+        next.add(id);
+      } else next.delete(id);
+      return next;
+    });
+  }
+
+  async function deleteSelected() {
+    const ids = [...selectedIds];
+    if (busy || ids.length === 0) return;
+    if (!window.confirm(`선택한 ${ids.length}개 샘의 리더 정보를 삭제할까요? 성도 명단과 소속 샘은 유지됩니다.`)) return;
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      const body = await readJson("/api/admin/sams", {
+        method: "DELETE",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ids }),
+      });
+      setRows((current) => current.filter((row) => !selectedIds.has(row.id)));
+      setSelectedIds(new Set());
+      if (editing && selectedIds.has(editing.id)) setEditing(null);
+      setMessage(`${body.deleted}개 샘의 리더 정보를 삭제했습니다.`);
+    } catch (cause) {
+      setError(errorCopy(cause instanceof Error ? cause.message : ""));
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function upload(event: FormEvent<HTMLFormElement>) {
@@ -108,17 +150,32 @@ export function SamLeaderSettings() {
         <button type="submit" className="text-button" disabled={busy || loading}>가져오기</button>
       </form>
 
-      <details>
+      <details className="roster-disclosure">
         <summary>등록된 샘 리더 {rows.length}개 확인</summary>
         {loading ? <p className="helper-text">불러오는 중...</p> : rows.length === 0 ? <p className="helper-text">등록된 샘 리더가 없습니다.</p> : (
-          <ul>
+          <>
+          <div className="roster-selection-actions">
+            <label className="checkbox-row">
+              <input type="checkbox" checked={allSelected} disabled={busy} onChange={(event) => setSelectedIds(event.target.checked ? new Set(selectableRows.map((row) => row.id)) : new Set())} />
+              {rows.length > MAX_SELECTED_LEADERS ? "샘 리더 500개 선택" : "샘 리더 전체 선택"}
+            </label>
+            <button type="button" className="text-button danger-button" disabled={busy || selectedIds.size === 0} onClick={() => void deleteSelected()}>
+              선택 삭제{selectedIds.size > 0 ? ` (${selectedIds.size})` : ""}
+            </button>
+          </div>
+          {rows.length > MAX_SELECTED_LEADERS && <p className="helper-text">한 번에 최대 500개까지 선택할 수 있습니다. 삭제 후 나머지를 선택해 주세요.</p>}
+          <ul className="sam-leader-list">
             {rows.map((row) => (
               <li key={row.id}>
-                <strong>{row.name}샘</strong> · {row.leaderName}{row.isActive ? "" : " · 비활성"}{" "}
+                <label className="checkbox-row">
+                  <input type="checkbox" checked={selectedIds.has(row.id)} disabled={busy || (selectedIds.size >= MAX_SELECTED_LEADERS && !selectedIds.has(row.id))} onChange={(event) => toggle(row.id, event.target.checked)} aria-label={`${row.name}샘 리더 선택`} />
+                  <span><strong>{row.name}샘</strong> · {row.leaderName}{row.isActive ? "" : " · 비활성"}</span>
+                </label>
                 <button type="button" className="text-button" disabled={busy} onClick={() => setEditing(row)} aria-label={`${row.name}샘 리더 수정`}>수정</button>
               </li>
             ))}
           </ul>
+          </>
         )}
       </details>
 

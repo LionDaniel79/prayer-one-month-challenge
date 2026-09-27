@@ -69,6 +69,23 @@ describe("Google Calendar provider", () => {
       expect(JSON.stringify(call.args)).not.toContain("심방 유형:");
     }
   });
+  it("shows an unregistered leader after deletion for new and updated events", async () => {
+    const fake = fakeCalendar();
+    const provider = new GoogleCalendarProvider(fake.client, "calendar-id");
+    const input = {
+      requesterName: "신청자", samLabel: "5-3", leaderName: "", visitDate: "2026-10-08",
+      visitType: "personal" as const, attendees: "", location: "", preferredTime: "",
+    };
+    await provider.createVisitEvent(input);
+    await provider.updateVisitEvent("event", { ...input, status: "confirmed" });
+    expect(fake.calls).toHaveLength(2);
+    for (const call of fake.calls) {
+      expect(call.args).toMatchObject({ requestBody: {
+        summary: "5-3샘 심방", description: expect.stringContaining("리더: 미등록"),
+      } });
+    }
+  });
+
   it("paginates event listing with recurring instances expanded", async () => {
     const fake = fakeCalendar();
     const provider = new GoogleCalendarProvider(fake.client, "calendar-id");

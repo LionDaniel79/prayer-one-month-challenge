@@ -1,4 +1,4 @@
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq, inArray, ne } from "drizzle-orm";
 import { getDb } from "../../db/client";
 import { sams } from "../../db/schema";
 import { DomainError } from "../../lib/http";
@@ -27,7 +27,17 @@ export async function listSamLeadersForAdmin(): Promise<AdminSamLeader[]> {
     name: sams.name,
     leaderName: sams.leaderName,
     isActive: sams.isActive,
-  }).from(sams).orderBy(asc(sams.name));
+  }).from(sams).where(ne(sams.leaderName, "")).orderBy(asc(sams.name));
+}
+
+export async function deleteSamLeaders(ids: string[]): Promise<number> {
+  if (ids.length === 0) return 0;
+  // Keep the sam identity: existing members can still reference it via users.sam_id.
+  // An empty leader name means no registered leader and can be filled by a later import.
+  const removed = await getDb().update(sams).set({ leaderName: "" })
+    .where(and(inArray(sams.id, [...new Set(ids)]), ne(sams.leaderName, "")))
+    .returning({ id: sams.id });
+  return removed.length;
 }
 
 export const dbSamLeaderRepository: SamLeaderRepository = {

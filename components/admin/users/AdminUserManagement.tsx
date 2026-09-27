@@ -192,14 +192,6 @@ export function AdminUserManagement({ initial }: { initial: AdminRosterPage }) {
           <p>공동체 명단, 참여 여부, 관리자 권한과 비밀번호를 관리합니다.</p>
         </section>
         <div className="header-actions">
-          <button
-            className="text-button danger-button"
-            type="button"
-            disabled={selectedIds.size === 0 || busy}
-            onClick={() => void deleteSelected()}
-          >
-            삭제{selectedIds.size > 0 ? " (" + selectedIds.size + ")" : ""}
-          </button>
           <button className="primary-button compact-button" type="button" onClick={openCreate}>
             사용자 추가
           </button>
@@ -229,6 +221,8 @@ export function AdminUserManagement({ initial }: { initial: AdminRosterPage }) {
         </form>
         {importMessage && <p className="success-text" role="status">{importMessage}</p>}
 
+        <details className="roster-disclosure">
+        <summary>사용자 명단 · 현재 {rows.length}명 표시</summary>
         <form className="admin-filters roster-filters" onSubmit={search}>
           <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="이름, 전화번호 또는 샘" aria-label="허용 명단 검색" />
           <select value={participation} onChange={(event) => setParticipation(event.target.value as typeof participation)}>
@@ -238,6 +232,16 @@ export function AdminUserManagement({ initial }: { initial: AdminRosterPage }) {
           </select>
           <button className="text-button" type="submit">검색</button>
         </form>
+
+        <div className="roster-selection-actions">
+          <label className="checkbox-row">
+            <input type="checkbox" checked={allSelected} disabled={busy} onChange={(event) => toggleAll(event.target.checked)} />
+            표시된 사용자 전체 선택
+          </label>
+          <button className="text-button danger-button" type="button" disabled={selectedIds.size === 0 || busy} onClick={() => void deleteSelected()}>
+            선택 삭제{selectedIds.size > 0 ? " (" + selectedIds.size + ")" : ""}
+          </button>
+        </div>
 
         <div className="admin-table roster-table">
           <div className="admin-row admin-row-head roster-row">
@@ -266,6 +270,7 @@ export function AdminUserManagement({ initial }: { initial: AdminRosterPage }) {
         {nextOffset !== null && (
           <button className="text-button load-more-button" type="button" onClick={() => void loadRoster(false)}>더 보기</button>
         )}
+        </details>
       </section>
 
       {modalOpen && (

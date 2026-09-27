@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdmin } from "../../../../src/features/admin/service";
 import { getCurrentSessionUser } from "../../../../src/features/auth/http-session";
-import { listSamLeadersForAdmin, saveSamLeader } from "../../../../src/features/sams/admin-service";
+import { deleteSamLeaders, listSamLeadersForAdmin, saveSamLeader } from "../../../../src/features/sams/admin-service";
 import { DomainError } from "../../../../src/lib/http";
 
 const SamLeaderInput = z.object({
@@ -10,6 +10,8 @@ const SamLeaderInput = z.object({
   leaderName: z.string().trim().min(1).max(120),
   isActive: z.boolean().optional(),
 });
+
+const SamLeaderDelete = z.object({ ids: z.array(z.string().uuid()).min(1).max(500) });
 
 function errorResponse(error: unknown) {
   if (error instanceof DomainError) {
@@ -36,5 +38,18 @@ export async function PUT(request: Request) {
     return NextResponse.json({ status: "ok" });
   } catch (error) {
     return errorResponse(error);
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    requireAdmin(await getCurrentSessionUser());
+    const parsed = SamLeaderDelete.safeParse(await request.json().catch(() => null));
+    if (!parsed.success) return NextResponse.json({ code: "INVALID_INPUT" }, { status: 400 });
+    const deleted = await deleteSamLeaders([...new Set(parsed.data.ids)]);
+    return NextResponse.json({ status: "ok", deleted });
+  } catch (error) {
+    if (error instanceof DomainError) return errorResponse(error);
+    return NextResponse.json({ code: "SAM_LEADER_DELETE_FAILED" }, { status: 503 });
   }
 }
