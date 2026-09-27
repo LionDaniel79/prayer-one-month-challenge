@@ -36,6 +36,7 @@ test.describe("database-backed administrator flows", () => {
     await page.getByRole("link", { name: "기도운동 관리", exact: true }).click();
     await expect(page.getByRole("heading", { name: "기도운동 관리", exact: true })).toBeVisible();
     await expect(page.locator(".admin-hub-sidebar")).not.toHaveClass(/is-open/);
+    await expect.poll(() => page.locator(".admin-hub-sidebar").evaluate((element) => element.getBoundingClientRect().right)).toBeLessThanOrEqual(0);
     await expectNoOverflow(page);
     await page.screenshot({ path: testInfo.outputPath("admin-mobile.png"), fullPage: true });
   });

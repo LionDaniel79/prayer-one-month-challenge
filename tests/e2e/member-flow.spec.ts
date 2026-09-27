@@ -91,6 +91,7 @@ test.describe("database-backed member flows", () => {
       await page.getByRole("button", { name: "메뉴 열기", exact: true }).click();
       await page.locator(".community-sidebar").getByRole("link", { name: new RegExp("^" + label) }).click();
       await expect(page.locator(".community-sidebar")).not.toHaveClass(/is-open/);
+      await expect.poll(() => page.locator(".community-sidebar").evaluate((element) => element.getBoundingClientRect().right)).toBeLessThanOrEqual(0);
       await expectNoOverflow(page);
     }
   });
