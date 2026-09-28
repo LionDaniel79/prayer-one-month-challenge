@@ -1,0 +1,11 @@
+.community-folder-heading { display:flex; align-items:center; gap:10px; min-width:0; }
+.community-folder-heading .community-folder-symbol { flex:none; line-height:1.2; }
+.community-folder-heading strong { min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+.community-photos { display:grid; gap:18px; margin-top:20px; }
+.community-photo img { display:block; width:100%; height:auto; border-radius:12px; }
+.community-post > .community-body { line-height:28px; }
+.community-post > .community-photos + .community-body { margin-top:56px; padding-top:0; }
+.community-photo .helper-text { overflow-wrap:anywhere; }
+.community-file-row button { flex-shrink:0; }
+.community-folder-edit .community-actions { gap:8px; }
+@media(max-width:520px) { .community-folder-edit .community-actions { width:100%; } }

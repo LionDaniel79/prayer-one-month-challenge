@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - "feature/**"
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: e2e-local-only
+          POSTGRES_DB: prayer_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d prayer_e2e"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Archive the exact source under verification
+        run: git archive --format=tar.gz HEAD -o "${RUNNER_TEMP}/verification-source.tar.gz"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: verification-source-${{ github.sha }}
+          path: ${{ runner.temp }}/verification-source.tar.gz
+          retention-days: 1
+          if-no-files-found: error
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run lint
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - name: Enable TLS on the disposable database
+        run: bash scripts/ci-postgres-tls.sh
+        env:
+          PG_CONTAINER_ID: ${{ job.services.postgres.id }}
+      - name: Configure synthetic browser-test environment
+        run: |
+          echo "DATABASE_URL=postgresql://postgres:e2e-local-only@127.0.0.1:5432/prayer_e2e" >> "$GITHUB_ENV"
+          echo "SESSION_SECRET=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
+          echo "PHONE_LOOKUP_PEPPER=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
+          echo "ROSTER_ENCRYPTION_KEY=$(openssl rand -base64 32)" >> "$GITHUB_ENV"
+          echo "E2E_DATABASE_READY=1" >> "$GITHUB_ENV"
+      - run: npx tsx scripts/seed-e2e.ts
+      - run: npm test -- tests/db/connection-resilience.test.ts
+      - run: npm run test:e2e
+        env:
+          CI: "true"
+      - name: Upload browser verification artifacts
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-verification-${{ github.sha }}
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+          if-no-files-found: ignore
