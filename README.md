@@ -2,6 +2,14 @@
 
 성도를 위한 모바일 우선 PWA입니다. 회원 메뉴는 **기도운동 → 심방신청 → 기도요청 → 커뮤니티 → 공지** 순서입니다.
 
+## 다른 공동체에 새로 설치하기
+
+이 저장소는 **코드는 복사하되 기존 56공동체의 DB·회원 데이터·비밀키는 복사하지 않는 방식**으로 다른 공동체에 독립 배포할 수 있습니다.
+
+처음 설치하는 운영자는 먼저 [새 인스턴스 설치 가이드](docs/new-instance-setup.md)를 순서대로 진행하세요. 설치가 끝난 뒤에는 [출시 체크리스트](docs/new-instance-checklist.md)로 DB·로그인·커뮤니티·심방·공지까지 확인합니다.
+
+> 기존 운영 환경의 `DATABASE_URL`, `SESSION_SECRET`, `PHONE_LOOKUP_PEPPER`, 암호화 키, Google OAuth secret을 다른 운영자에게 전달하지 마세요. 새 인스턴스는 새 Supabase 프로젝트와 새 비밀값을 사용합니다.
+
 ## 주요 기능
 
 - 관리자 허용 명단 기반 이름/초기 전화번호 비밀번호 로그인, 비밀번호 변경·초기화, 180일 rolling session.
@@ -56,4 +64,4 @@ npm run test:e2e
 
 E2E는 배포용 빌드를 `next start`로 실행합니다. CI는 TLS 일회용 PostgreSQL 17에 모든 마이그레이션과 가상 명단을 넣어 로그인부터 검사합니다. DB 검사에는 원격 DB나 실제 회원을 사용하지 않습니다. 로컬 DB 없이 건너뛴 결과를 전체 검증 통과로 간주하지 않습니다.
 
-전체 운영 절차는 [운영 가이드](docs/operations.md), 이번 기능은 [설계](docs/superpowers/specs/2026-09-28-community-board-design.md) 및 [검증 기록](docs/superpowers/execution/2026-09-28-community-board.md)에 있습니다. 기존 공유 Preview에 통합 배포하며 `main` 병합 여부는 별도로 기록합니다.
+전체 운영 절차는 [운영 가이드](docs/operations.md), 다른 공동체의 신규 설치는 [새 인스턴스 설치 가이드](docs/new-instance-setup.md), 커뮤니티 기능의 설계·검증 이력은 [설계](docs/superpowers/specs/2026-09-28-community-board-design.md) 및 [검증 기록](docs/superpowers/execution/2026-09-28-community-board.md)에 있습니다.

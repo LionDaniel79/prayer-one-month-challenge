@@ -9,3 +9,4 @@ test-results/
 coverage/
 .superpowers/
 .DS_Store
+fresh-install.sql
