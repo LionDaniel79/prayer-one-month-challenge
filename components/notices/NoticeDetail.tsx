@@ -22,7 +22,15 @@ export function NoticeDetail({ notice }: { notice: MemberNoticeDetail }) {
         </div>
         <Link href="/notices" className="text-link">목록으로</Link>
       </div>
-      <div className="notice-body">{notice.body}</div>
+      <div className="notice-content">
+        {notice.image && (
+          /* The image route requires the viewer's session cookie. */
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img className="notice-image" src={notice.image.url} width={notice.image.width} height={notice.image.height}
+            alt={`${notice.title} 첨부 이미지`} />
+        )}
+        <div className="notice-body">{notice.body}</div>
+      </div>
     </article>
   );
 }

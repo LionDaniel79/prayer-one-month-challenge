@@ -1,5 +1,6 @@
 import {
   boolean,
+  customType,
   date,
   index,
   integer,
@@ -169,6 +170,16 @@ export const notices = appSchema.table(
     index("notices_status_published_idx").on(t.status, t.publishedAt),
   ],
 );
+
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({ dataType: () => "bytea" });
+
+export const noticeImages = appSchema.table("notice_images", {
+  noticeId: uuid("notice_id").primaryKey().references(() => notices.id, { onDelete: "cascade" }),
+  version: uuid("version").defaultRandom().notNull(),
+  data: bytea("data").notNull(),
+  width: integer("width").notNull(),
+  height: integer("height").notNull(),
+});
 
 export const noticeReads = appSchema.table(
   "notice_reads",

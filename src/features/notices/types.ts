@@ -9,12 +9,16 @@ export type MemberNoticeSummary = {
 
 export type MemberNoticeDetail = MemberNoticeSummary & {
   body: string;
+  image: NoticeImage | null;
 };
+
+export type NoticeImage = { url: string; width: number; height: number };
 
 export type AdminNoticeInput = {
   title: string;
   body: string;
   status: NoticeStatus;
+  image?: import("./image").NoticeImageUpload | null;
 };
 
 export type AdminNoticeRow = {
@@ -27,4 +31,5 @@ export type AdminNoticeRow = {
   updatedAt: string;
   readCount: number;
   targetActiveUsers: number;
+  image: NoticeImage | null;
 };

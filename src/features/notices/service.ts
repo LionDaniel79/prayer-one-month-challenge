@@ -1,6 +1,7 @@
 import { and, desc, eq, isNull, sql } from "drizzle-orm";
+import { randomUUID } from "node:crypto";
 import { getDb } from "../../db/client";
-import { noticeReads, notices, users } from "../../db/schema";
+import { noticeImages, noticeReads, notices, users } from "../../db/schema";
 import { DomainError } from "../../lib/http";
 import type {
   AdminNoticeInput,
@@ -8,7 +9,12 @@ import type {
   MemberNoticeDetail,
   MemberNoticeSummary,
   NoticeStatus,
+  NoticeImage,
 } from "./types";
+
+function imageSummary(id: string, version: string | null, width: number | null, height: number | null): NoticeImage | null {
+  return version && width && height ? { url: `/api/notices/${id}/image?v=${version}`, width, height } : null;
+}
 
 export function canMemberReadNotice(notice: { status: string }): boolean {
   return notice.status === "published";
@@ -37,7 +43,7 @@ export function nextNoticePublishedAt(
 
 function normalizeNoticeInput(input: AdminNoticeInput): AdminNoticeInput {
   const title = input.title.trim();
-  const body = input.body.trim();
+  const body = input.body.replace(/\r\n?/g, "\n").trim();
   if (!title || !body) throw new DomainError("INVALID_NOTICE", 400);
   if (title.length > 200) throw new DomainError("NOTICE_TITLE_TOO_LONG", 400);
   return { title, body, status: input.status };
@@ -90,10 +96,14 @@ export async function getPublishedNoticeForUser(
       id: notices.id,
       title: notices.title,
       body: notices.body,
+      imageVersion: noticeImages.version,
+      imageWidth: noticeImages.width,
+      imageHeight: noticeImages.height,
       publishedAt: notices.publishedAt,
       readAt: noticeReads.readAt,
     })
     .from(notices)
+    .leftJoin(noticeImages, eq(noticeImages.noticeId, notices.id))
     .leftJoin(
       noticeReads,
       and(
@@ -113,6 +123,7 @@ export async function getPublishedNoticeForUser(
   return {
     ...memberSummary(row),
     body: row.body,
+    image: imageSummary(row.id, row.imageVersion, row.imageWidth, row.imageHeight),
   };
 }
 
@@ -153,26 +164,30 @@ export async function createNotice(
 ) {
   const normalized = normalizeNoticeInput(input);
   const didPublish = normalized.status === "published";
-  const [created] = await getDb()
-    .insert(notices)
-    .values({
-      ...normalized,
-      authorUserId,
-      publishedAt: didPublish ? now : null,
-      updatedAt: now,
-    })
-    .returning({
-      id: notices.id,
-      title: notices.title,
-      body: notices.body,
-      status: notices.status,
-      publishedAt: notices.publishedAt,
-    });
+  return getDb().transaction(async (tx) => {
+    const [created] = await tx
+      .insert(notices)
+      .values({
+        ...normalized,
+        authorUserId,
+        publishedAt: didPublish ? now : null,
+        updatedAt: now,
+      })
+      .returning({
+        id: notices.id,
+        title: notices.title,
+        body: notices.body,
+        status: notices.status,
+        publishedAt: notices.publishedAt,
+      });
 
-  return {
-    notice: created,
-    didPublish,
-  };
+    if (input.image) await tx.insert(noticeImages).values({noticeId: created.id, ...input.image});
+
+    return {
+      notice: created,
+      didPublish,
+    };
+  });
 }
 
 export async function updateNotice(
@@ -181,49 +196,59 @@ export async function updateNotice(
   now = new Date(),
 ) {
   const normalized = normalizeNoticeInput(input);
-  const [existing] = await getDb()
-    .select({
-      status: notices.status,
-      publishedAt: notices.publishedAt,
-    })
-    .from(notices)
-    .where(eq(notices.id, id))
-    .limit(1);
+  return getDb().transaction(async (tx) => {
+    const [existing] = await tx
+      .select({
+        status: notices.status,
+        publishedAt: notices.publishedAt,
+      })
+      .from(notices)
+      .where(eq(notices.id, id))
+      .limit(1)
+      .for("update");
 
-  if (!existing) throw new DomainError("NOTICE_NOT_FOUND", 404);
+    if (!existing) throw new DomainError("NOTICE_NOT_FOUND", 404);
 
-  const transition = transitionNoticePublication(
-    existing.status as NoticeStatus,
-    normalized.status,
-  );
+    const transition = transitionNoticePublication(
+      existing.status as NoticeStatus,
+      normalized.status,
+    );
 
-  const [updated] = await getDb()
-    .update(notices)
-    .set({
-      title: normalized.title,
-      body: normalized.body,
-      status: normalized.status,
-      publishedAt: nextNoticePublishedAt(
-        existing.status as NoticeStatus,
-        normalized.status,
-        existing.publishedAt,
-        now,
-      ),
-      updatedAt: now,
-    })
-    .where(eq(notices.id, id))
-    .returning({
-      id: notices.id,
-      title: notices.title,
-      body: notices.body,
-      status: notices.status,
-      publishedAt: notices.publishedAt,
-    });
+    const [updated] = await tx
+      .update(notices)
+      .set({
+        title: normalized.title,
+        body: normalized.body,
+        status: normalized.status,
+        publishedAt: nextNoticePublishedAt(
+          existing.status as NoticeStatus,
+          normalized.status,
+          existing.publishedAt,
+          now,
+        ),
+        updatedAt: now,
+      })
+      .where(eq(notices.id, id))
+      .returning({
+        id: notices.id,
+        title: notices.title,
+        body: notices.body,
+        status: notices.status,
+        publishedAt: notices.publishedAt,
+      });
 
-  return {
-    notice: updated,
-    didPublish: transition.didPublish,
-  };
+    if (input.image === null) await tx.delete(noticeImages).where(eq(noticeImages.noticeId, id));
+    else if (input.image) {
+      const image = {...input.image, version: randomUUID()};
+      await tx.insert(noticeImages).values({noticeId: id, ...image})
+        .onConflictDoUpdate({target: noticeImages.noticeId, set: image});
+    }
+
+    return {
+      notice: updated,
+      didPublish: transition.didPublish,
+    };
+  });
 }
 
 export async function deleteNotice(id: string): Promise<void> {
@@ -245,8 +270,12 @@ export async function listNoticesForAdmin(): Promise<AdminNoticeRow[]> {
       publishedAt: notices.publishedAt,
       createdAt: notices.createdAt,
       updatedAt: notices.updatedAt,
+      imageVersion: noticeImages.version,
+      imageWidth: noticeImages.width,
+      imageHeight: noticeImages.height,
     })
     .from(notices)
+    .leftJoin(noticeImages, eq(noticeImages.noticeId, notices.id))
     .orderBy(desc(notices.createdAt));
 
   const readRows = await db
@@ -277,5 +306,14 @@ export async function listNoticesForAdmin(): Promise<AdminNoticeRow[]> {
     updatedAt: row.updatedAt.toISOString(),
     readCount: readCount.get(row.id) ?? 0,
     targetActiveUsers,
+    image: imageSummary(row.id, row.imageVersion, row.imageWidth, row.imageHeight),
   }));
+}
+
+export async function getNoticeImage(noticeId: string, isAdmin: boolean) {
+  const [image] = await getDb().select({data: noticeImages.data, version: noticeImages.version})
+    .from(noticeImages).innerJoin(notices, eq(notices.id, noticeImages.noticeId))
+    .where(and(eq(notices.id, noticeId), isAdmin ? undefined : eq(notices.status, "published")))
+    .limit(1);
+  return image ?? null;
 }
