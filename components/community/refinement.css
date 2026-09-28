@@ -4,7 +4,7 @@
 .community-photos { display:grid; gap:18px; margin-top:20px; }
 .community-photo img { display:block; width:100%; height:auto; border-radius:12px; }
 .community-post > .community-body { line-height:28px; }
-.community-photos + .community-body { margin-top:56px; padding-top:0; }
+.community-post > .community-photos + .community-body { margin-top:56px; padding-top:0; }
 .community-photo .helper-text { overflow-wrap:anywhere; }
 .community-file-row button { flex-shrink:0; }
 .community-folder-edit .community-actions { gap:8px; }

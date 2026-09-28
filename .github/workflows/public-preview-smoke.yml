@@ -15,63 +15,54 @@ concurrency:
 jobs:
   public-readiness:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 6
     steps:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Anonymous read-only checks of the existing public Preview
+      - name: Check released feature marker and private app boundaries anonymously
         run: |
           node --input-type=module <<'NODE'
           import { writeFile } from 'node:fs/promises';
-          const base = 'https://prayer-one-month-challenge-git-feature-pr-b37d82-ditto0310-2413.vercel.app';
-          const checks = [
-            { path: '/login', status: 200, kind: 'login' },
-            { path: '/api/health', status: 200, kind: 'health' },
-            { path: '/manifest.webmanifest', status: 200, kind: 'manifest' },
-            { path: '/community', status: 307, kind: 'redirect' },
-            { path: '/admin/community', status: 307, kind: 'redirect' },
-            { path: '/api/community/folders', status: 401, kind: 'private' },
+          const base='https://prayer-one-month-challenge-git-feature-pr-b37d82-ditto0310-2413.vercel.app';
+          const expectedRelease='community-refinement-20260929-v1';
+          const checks=[
+            {path:'/community-release.json',status:200,kind:'release'},
+            {path:'/login',status:200,kind:'login'},
+            {path:'/api/health',status:200,kind:'health'},
+            {path:'/manifest.webmanifest',status:200,kind:'manifest'},
+            {path:'/community',status:307,kind:'redirect'},
+            {path:'/admin/community',status:307,kind:'redirect'},
+            {path:'/api/community/folders',status:401,kind:'private'},
+            {path:'/api/community/posts/00000000-0000-4000-8000-000000000001/files/0/image',status:401,kind:'private'},
           ];
-          const result = { commit: process.env.GITHUB_SHA, checkedAt: new Date().toISOString(), authenticated: false, checks: [] };
-          let failed = false;
-          for (const check of checks) {
+          const result={workflowCommit:process.env.GITHUB_SHA,expectedRelease,checkedAt:new Date().toISOString(),authenticated:false,checks:[]};
+          let failed=false;
+          for(const check of checks){
             let row;
-            for (let attempt = 1; attempt <= 4; attempt++) {
-              try {
-                const response = await fetch(base + check.path, {
-                  redirect: 'manual',
-                  cache: 'no-store',
-                  signal: AbortSignal.timeout(10000),
-                });
-                const body = await response.text();
-                let ok = response.status === check.status;
-                const location = response.headers.get('location');
-                if (ok && check.kind === 'redirect') {
-                  const target = new URL(location ?? '', base);
-                  ok = target.origin === base && target.pathname === '/login';
+            for(let attempt=1;attempt<=8;attempt++){
+              try{
+                const response=await fetch(base+check.path,{redirect:'manual',cache:'no-store',signal:AbortSignal.timeout(10000)});
+                const body=await response.text();let ok=response.status===check.status;const location=response.headers.get('location');
+                if(ok&&check.kind==='redirect'){const target=new URL(location??'',base);ok=target.origin===base&&target.pathname==='/login';}
+                if(ok&&check.kind==='login')ok=body.includes('56공동체')&&body.includes('비밀번호');
+                if(ok&&['release','health','manifest','private'].includes(check.kind)){
+                  const data=JSON.parse(body);
+                  if(check.kind==='release')ok=data.release===expectedRelease;
+                  if(check.kind==='health')ok=data.status==='ok'&&data.database==='ok';
+                  if(check.kind==='manifest')ok=data.name==='56사랑';
+                  if(check.kind==='private')ok=data.code==='UNAUTHORIZED';
                 }
-                if (ok && check.kind === 'login') ok = body.includes('56공동체') && body.includes('비밀번호');
-                if (ok && ['health', 'manifest', 'private'].includes(check.kind)) {
-                  const data = JSON.parse(body);
-                  if (check.kind === 'health') ok = data.status === 'ok' && data.database === 'ok';
-                  if (check.kind === 'manifest') ok = data.name === '56사랑';
-                  if (check.kind === 'private') ok = data.code === 'UNAUTHORIZED';
-                }
-                row = { path: check.path, status: response.status, passed: ok, attempt };
-                // Never supply credentials, follow authentication redirects, or alter protection.
-                if (ok || response.status === 403 || (location && new URL(location, base).origin !== base)) break;
-              } catch (error) {
-                row = { path: check.path, passed: false, attempt, error: error instanceof Error ? error.name : 'UnknownError' };
-              }
-              if (attempt < 4) await new Promise(resolve => setTimeout(resolve, 15000));
+                row={path:check.path,status:response.status,passed:ok,attempt};
+                // No authentication, bypass headers or deployment-protection changes.
+                if(ok||response.status===403||(location&&new URL(location,base).origin!==base))break;
+              }catch(error){row={path:check.path,passed:false,attempt,error:error instanceof Error?error.name:'UnknownError'};}
+              if(attempt<8)await new Promise(resolve=>setTimeout(resolve,15000));
             }
-            result.checks.push(row);
-            console.log(JSON.stringify(row));
-            if (!row?.passed) failed = true;
+            result.checks.push(row);console.log(JSON.stringify(row));if(!row?.passed)failed=true;
           }
-          await writeFile('public-preview-result.json', JSON.stringify(result, null, 2));
-          if (failed) process.exitCode = 1;
+          await writeFile('public-preview-result.json',JSON.stringify(result,null,2));
+          if(failed)process.exitCode=1;
           NODE
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
