@@ -27,6 +27,7 @@ test("two exact 6MB attachments, comments and likes work through the mobile UI",
   const title="첨부와 좋아요 검증 "+randomUUID().slice(0,8);
   const files=[{name:"자료 하나.pdf",mimeType:"application/pdf",buffer:Buffer.alloc(max,65)},{name:"자료 둘.txt",mimeType:"text/plain",buffer:Buffer.alloc(max,66)}];
   const errors:string[]=[];page.on("pageerror",e=>errors.push(e.message));
+  const alert=page.locator(".community").getByRole("alert");
   try{
     await login(admin,"admin");fid=await folder(admin.request,"나눔 검증 "+randomUUID().slice(0,8));
     await page.setViewportSize({width:360,height:800});await login(page);
@@ -34,13 +35,12 @@ test("two exact 6MB attachments, comments and likes work through the mobile UI",
     await page.getByLabel("제목",{exact:true}).fill(title);await page.getByLabel("내용",{exact:true}).fill("마음을 나눕니다.\n<script>텍스트로만 표시</script>");
     const picker=page.locator('input[type="file"]');
     await picker.setInputFiles([...files,{name:"셋.txt",mimeType:"text/plain",buffer:Buffer.from("third")}]);
-    await expect(page.getByRole("alert")).toContainText("최대 2개");
+    await expect(alert).toContainText("최대 2개");
     await picker.setInputFiles({name:"초과.pdf",mimeType:"application/pdf",buffer:Buffer.alloc(max+1)});
-    await expect(page.getByRole("alert")).toContainText("6MB 이하");
+    await expect(alert).toContainText("6MB 이하");
     await picker.setInputFiles(files);await expect(page.locator(".community-file-row")).toHaveCount(2);
-    // Interrupted transfer must preserve the form and attachment selection.
     await page.route("**/api/community/posts",async route=>{if(route.request().method()==="POST")await route.fulfill({status:503,contentType:"application/json",body:'{}'});else await route.continue();});
-    await page.getByRole("button",{name:"등록",exact:true}).click();await expect(page.getByRole("alert")).toContainText("다시 시도");
+    await page.getByRole("button",{name:"등록",exact:true}).click();await expect(alert).toContainText("다시 시도");
     await expect(page.getByLabel("제목",{exact:true})).toHaveValue(title);await expect(page.locator(".community-file-row")).toHaveCount(2);
     await page.unroute("**/api/community/posts");
     await page.getByRole("button",{name:"등록",exact:true}).click();
@@ -84,10 +84,9 @@ test("likes are unique per member, retry-safe, private and cascade with posts",a
     const detail=(await (await page.request.get(`${root}/posts/${pid}`)).json()).post;
     expect(detail.liked).toBe(false);expect(detail.likeCount).toBe(1);expect(detail).not.toHaveProperty("likeUsers");
     const list=await (await page.request.get(`${root}/posts?folder=${fid}`)).json();expect(list.items[0].likeCount).toBe(1);
-    // The browser retries the same intent if the server saved but the response disappeared.
     await page.goto(`/community?post=${pid}`);
     await page.route("**/api/community/posts/*/like",async route=>{const result=await route.fetch();expect(result.ok()).toBe(true);await route.abort("failed");});
-    await page.getByRole("button",{name:"좋아요",exact:true}).click();await expect(page.getByRole("alert")).toContainText("다시 시도");
+    await page.getByRole("button",{name:"좋아요",exact:true}).click();await expect(page.locator(".community").getByRole("alert")).toContainText("다시 시도");
     await page.unroute("**/api/community/posts/*/like");await page.getByRole("button",{name:"좋아요",exact:true}).click();
     await expect(page.getByRole("button",{name:"좋아요",exact:true})).toHaveAttribute("aria-pressed","true");await expect(page.locator(".community-like-count")).toHaveText("2");
     await admin.request.delete(`${root}/posts/${pid}`);
