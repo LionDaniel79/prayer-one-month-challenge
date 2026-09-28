@@ -64,4 +64,4 @@ npm run test:e2e
 
 E2E는 배포용 빌드를 `next start`로 실행합니다. CI는 TLS 일회용 PostgreSQL 17에 모든 마이그레이션과 가상 명단을 넣어 로그인부터 검사합니다. DB 검사에는 원격 DB나 실제 회원을 사용하지 않습니다. 로컬 DB 없이 건너뛴 결과를 전체 검증 통과로 간주하지 않습니다.
 
-전체 운영 절차는 [운영 가이드](docs/operations.md), 이번 기능은 [설계](docs/superpowers/specs/2026-09-28-community-board-design.md) 및 [검증 기록](docs/superpowers/execution/2026-09-28-community-board.md)에 있습니다. 기존 공유 Preview에 통합 배포하며 `main` 병합 여부는 별도로 기록합니다.
+전체 운영 절차는 [운영 가이드](docs/operations.md), 다른 공동체의 신규 설치는 [새 인스턴스 설치 가이드](docs/new-instance-setup.md), 커뮤니티 기능의 설계·검증 이력은 [설계](docs/superpowers/specs/2026-09-28-community-board-design.md) 및 [검증 기록](docs/superpowers/execution/2026-09-28-community-board.md)에 있습니다.
