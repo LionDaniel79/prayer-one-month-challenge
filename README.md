@@ -6,7 +6,7 @@
 
 이 저장소는 **코드는 복사하되 기존 56공동체의 DB·회원 데이터·비밀키는 복사하지 않는 방식**으로 다른 공동체에 독립 배포할 수 있습니다.
 
-처음 설치하는 운영자는 먼저 [새 인스턴스 설치 가이드](docs/new-instance-setup.md)를 순서대로 진행하세요. 설치가 끝난 뒤에는 [출시 체크리스트](docs/new-instance-checklist.md)로 DB·로그인·커뮤니티·심방·공지까지 확인합니다.
+GitHub 계정도 없는 처음 사용자라면 [완전 초보자용 새 인스턴스 설치 가이드](docs/new-instance-setup.md)를 1단계부터 순서대로 진행하세요. 설치가 끝난 뒤에는 [출시 체크리스트](docs/new-instance-checklist.md)로 DB·로그인·커뮤니티·심방·공지까지 확인합니다.
 
 > 기존 운영 환경의 `DATABASE_URL`, `SESSION_SECRET`, `PHONE_LOOKUP_PEPPER`, 암호화 키, Google OAuth secret을 다른 운영자에게 전달하지 마세요. 새 인스턴스는 새 Supabase 프로젝트와 새 비밀값을 사용합니다.
 
