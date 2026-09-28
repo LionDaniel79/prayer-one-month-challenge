@@ -126,26 +126,43 @@ ROSTER_ENCRYPTION_KEY=<새 32-byte Base64 값>
 
 ## 5. 첫 관리자 계정 생성
 
-DB 마이그레이션과 필수 환경변수 설정 후 첫 관리자만 로컬 bootstrap 명령으로 만듭니다.
+DB 마이그레이션과 필수 비밀값 준비 후 첫 관리자만 bootstrap 명령으로 만듭니다.
 
-`.env.local`에 잠시 추가:
+중요: Next.js 개발 서버는 `.env.local`을 읽지만, `npm run admin:bootstrap` 스크립트는 셸의 `process.env`를 사용합니다. 따라서 bootstrap 실행 시 필요한 값을 터미널 환경변수로 명시적으로 전달합니다.
 
-```text
-BOOTSTRAP_ADMIN_NAME=관리자이름
-BOOTSTRAP_ADMIN_PHONE=01012345678
-BOOTSTRAP_SAM_NAME=관리자소속샘
-BOOTSTRAP_SAM_LEADER=샘리더이름
-```
-
-실행:
+macOS/Linux 예:
 
 ```bash
+export DATABASE_URL='<새 Supabase Transaction pooler URL>'
+export SESSION_SECRET='<새 값>'
+export PHONE_LOOKUP_PEPPER='<새 값>'
+export ROSTER_ENCRYPTION_KEY='<새 32-byte Base64 값>'
+export BOOTSTRAP_ADMIN_NAME='관리자이름'
+export BOOTSTRAP_ADMIN_PHONE='01012345678'
+export BOOTSTRAP_SAM_NAME='관리자소속샘'
+export BOOTSTRAP_SAM_LEADER='샘리더이름'
+
+npm run admin:bootstrap
+```
+
+PowerShell 예:
+
+```powershell
+$env:DATABASE_URL='<새 Supabase Transaction pooler URL>'
+$env:SESSION_SECRET='<새 값>'
+$env:PHONE_LOOKUP_PEPPER='<새 값>'
+$env:ROSTER_ENCRYPTION_KEY='<새 32-byte Base64 값>'
+$env:BOOTSTRAP_ADMIN_NAME='관리자이름'
+$env:BOOTSTRAP_ADMIN_PHONE='01012345678'
+$env:BOOTSTRAP_SAM_NAME='관리자소속샘'
+$env:BOOTSTRAP_SAM_LEADER='샘리더이름'
+
 npm run admin:bootstrap
 ```
 
 `Bootstrap administrator created.`가 나오면 성공입니다. 첫 관리자는 이름과 전화번호를 초기 비밀번호로 사용해 로그인합니다.
 
-성공 후 `BOOTSTRAP_ADMIN_*`, `BOOTSTRAP_SAM_*` 네 값은 `.env.local`에서 제거합니다. **Vercel 환경변수로 등록하지 않습니다.**
+성공 후 bootstrap 전용 네 값은 셸에서 제거하거나 터미널을 닫습니다. **Vercel 환경변수로 등록하지 않습니다.** 필수 앱 환경변수는 로컬 개발을 위해 별도로 `.env.local`에 둘 수 있습니다.
 
 이후 실제 성도 명단은 관리자 → 사용자 관리에서 XLS/XLSX로 가져옵니다. 첫 관리자 이름/전화번호도 명단에 포함시키는 것을 권장합니다.
 
