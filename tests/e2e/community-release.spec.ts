@@ -21,7 +21,7 @@ test("draft-only deletion is private, idempotent and preserves published posts",
     expect((await page.request.post(root+"/posts",{data:{id:own,folderId,title:"내 미완료 글",body:"등록 전",files:[]}})).status()).toBe(201);
     for(let i=0;i<2;i++)expect(await (await page.request.delete(`${root}/drafts/${own}`)).json()).toEqual({id:own,published:false});
     expect((await page.request.get(`${root}/posts/${own}`)).status()).toBe(404);
-  }finally{for(const id of ids)await admin.request.delete(`${root}/posts/${id}`);await context.close();}
+  }finally{for(const id of ids)await admin.request.delete(`/api/admin/community/posts/${id}`);await context.close();}
 });
 
 test("community layouts fit small phones and desktop with working likes",async({page})=>{
@@ -37,7 +37,7 @@ test("community layouts fit small phones and desktop with working likes",async({
       await page.setViewportSize({width,height:900});
       await page.goto(`/community?post=${id}`);await expect(page.locator(".community-post-title")).toBeVisible();await expect(like).toHaveAttribute("aria-pressed","true");
       await expectNoOverflow(page);await page.screenshot({path:test.info().outputPath(`community-post-${width}.png`),fullPage:true,animations:"disabled"});
-      await page.goto(`/community?folder=${folderId}`);await expect(page.locator(".community-post-row")).toContainText("함께 나누는 감사의 이야기");
+      await page.goto(`/community?folder=${folderId}`);await expect(page.locator(`.community-post-row[href="/community?post=${id}"]`)).toContainText("함께 나누는 감사의 이야기");
       await expectNoOverflow(page);await page.screenshot({path:test.info().outputPath(`community-board-${width}.png`),fullPage:true,animations:"disabled"});
     }
     await page.setViewportSize({width:360,height:800});await page.goto("/admin/community");

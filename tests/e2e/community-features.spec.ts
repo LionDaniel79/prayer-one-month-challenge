@@ -67,7 +67,7 @@ test("two exact 6MB attachments, comments and likes work through the mobile UI",
     await page.goto(`/community?folder=${fid}`);await expect(page.locator(".community-post-row")).toContainText("좋아요 0 · 댓글 1 · 첨부 2");
     await expectNoOverflow(page);await page.screenshot({path:test.info().outputPath("community-mobile-list.png"),fullPage:true});
     expect(errors).toEqual([]);
-  }finally{if(pid)await admin.request.delete(`${root}/posts/${pid}`);if(fid)await admin.request.delete(`${root}/folders/${fid}`);await adminContext.close();}
+  }finally{if(pid)await admin.request.delete(`/api/admin/community/posts/${pid}`);if(fid)await admin.request.delete(`${root}/folders/${fid}`);await adminContext.close();}
 });
 
 test("likes are unique per member, retry-safe, private and cascade with posts",async({page,browser,request})=>{
@@ -89,10 +89,10 @@ test("likes are unique per member, retry-safe, private and cascade with posts",a
     await page.getByRole("button",{name:"좋아요",exact:true}).click();await expect(page.locator(".community").getByRole("alert")).toContainText("다시 시도");
     await page.unroute("**/api/community/posts/*/like");await page.getByRole("button",{name:"좋아요",exact:true}).click();
     await expect(page.getByRole("button",{name:"좋아요",exact:true})).toHaveAttribute("aria-pressed","true");await expect(page.locator(".community-like-count")).toHaveText("2");
-    await admin.request.delete(`${root}/posts/${pid}`);
+    expect((await admin.request.delete(`/api/admin/community/posts/${pid}`)).ok()).toBe(true);
     expect((await sql`select count(*)::int as n from prayer_app.community_post_likes where post_id=${pid}`)[0].n).toBe(0);
     expect((await page.request.put(path,{data:{liked:true}})).status()).toBe(404);pid="";
-  }finally{if(pid)await admin.request.delete(`${root}/posts/${pid}`);if(fid)await admin.request.delete(`${root}/folders/${fid}`);await sql.end();await adminContext.close();}
+  }finally{if(pid)await admin.request.delete(`/api/admin/community/posts/${pid}`);if(fid)await admin.request.delete(`${root}/folders/${fid}`);await sql.end();await adminContext.close();}
 });
 
 test("folders, moves, deletions and comment ownership are enforced by the server",async({page,browser})=>{
@@ -128,7 +128,7 @@ test("folders, moves, deletions and comment ownership are enforced by the server
     expect((await sql`select count(*)::int as n from prayer_app.community_comments where post_id=${pid}`)[0].n).toBe(0);
     expect((await page.request.get(`${root}/posts/${pid}`)).status()).toBe(404);
     await page.goto("/admin/community");await expect(page).toHaveURL(/\/$/);
-  }finally{for(const id of posts)await admin.request.delete(`${root}/posts/${id}`);for(const id of folders)await admin.request.delete(`${root}/folders/${id}`);await sql.end();await adminContext.close();}
+  }finally{for(const id of posts)await admin.request.delete(`/api/admin/community/posts/${id}`);for(const id of folders)await admin.request.delete(`${root}/folders/${id}`);await sql.end();await adminContext.close();}
 });
 
 test("unpublished uploads, digest checks and hard limits cannot be bypassed",async({page,browser,request})=>{
@@ -163,6 +163,6 @@ test("unpublished uploads, digest checks and hard limits cannot be bypassed",asy
     expect((await sql`select count(*)::int as n from prayer_app.community_files where post_id=${id}`)[0].n).toBe(0);
     expect((await sql`select count(*)::int as n from prayer_app.community_file_chunks where post_id=${id}`)[0].n).toBe(0);
     const privacy=await sql`select tablename, rowsecurity from pg_tables where schemaname='prayer_app' and tablename like 'community_%'`;
-    expect(privacy).toHaveLength(6);expect(privacy.every(row=>row.rowsecurity===true)).toBe(true);
+    expect(privacy).toHaveLength(8);expect(privacy.every(row=>row.rowsecurity===true)).toBe(true);
   }finally{await page.request.delete(`${root}/posts/${id}`);if(fid)await admin.request.delete(`${root}/folders/${fid}`);await sql.end();await adminContext.close();}
 });
