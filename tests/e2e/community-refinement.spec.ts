@@ -96,7 +96,8 @@ test("photos precede body and attachment edits remain atomic and retry-safe", as
     await page.getByRole("button", {name: "기존.txt 첨부 제거", exact: true}).click();
     const replacement = Buffer.alloc(6291456, 67);
     await page.locator('input[type="file"]').setInputFiles({name: "새자료.txt", mimeType: "text/plain", buffer: replacement});
-    await page.getByLabel("내용", {exact: true}).fill("수정한 본문");
+    // Match the textbox's accessible name, not a wrapping label's textarea textContent.
+    await page.getByRole("textbox", {name: "내용", exact: true}).fill("수정한 본문");
     await page.route("**/edits/*/files/*/chunks/*", route => route.fulfill({status: 503, contentType: "application/json", body: "{}"}));
     await page.getByRole("button", {name: "수정 저장", exact: true}).click();
     await expect(page.locator(".community").getByRole("alert")).toContainText("다시 시도");
