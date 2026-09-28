@@ -31,12 +31,12 @@ export function PostEditor({folders,folderId,post,basePath,onSaved}:{folders:Fol
     if(pending.current)return;
     if(!id.current){router.push(`${basePath}?folder=${folder}`);return;}
     if(!window.confirm("작성 중인 글과 전송한 첨부파일을 지우고 취소하시겠습니까?"))return;
-    pending.current=true;setBusy(true);
+    pending.current=true;setBusy(true);setMessage("");
     try{
-      // Never delete a post whose publish response may have been lost.
-      const saved=await api<{post:Post}>(`/posts/${id.current}`);
-      if(saved.post.publishedAt){onSaved(id.current);return;}
-      await api(`/posts/${id.current}`,"DELETE");router.push(`${basePath}?folder=${folder}`);
+      // The server checks publication under the same lock used by publish/upload.
+      const result=await api<{id:string;published:boolean}>(`/drafts/${id.current}`,"DELETE");
+      if(result.published){onSaved(result.id);return;}
+      router.push(`${basePath}?folder=${folder}`);
     }catch(error){setMessage(errorText(error));}finally{pending.current=false;setBusy(false);}
   }
   return <section className="card community-editor"><h3>{post?"게시글 수정":"글쓰기"}</h3><form onSubmit={submit}>
