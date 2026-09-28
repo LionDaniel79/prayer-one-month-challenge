@@ -1,68 +1,268 @@
-# 새 공동체용 독립 설치 가이드
+# 새 공동체용 독립 설치 가이드 — 완전 초보자용
 
-이 문서는 56사랑 코드를 **다른 공동체가 별도 서비스로 운영**하기 위한 설치 절차입니다. 목표는 코드만 재사용하고 기존 56공동체의 회원·기도요청·심방·게시글·비밀키를 전혀 공유하지 않는 것입니다.
+이 문서는 **GitHub 계정도 없고 개발 경험도 없는 사람**이 56사랑 프로그램을 자기 공동체용으로 새로 설치하는 과정을 처음부터 설명합니다.
 
-## 0. 원칙
+목표는 **프로그램 코드는 복사하되, 기존 56공동체의 회원·전화번호·기도요청·심방내용·게시글·비밀키는 전혀 가져오지 않는 독립 설치**입니다.
 
-새 설치는 반드시 다음 항목을 새로 만듭니다.
+---
 
-- GitHub 저장소 또는 Fork
-- Supabase 프로젝트와 PostgreSQL 데이터
-- `SESSION_SECRET`, `PHONE_LOOKUP_PEPPER`, `ROSTER_ENCRYPTION_KEY`
-- Vercel 프로젝트
-- Google Calendar를 쓸 경우 Google OAuth Client와 `GOOGLE_CALENDAR_TOKEN_ENCRYPTION_KEY`
+## 먼저 알아둘 말 6개
 
-**기존 운영 DB의 `DATABASE_URL`이나 기존 암호화 키를 복사하지 마세요.** 암호화 키와 DB를 섞으면 개인정보 분리 원칙이 깨지고, 키가 맞지 않으면 기존 암호화 데이터를 읽을 수도 없습니다.
+처음 보는 단어가 많아도 아래 정도만 이해하면 됩니다.
 
-## 1. GitHub 저장소 준비
+- **GitHub**: 프로그램 소스 파일을 보관하는 인터넷 저장소입니다.
+- **Repository(리포지토리/저장소)**: GitHub 안의 프로그램 한 묶음입니다.
+- **Fork(포크)**: 다른 사람의 GitHub 프로그램을 **내 GitHub 계정으로 복사**하는 기능입니다. 원본을 망가뜨리지 않고 내 복사본을 운영할 수 있습니다.
+- **Supabase**: 회원, 기도체크, 심방, 게시판 같은 데이터를 저장하는 데이터베이스 서비스입니다.
+- **Vercel**: GitHub의 프로그램을 인터넷에서 실제 웹사이트로 실행해 주는 서비스입니다.
+- **Google Cloud**: Google Calendar 연동을 사용할 때 필요한 서비스입니다. Calendar를 쓰지 않으면 나중에 건너뛸 수 있습니다.
 
-원본 저장소를 Fork하거나 새 저장소로 복사합니다. 기본 브랜치는 `main`을 사용합니다.
+이 프로그램에서 로그인은 Supabase Auth를 쓰지 않습니다. **Supabase의 Authentication 메뉴에 회원을 만들 필요가 없습니다.** 앱 자체의 명단 로그인 방식을 사용합니다.
 
-로컬 준비:
+---
+
+# 전체 순서 한눈에 보기
+
+처음 설치할 때는 아래 순서대로 진행하면 됩니다.
+
+1. GitHub 계정 만들기
+2. 원본 56사랑 저장소를 내 GitHub로 Fork
+3. GitHub Desktop과 Node.js 설치
+4. 내 Fork를 컴퓨터로 내려받기
+5. Supabase 가입 및 새 프로젝트 만들기
+6. 새 데이터베이스에 56사랑 테이블 만들기
+7. 새 비밀키 만들기
+8. 첫 관리자 계정 만들기
+9. Vercel 가입 및 GitHub 저장소 연결
+10. Vercel 환경변수 등록 후 첫 배포
+11. 실제 사이트 로그인 확인
+12. 필요하면 Google Calendar 연결
+13. 자기 공동체 이름·아이콘으로 변경
+14. 실제 회원 명단 등록 후 운영 시작
+
+**중요:** 기존 56공동체의 DB 주소나 비밀키를 복사하지 않습니다.
+
+---
+
+# 1. GitHub 계정 만들기
+
+GitHub 공식 가입 안내:
+https://docs.github.com/ko/account-and-profile/how-tos/account-management/creating-an-account-on-github
+
+가입 페이지:
+https://github.com/signup
+
+## 가장 쉬운 방법
+
+1. 위 가입 페이지를 엽니다.
+2. 화면에 **Continue with Google**이 보이면 Google 계정으로 가입하는 것이 편합니다.
+3. 또는 이메일 주소와 비밀번호를 입력해서 새 계정을 만듭니다.
+4. GitHub에서 보낸 이메일을 열어 **이메일 인증**을 완료합니다.
+5. GitHub에 다시 로그인합니다.
+
+GitHub는 이메일 인증을 하지 않으면 저장소 생성 같은 기본 기능이 제한될 수 있습니다.
+
+## 계정 보안
+
+가능하면 GitHub의 2단계 인증(2FA)도 켜는 것을 권장합니다.
+
+절대 다른 사람의 GitHub 계정을 빌려 쓰지 말고, **실제 운영 책임자의 계정**으로 만드세요.
+
+---
+
+# 2. 56사랑 저장소를 내 계정으로 Fork하기
+
+원본 저장소:
+https://github.com/LionDaniel79/prayer-one-month-challenge
+
+GitHub 공식 Fork 안내:
+https://docs.github.com/en/pull-requests/how-tos/work-with-forks/fork-a-repo
+
+## 화면에서 하는 순서
+
+1. GitHub에 로그인합니다.
+2. 위 원본 저장소 주소를 엽니다.
+3. 화면 오른쪽 위의 **Fork** 버튼을 누릅니다.
+4. **Owner**는 방금 만든 내 GitHub 계정을 선택합니다.
+5. **Repository name**은 그대로 두어도 됩니다.
+   - 기본값: `prayer-one-month-challenge`
+   - 원하면 예: `my-church-community`처럼 바꿔도 됩니다.
+6. **Copy the DEFAULT branch only**가 보이면 체크한 상태로 두는 것을 권장합니다.
+7. **Create fork**를 누릅니다.
+8. 잠시 후 주소가 다음처럼 바뀌면 성공입니다.
+
+```text
+https://github.com/내아이디/prayer-one-month-challenge
+```
+
+이제부터는 **내 Fork가 내 프로그램 원본**입니다. 여기에서 수정해도 기존 56사랑 프로그램에는 영향을 주지 않습니다.
+
+> 주의: 원본 저장소가 공개 저장소이므로 Fork도 공개 코드로 운영되는 형태입니다. 회원 데이터와 비밀키는 코드에 넣지 않기 때문에 실제 개인정보가 공개되는 구조는 아닙니다.
+
+---
+
+# 3. 컴퓨터에 필요한 프로그램 설치
+
+완전 초보자는 Git 명령어 대신 **GitHub Desktop**을 사용하는 것을 권장합니다.
+
+## 3-1. GitHub Desktop 설치
+
+다운로드:
+https://desktop.github.com/
+
+1. GitHub Desktop을 설치합니다.
+2. 실행합니다.
+3. **Sign in to GitHub.com**을 눌러 방금 만든 GitHub 계정으로 로그인합니다.
+
+## 3-2. Node.js 22 설치
+
+이 프로그램은 Node.js 22.x를 사용합니다.
+
+다운로드:
+https://nodejs.org/en/download
+
+설치 후 Windows라면 PowerShell, Mac이라면 Terminal을 열고 아래를 입력합니다.
 
 ```bash
-git clone <새 저장소 URL>
-cd <저장소 폴더>
+node -v
+npm -v
+```
+
+`node -v` 결과가 `v22...` 형태면 됩니다.
+
+---
+
+# 4. 내 Fork를 컴퓨터로 내려받기
+
+GitHub Desktop에서:
+
+1. **File → Clone repository**를 누릅니다.
+2. **GitHub.com** 탭에서 내 Fork를 찾습니다.
+3. `내아이디/prayer-one-month-challenge`를 선택합니다.
+4. **Local path**는 기억하기 쉬운 폴더를 선택합니다.
+5. **Clone**을 누릅니다.
+
+완료되면 GitHub Desktop에서 **Show in Explorer** 또는 **Show in Finder**로 실제 폴더를 열 수 있습니다.
+
+## 터미널 열기
+
+GitHub Desktop에서 저장소가 선택된 상태에서:
+
+- Windows: **Repository → Open in Command Prompt** 또는 터미널 열기 메뉴
+- Mac: **Repository → Open in Terminal**
+
+메뉴 이름은 운영체제에 따라 조금 다를 수 있습니다.
+
+터미널에서 다음을 실행합니다.
+
+```bash
 npm ci
 ```
 
-Node.js 22.x를 사용합니다.
+오류 없이 끝나면 프로그램 실행에 필요한 패키지가 설치된 것입니다.
 
-## 2. 새 Supabase 프로젝트 생성
+---
 
-Supabase에서 **새 프로젝트**를 만듭니다. Vercel 함수가 서울(`icn1`)에서 실행되므로 가능하면 Supabase도 서울 리전을 사용합니다.
+# 5. Supabase 가입하기
 
-현재 Supabase 연결 안내:
+Supabase:
+https://supabase.com/
+
+Dashboard:
+https://supabase.com/dashboard
+
+Supabase 공식 새 프로젝트 안내:
+https://supabase.com/docs/guides/getting-started
+
+## 가입 순서
+
+1. Supabase 사이트에서 **Start your project**, **Sign in** 또는 비슷한 버튼을 누릅니다.
+2. 로그인 화면이 나오면 사용할 계정으로 가입합니다.
+3. GitHub 계정으로 로그인하는 선택지가 보이면 방금 만든 GitHub 계정을 사용하면 관리가 편합니다.
+4. 처음 가입하면 **Organization**을 만들라는 화면이 나올 수 있습니다.
+5. Organization 이름은 공동체나 교회 이름으로 정해도 됩니다.
+6. 요금제 선택이 나오면 화면의 현재 가격과 한도를 확인합니다.
+   - 테스트 단계에서는 무료 플랜이 제공되는 경우 그 플랜으로 시작할 수 있습니다.
+   - 요금과 용량 한도는 Supabase 정책에 따라 바뀔 수 있습니다.
+
+---
+
+# 6. Supabase 새 프로젝트 만들기
+
+Supabase Dashboard에서:
+
+1. **New project**를 누릅니다.
+2. Organization을 선택합니다.
+3. **Project name**에 알아보기 쉬운 이름을 입력합니다.
+   - 예: `my-church-community`
+4. **Database Password**를 만듭니다.
+5. 이 비밀번호는 따로 안전하게 보관합니다.
+   - GitHub에 쓰지 않습니다.
+   - 카카오톡/문자로 공유하지 않는 것을 권장합니다.
+6. Region은 가능하면 **Seoul / Northeast Asia / 한국과 가까운 지역**을 선택합니다.
+7. **Create new project**를 누릅니다.
+8. 데이터베이스 준비가 끝날 때까지 기다립니다.
+
+## 정상 확인
+
+프로젝트 Dashboard가 열리고 왼쪽에 **SQL Editor**, **Table Editor** 등의 메뉴가 보이면 생성된 것입니다.
+
+---
+
+# 7. DATABASE_URL 가져오기
+
+앱 서버가 Supabase 데이터베이스에 연결하기 위한 주소입니다.
+
+Supabase 프로젝트 Dashboard에서:
+
+1. 화면 위쪽의 **Connect** 버튼을 찾습니다.
+2. 연결 방식 중 **Transaction pooler** 또는 serverless에 적합한 pooler 연결을 선택합니다.
+3. PostgreSQL 연결 문자열을 복사합니다.
+4. 필요하면 프로젝트 생성 때 만든 DB 비밀번호를 입력하여 완성합니다.
+
+형태는 대략 다음과 비슷합니다.
+
+```text
+postgresql://사용자:비밀번호@호스트:포트/postgres
+```
+
+이 전체 문자열이 `DATABASE_URL`입니다.
+
+**주의:** 이 값은 비밀정보입니다. GitHub README, Issue, 코드에 붙여넣지 마세요.
+
+DB 비밀번호에 `&`, `#`, `?`, 공백 같은 특수문자가 있으면 URL 인코딩 문제를 피하기 위해 Supabase Dashboard가 제공하는 연결 문자열을 그대로 사용하는 것이 안전합니다.
+
+Supabase 공식 연결 안내:
 https://supabase.com/docs/guides/database/connecting-to-postgres
 
-새 프로젝트에서 두 종류의 연결을 구분합니다.
+---
 
-- 앱 실행용 `DATABASE_URL`: Vercel 같은 serverless 환경에서는 Dashboard의 **Connect → Transaction pooler** 연결 문자열을 사용합니다.
-- 초기 SQL 적용: Supabase Dashboard의 **SQL Editor**를 사용하는 것이 가장 단순합니다.
+# 8. 새 데이터베이스가 비어 있는지 확인
 
-DB 비밀번호에 `&`, `#`, `?`, 공백 같은 문자가 있으면 연결 문자열에서 URL 인코딩이 필요합니다. Dashboard가 제공하는 문자열을 직접 복사하세요.
+Supabase 왼쪽 메뉴에서 **SQL Editor**를 누릅니다.
 
-## 3. 새 DB에 마이그레이션 적용
-
-이 절차는 **새 Supabase 프로젝트 전용**입니다. 기존 운영 DB에 다시 실행하지 마세요.
-
-먼저 SQL Editor에서 아래 쿼리를 실행합니다.
+1. **New query**를 누릅니다.
+2. 아래 SQL을 붙여넣습니다.
 
 ```sql
 select to_regnamespace('prayer_app') as existing_schema;
 ```
 
-결과가 `null`이어야 새 설치입니다. 이미 `prayer_app`이 존재하면 중지하고 해당 DB가 새 프로젝트가 맞는지 확인합니다.
+3. **Run**을 누릅니다.
 
-로컬에서 모든 마이그레이션을 파일명 순서대로 하나로 합칩니다.
+결과가 `null`이면 새 설치용 DB가 맞습니다.
 
-macOS/Linux:
+`prayer_app`이 나온다면 이미 이 프로그램용 테이블이 존재하는 DB입니다. **그 상태에서는 다음 단계로 진행하지 말고 DB가 새 프로젝트가 맞는지 확인합니다.**
 
-```bash
-cat $(find drizzle -maxdepth 1 -type f -name '*.sql' | sort) > fresh-install.sql
-```
+---
 
-PowerShell:
+# 9. 프로그램용 DB 테이블 만들기
+
+이 단계에서 저장소의 `drizzle` 폴더 안 SQL 파일을 순서대로 합쳐 새 Supabase DB에 적용합니다.
+
+## Windows PowerShell
+
+프로젝트 폴더에서 PowerShell을 열고:
 
 ```powershell
 Get-ChildItem .\drizzle\*.sql |
@@ -71,9 +271,32 @@ Get-ChildItem .\drizzle\*.sql |
   Set-Content .\fresh-install.sql -Encoding utf8
 ```
 
-생성된 `fresh-install.sql`의 내용을 새 Supabase 프로젝트의 SQL Editor에서 한 번 실행합니다. 오류가 발생하면 다음 파일로 넘어가지 말고 원인을 먼저 해결합니다.
+## Mac Terminal
 
-적용 확인:
+프로젝트 폴더에서:
+
+```bash
+cat $(find drizzle -maxdepth 1 -type f -name '*.sql' | sort) > fresh-install.sql
+```
+
+그러면 프로젝트 폴더에 `fresh-install.sql` 파일이 생깁니다.
+
+이 파일은 `.gitignore`에 등록되어 있으므로 정상적인 상태라면 GitHub에 올라가지 않습니다.
+
+## Supabase에 적용
+
+1. `fresh-install.sql`을 메모장이나 텍스트 편집기로 엽니다.
+2. 내용을 전부 복사합니다.
+3. Supabase → **SQL Editor → New query**
+4. 전체 내용을 붙여넣습니다.
+5. **Run**을 누릅니다.
+6. 빨간 오류가 없는지 확인합니다.
+
+오류가 나면 같은 SQL을 반복 실행하지 말고 먼저 오류 원인을 확인합니다.
+
+## 보안 확인
+
+SQL Editor에서 다음을 실행합니다.
 
 ```sql
 select count(*) as app_tables
@@ -85,73 +308,90 @@ select
   has_schema_privilege('authenticated', 'prayer_app', 'usage') as authenticated_schema_usage;
 ```
 
-두 schema usage 값은 `false`여야 합니다. 앱은 Supabase 브라우저 API가 아니라 서버의 PostgreSQL 연결을 통해 private `prayer_app` 스키마에 접근합니다.
+아래 두 값은 `false`여야 합니다.
 
-## 4. 새 비밀값 생성
+- `anon_schema_usage`
+- `authenticated_schema_usage`
 
-비밀값은 로컬 터미널에서 생성하고 GitHub·채팅·문서에 기록하지 않습니다.
+이 프로그램은 브라우저가 DB를 직접 읽는 구조가 아니라 Vercel 서버가 private `prayer_app` 스키마를 사용하는 구조입니다.
 
-세션/전화번호 검색 비밀값:
+---
+
+# 10. 새 비밀키 만들기
+
+**다른 56사랑 설치본의 비밀키를 복사하면 안 됩니다.** 새 설치마다 새 값이 필요합니다.
+
+터미널에서 아래 명령을 실행합니다.
+
+## SESSION_SECRET 만들기
 
 ```bash
 node -e "const c=require('crypto'); console.log(c.randomBytes(48).toString('base64url'))"
 ```
 
-위 명령을 **두 번** 실행해 서로 다른 값을 만듭니다.
+출력된 값을 안전한 곳에 임시 저장합니다.
 
-- 첫 번째 → `SESSION_SECRET`
-- 두 번째 → `PHONE_LOOKUP_PEPPER`
+## PHONE_LOOKUP_PEPPER 만들기
 
-32바이트 Base64 암호화 키:
+같은 명령을 **한 번 더** 실행합니다.
+
+```bash
+node -e "const c=require('crypto'); console.log(c.randomBytes(48).toString('base64url'))"
+```
+
+첫 번째와 두 번째 값은 서로 달라야 합니다.
+
+## ROSTER_ENCRYPTION_KEY 만들기
 
 ```bash
 node -e "const c=require('crypto'); console.log(c.randomBytes(32).toString('base64'))"
 ```
 
-- 첫 번째 → `ROSTER_ENCRYPTION_KEY`
-- Google Calendar를 사용할 때 한 번 더 생성 → `GOOGLE_CALENDAR_TOKEN_ENCRYPTION_KEY`
+이 값도 별도로 저장합니다.
 
-두 암호화 키는 같은 값을 재사용하지 않습니다.
+정리:
 
-로컬 개발용 `.env.local` 예:
+```text
+DATABASE_URL=Supabase에서 복사한 값
+SESSION_SECRET=첫 번째 새 비밀값
+PHONE_LOOKUP_PEPPER=두 번째 새 비밀값
+ROSTER_ENCRYPTION_KEY=32바이트 Base64 새 키
+```
+
+비밀값은 GitHub 코드, README, Issue, 공개 문서에 넣지 않습니다.
+
+---
+
+# 11. 로컬용 .env.local 만들기
+
+프로젝트 최상위 폴더에서 `.env.example`을 복사해서 `.env.local`이라는 파일을 만듭니다.
+
+내용:
 
 ```text
 DATABASE_URL=<새 Supabase Transaction pooler URL>
 SESSION_SECRET=<새 값>
 PHONE_LOOKUP_PEPPER=<새 값>
-ROSTER_ENCRYPTION_KEY=<새 32-byte Base64 값>
+ROSTER_ENCRYPTION_KEY=<새 값>
 ```
 
-`.env.local`은 커밋하지 않습니다.
+`.env.local`은 GitHub에 올라가지 않도록 이미 제외되어 있습니다.
 
-## 5. 첫 관리자 계정 생성
+---
 
-DB 마이그레이션과 필수 비밀값 준비 후 첫 관리자만 bootstrap 명령으로 만듭니다.
+# 12. 첫 관리자 계정 만들기
 
-중요: Next.js 개발 서버는 `.env.local`을 읽지만, `npm run admin:bootstrap` 스크립트는 셸의 `process.env`를 사용합니다. 따라서 bootstrap 실행 시 필요한 값을 터미널 환경변수로 명시적으로 전달합니다.
+이 앱은 처음부터 공개 회원가입을 받지 않습니다. 따라서 첫 관리자 계정을 한 번 만들어야 합니다.
 
-macOS/Linux 예:
+**주의:** `npm run admin:bootstrap`은 `.env.local`을 자동으로 읽지 않기 때문에 아래처럼 터미널 환경변수로 직접 전달합니다.
 
-```bash
-export DATABASE_URL='<새 Supabase Transaction pooler URL>'
-export SESSION_SECRET='<새 값>'
-export PHONE_LOOKUP_PEPPER='<새 값>'
-export ROSTER_ENCRYPTION_KEY='<새 32-byte Base64 값>'
-export BOOTSTRAP_ADMIN_NAME='관리자이름'
-export BOOTSTRAP_ADMIN_PHONE='01012345678'
-export BOOTSTRAP_SAM_NAME='관리자소속샘'
-export BOOTSTRAP_SAM_LEADER='샘리더이름'
-
-npm run admin:bootstrap
-```
-
-PowerShell 예:
+## Windows PowerShell
 
 ```powershell
 $env:DATABASE_URL='<새 Supabase Transaction pooler URL>'
-$env:SESSION_SECRET='<새 값>'
-$env:PHONE_LOOKUP_PEPPER='<새 값>'
-$env:ROSTER_ENCRYPTION_KEY='<새 32-byte Base64 값>'
+$env:SESSION_SECRET='<새 SESSION_SECRET>'
+$env:PHONE_LOOKUP_PEPPER='<새 PHONE_LOOKUP_PEPPER>'
+$env:ROSTER_ENCRYPTION_KEY='<새 ROSTER_ENCRYPTION_KEY>'
 $env:BOOTSTRAP_ADMIN_NAME='관리자이름'
 $env:BOOTSTRAP_ADMIN_PHONE='01012345678'
 $env:BOOTSTRAP_SAM_NAME='관리자소속샘'
@@ -160,48 +400,119 @@ $env:BOOTSTRAP_SAM_LEADER='샘리더이름'
 npm run admin:bootstrap
 ```
 
-`Bootstrap administrator created.`가 나오면 성공입니다. 첫 관리자는 이름과 전화번호를 초기 비밀번호로 사용해 로그인합니다.
-
-성공 후 bootstrap 전용 네 값은 셸에서 제거하거나 터미널을 닫습니다. **Vercel 환경변수로 등록하지 않습니다.** 필수 앱 환경변수는 로컬 개발을 위해 별도로 `.env.local`에 둘 수 있습니다.
-
-이후 실제 성도 명단은 관리자 → 사용자 관리에서 XLS/XLSX로 가져옵니다. 첫 관리자 이름/전화번호도 명단에 포함시키는 것을 권장합니다.
-
-## 6. 로컬 검증
-
-최소 검증:
+## Mac Terminal
 
 ```bash
-npm test
-npm run lint
-npm run build
+export DATABASE_URL='<새 Supabase Transaction pooler URL>'
+export SESSION_SECRET='<새 SESSION_SECRET>'
+export PHONE_LOOKUP_PEPPER='<새 PHONE_LOOKUP_PEPPER>'
+export ROSTER_ENCRYPTION_KEY='<새 ROSTER_ENCRYPTION_KEY>'
+export BOOTSTRAP_ADMIN_NAME='관리자이름'
+export BOOTSTRAP_ADMIN_PHONE='01012345678'
+export BOOTSTRAP_SAM_NAME='관리자소속샘'
+export BOOTSTRAP_SAM_LEADER='샘리더이름'
+
+npm run admin:bootstrap
 ```
 
-로컬 서버:
+다음 문구가 나오면 성공입니다.
+
+```text
+Bootstrap administrator created.
+```
+
+첫 로그인:
+
+- 아이디: 관리자 이름
+- 초기 비밀번호: 관리자 전화번호
+
+성공 후 bootstrap 전용 값은 터미널을 닫아 제거합니다.
+
+**다음 네 값은 Vercel 환경변수로 넣지 않습니다.**
+
+```text
+BOOTSTRAP_ADMIN_NAME
+BOOTSTRAP_ADMIN_PHONE
+BOOTSTRAP_SAM_NAME
+BOOTSTRAP_SAM_LEADER
+```
+
+---
+
+# 13. 컴퓨터에서 먼저 실행해 보기
+
+프로젝트 폴더의 터미널에서:
 
 ```bash
 npm run dev
 ```
 
-확인:
+브라우저에서 다음 주소를 엽니다.
 
-- 첫 관리자 로그인
-- 사용자 관리 접근
-- 기도운동 관리 화면
-- 커뮤니티 폴더 관리
-- 공지 관리
+```text
+http://localhost:3000
+```
 
-E2E는 실제 운영 DB가 아니라 CI용 일회용 DB를 전제로 설계되어 있으므로 운영 Supabase에 `scripts/seed-e2e.ts`를 실행하지 않습니다.
+첫 관리자 이름과 전화번호로 로그인해 봅니다.
 
-## 7. Vercel에 새 프로젝트 배포
+확인할 것:
 
-Vercel → Add New Project → 새 GitHub 저장소 Import 순서로 연결합니다.
+- 로그인 성공
+- 관리자 메뉴 진입
+- 사용자 관리 화면 열림
+- 기도운동 관리 화면 열림
+- 커뮤니티 관리 화면 열림
+- 공지 관리 화면 열림
 
-현재 Vercel 안내:
-https://vercel.com/docs/deployments/git
+종료하려면 터미널에서 `Ctrl + C`를 누릅니다.
 
-`vercel.json`이 함수 리전을 서울 `icn1`로 지정합니다. Project Settings → Environment Variables에 **Production과 Preview 각각 필요한 범위**로 다음 값을 설정합니다.
+---
 
-필수:
+# 14. Vercel 가입하기
+
+Vercel 가입:
+https://vercel.com/signup
+
+Vercel 공식 Git 배포 안내:
+https://vercel.com/docs/git
+
+## 가장 쉬운 가입 방법
+
+1. Vercel 가입 페이지를 엽니다.
+2. **Continue with GitHub**를 선택하는 것을 권장합니다.
+3. GitHub 로그인/승인 화면이 나오면 허용합니다.
+4. Vercel Dashboard가 열리면 가입 완료입니다.
+
+Vercel이 GitHub 저장소 접근 권한을 요청할 수 있습니다.
+
+가능하면 **내 Fork 저장소만 접근 허용**해도 됩니다.
+
+---
+
+# 15. Vercel에 내 Fork 연결하기
+
+Vercel Dashboard에서:
+
+1. **Add New…**를 누릅니다.
+2. **Project**를 선택합니다.
+3. GitHub 저장소 목록에서 내 Fork를 찾습니다.
+4. 오른쪽의 **Import**를 누릅니다.
+
+내 저장소가 보이지 않으면:
+
+1. Vercel의 GitHub 연결 설정에서 **Configure GitHub App** 또는 저장소 권한 관리 메뉴를 엽니다.
+2. 내 Fork 저장소에 Vercel 접근 권한을 허용합니다.
+3. Vercel의 New Project 화면으로 돌아옵니다.
+
+Vercel 공식 문서상 개인 GitHub 저장소를 새 Vercel 프로젝트로 연결하려면 해당 저장소의 소유자 권한이 필요합니다. Fork를 자기 계정에 만들었다면 보통 이 조건을 만족합니다.
+
+---
+
+# 16. Vercel 환경변수 등록하기
+
+Import 후 배포 설정 화면에서 **Environment Variables** 영역을 찾습니다.
+
+아래 네 개를 각각 추가합니다.
 
 ```text
 DATABASE_URL
@@ -210,7 +521,271 @@ PHONE_LOOKUP_PEPPER
 ROSTER_ENCRYPTION_KEY
 ```
 
-Google Calendar를 사용할 경우 추가:
+각 이름에 앞에서 만든 값을 넣습니다.
+
+예:
+
+- Name: `DATABASE_URL`
+- Value: Supabase Transaction pooler URL
+
+그다음 나머지 세 개도 같은 방식으로 추가합니다.
+
+## 중요한 보안 규칙
+
+- 이 비밀값들은 GitHub Actions의 일반 Variables에 넣지 않습니다.
+- README에 넣지 않습니다.
+- `NEXT_PUBLIC_`으로 시작하는 이름을 사용하지 않습니다.
+- Vercel의 **Environment Variables**에만 넣습니다.
+
+Framework가 자동으로 **Next.js**로 인식되면 그대로 둡니다.
+
+Root Directory도 저장소 최상위 폴더라면 바꾸지 않습니다.
+
+---
+
+# 17. 첫 Vercel 배포
+
+환경변수 네 개를 모두 넣은 뒤:
+
+1. **Deploy**를 누릅니다.
+2. 빌드가 진행됩니다.
+3. **Ready** 또는 성공 화면이 나오면 배포된 것입니다.
+4. Vercel이 만들어 준 `*.vercel.app` 주소를 엽니다.
+
+예:
+
+```text
+https://내프로젝트.vercel.app
+```
+
+이 주소가 현재 내 서비스 주소입니다.
+
+Vercel은 GitHub의 production branch(보통 `main`)가 바뀌면 Production 배포를 자동으로 만들 수 있습니다.
+
+---
+
+# 18. 배포된 사이트 확인
+
+브라우저에서 다음을 확인합니다.
+
+## 로그인 화면
+
+```text
+https://내주소.vercel.app/login
+```
+
+## DB 상태
+
+```text
+https://내주소.vercel.app/api/health
+```
+
+정상이라면 JSON 안에 다음과 비슷한 내용이 나옵니다.
+
+```text
+status: ok
+database: ok
+```
+
+그다음 첫 관리자 계정으로 로그인합니다.
+
+---
+
+# 19. GitHub 자동 공개검사 주소 등록
+
+이 단계는 권장사항입니다. 설정하면 GitHub가 배포 주소의 기본 상태를 자동 검사합니다.
+
+내 Fork의 GitHub 페이지에서:
+
+1. **Settings**를 누릅니다.
+2. 왼쪽 메뉴에서 **Secrets and variables**를 엽니다.
+3. **Actions**를 누릅니다.
+4. 위쪽에서 **Variables** 탭을 선택합니다.
+5. **New repository variable**을 누릅니다.
+6. 이름에 다음을 입력합니다.
+
+```text
+PUBLIC_APP_URL
+```
+
+7. Value에는 내 Vercel 주소를 입력합니다.
+
+예:
+
+```text
+https://내프로젝트.vercel.app
+```
+
+8. 저장합니다.
+
+브랜드 이름을 바꾼 경우 다음 변수도 선택적으로 추가할 수 있습니다.
+
+```text
+PUBLIC_APP_NAME
+PUBLIC_APP_HEADING
+PUBLIC_RELEASE_MARKER
+```
+
+**PUBLIC_APP_URL에는 비밀정보가 없습니다.** 반대로 DB 비밀번호나 암호화 키는 이 Variables 화면에 넣지 않습니다.
+
+---
+
+# 20. 실제 성도 명단 넣기
+
+이제 배포된 앱에서 첫 관리자 계정으로 로그인합니다.
+
+관리자 → **사용자 관리**로 이동합니다.
+
+1. 성도 명단 XLS/XLSX를 준비합니다.
+2. 화면의 **엑셀 예제 다운로드**가 있으면 먼저 예제 형식을 확인합니다.
+3. 실제 명단을 가져옵니다.
+4. 첫 관리자 이름/전화번호도 명단에 포함시키는 것을 권장합니다.
+5. 샘 리더 명단은 별도 메뉴/가져오기 기능으로 등록합니다.
+
+회원에게는 이름과 등록된 전화번호를 초기 로그인 정보로 안내합니다.
+
+---
+
+# 21. 기도운동과 심방 기본 설정
+
+관리자 화면에서:
+
+## 기도운동 관리
+
+- 제목
+- 시작일
+- 종료일
+- 활성화 상태
+
+를 설정합니다.
+
+## 심방 신청 관리
+
+- 신청 가능 기간
+- 특정 날짜 예외
+- 반복 요일 차단
+
+을 필요에 맞게 설정합니다.
+
+Google Calendar를 아직 연결하지 않았다면 다음 단계에서 연결합니다.
+
+---
+
+# 22. Google 계정이 없다면 만들기 — Calendar 사용 시만
+
+Google Calendar 연동을 사용하지 않을 경우 **22~27단계는 건너뛰어도 됩니다.**
+
+Google 계정 만들기 공식 안내:
+https://support.google.com/accounts/answer/27441?hl=ko
+
+Google 계정 생성 페이지:
+https://accounts.google.com/signup
+
+1. **계정 만들기**를 선택합니다.
+2. 개인용 또는 운영 목적에 맞는 계정을 선택합니다.
+3. 이름, 이메일/사용자 이름, 비밀번호를 설정합니다.
+4. 화면의 인증 절차를 완료합니다.
+5. 복구 이메일/전화번호도 설정하는 것을 권장합니다.
+
+이미 Gmail, YouTube, Google Calendar를 사용하는 계정이 있다면 새 Google 계정을 만들 필요가 없습니다.
+
+운영 Calendar 소유 계정을 사용하는 것이 관리하기 편합니다.
+
+---
+
+# 23. Google Cloud 프로젝트 만들기
+
+Google Cloud Console:
+https://console.cloud.google.com/
+
+1. Google 계정으로 로그인합니다.
+2. 화면 위쪽의 **프로젝트 선택** 영역을 누릅니다.
+3. **New Project / 새 프로젝트**를 누릅니다.
+4. Project name을 입력합니다.
+   - 예: `my-church-56-community`
+5. **Create**를 누릅니다.
+6. 생성된 프로젝트를 선택합니다.
+
+---
+
+# 24. Google Calendar API 켜기
+
+Google Calendar API 공식 안내:
+https://developers.google.com/workspace/calendar/api/quickstart/nodejs
+
+Google Cloud Console에서:
+
+1. 왼쪽 메뉴 또는 검색에서 **APIs & Services**를 찾습니다.
+2. **Library** 또는 API 라이브러리를 엽니다.
+3. `Google Calendar API`를 검색합니다.
+4. Google Calendar API를 선택합니다.
+5. **Enable**을 누릅니다.
+
+---
+
+# 25. Google OAuth 동의화면 설정
+
+현재 Google Cloud에서는 **Google Auth platform** 메뉴에서 OAuth 설정을 관리합니다.
+
+1. Google Cloud Console에서 **Google Auth platform**을 엽니다.
+2. 처음이라면 **Get Started**를 누릅니다.
+3. **Branding**에서 앱 이름과 지원 이메일을 입력합니다.
+4. **Audience**를 설정합니다.
+   - 개인 Google 계정 중심이면 보통 External 방식입니다.
+   - Google Workspace 조직 전용이고 Internal 선택이 가능한 경우 조직 정책에 맞게 선택합니다.
+5. 테스트 단계라면 실제 연동할 관리자 Google 계정을 **Test users**에 추가합니다.
+6. **Data Access**에서 Calendar 권한이 필요한 앱임을 확인합니다.
+
+Google의 OAuth 화면과 검증 정책은 계정 종류, Workspace 조직 정책, 사용 범위에 따라 달라질 수 있으므로 화면에 추가 확인/검증 안내가 나오면 Google의 현재 안내를 따릅니다.
+
+---
+
+# 26. Google OAuth Client 만들기
+
+Google 공식 OAuth Client 안내:
+https://developers.google.com/workspace/guides/create-credentials
+
+Google Cloud Console에서:
+
+1. **Google Auth platform → Clients**로 이동합니다.
+2. **Create Client**를 누릅니다.
+3. Application type은 **Web application**을 선택합니다.
+4. 이름을 입력합니다.
+   - 예: `56사랑 Production`
+5. **Authorized redirect URIs**에 아래 주소를 추가합니다.
+
+```text
+https://내프로덕션주소.vercel.app/api/admin/google-calendar/callback
+```
+
+커스텀 도메인을 쓴다면 그 도메인 callback도 등록합니다.
+
+Preview 주소에서도 연동 시험을 할 경우 Preview callback을 추가할 수 있습니다.
+
+6. **Create**를 누릅니다.
+7. 만들어진 **Client ID**와 **Client Secret**을 안전하게 보관합니다.
+
+---
+
+# 27. Google용 암호화 키 만들고 Vercel에 등록
+
+터미널에서:
+
+```bash
+node -e "const c=require('crypto'); console.log(c.randomBytes(32).toString('base64'))"
+```
+
+새 값을 하나 만듭니다.
+
+이 값은:
+
+```text
+GOOGLE_CALENDAR_TOKEN_ENCRYPTION_KEY
+```
+
+입니다.
+
+Vercel → 내 프로젝트 → **Settings → Environment Variables**에서 아래 세 개를 추가합니다.
 
 ```text
 GOOGLE_OAUTH_CLIENT_ID
@@ -218,64 +793,26 @@ GOOGLE_OAUTH_CLIENT_SECRET
 GOOGLE_CALENDAR_TOKEN_ENCRYPTION_KEY
 ```
 
-선택 Web Push:
+저장한 뒤 새 Production 배포를 실행합니다.
 
-```text
-WEB_PUSH_VAPID_PUBLIC_KEY
-WEB_PUSH_VAPID_PRIVATE_KEY
-WEB_PUSH_SUBJECT
-```
+그리고 앱에서:
 
-환경변수를 변경하면 새 배포를 실행합니다. `NEXT_PUBLIC_*` 이름으로 비밀값을 만들지 않습니다.
+1. 관리자 로그인
+2. **관리자 → 설정**
+3. **Google Calendar 연결**
+4. Google 계정 승인
+5. 실제 사용할 Calendar 선택
+6. 저장
 
-## 8. Google Calendar 사용 시
+까지 진행합니다.
 
-Google Calendar를 사용하지 않으면 이 단계는 건너뜁니다.
+---
 
-Google Cloud에서:
+# 28. 자기 공동체 이름과 아이콘으로 바꾸기
 
-1. Google Calendar API 활성화
-2. OAuth consent screen 구성
-3. OAuth Client를 **Web application**으로 생성
-4. 새 Production 주소의 callback 등록
+기본 설치 상태에서는 이름이 `56사랑`, 제목이 `56공동체`로 되어 있습니다.
 
-Callback:
-
-```text
-https://<새-서비스-도메인>/api/admin/google-calendar/callback
-```
-
-Preview에서도 Google 연동을 시험하려면 Preview 주소 callback도 별도로 등록합니다.
-
-Vercel에 Google 환경변수를 넣은 후 재배포하고 관리자 → 설정에서 Google 계정을 연결한 뒤 실제 사용할 Calendar를 선택합니다.
-
-Google OAuth secret과 refresh token은 다른 운영자에게 공유하지 않습니다.
-
-## 9. GitHub 공개 스모크 테스트 연결
-
-이 저장소의 `.github/workflows/public-preview-smoke.yml`은 더 이상 원본 56사랑 주소를 하드코딩하지 않습니다.
-
-새 저장소의 GitHub → Settings → Secrets and variables → Actions → Variables에 다음 repository variable을 만듭니다.
-
-필수:
-
-```text
-PUBLIC_APP_URL=https://<검증할-배포-도메인>
-```
-
-브랜딩을 바꿨다면 선택:
-
-```text
-PUBLIC_APP_NAME=<PWA 이름>
-PUBLIC_APP_HEADING=<로그인 화면 제목>
-PUBLIC_RELEASE_MARKER=<community-release.json의 release 값>
-```
-
-`PUBLIC_APP_URL`을 설정하지 않으면 공개 스모크 단계는 원본 앱을 대신 검사하지 않고 안내만 출력하고 종료합니다.
-
-## 10. 공동체 이름과 아이콘 바꾸기
-
-기본 브랜드를 그대로 쓰지 않을 경우 먼저 다음 문자열 위치를 찾습니다.
+바꾸고 싶다면 아래 문자열을 저장소에서 찾습니다.
 
 ```bash
 git grep -nE '56사랑|56공동체|엡 4:3|56-heart'
@@ -283,53 +820,156 @@ git grep -nE '56사랑|56공동체|엡 4:3|56-heart'
 
 주요 파일:
 
-- `app/layout.tsx`: 브라우저/PWA metadata와 iOS 이름
-- `app/manifest.ts`: 설치 이름·아이콘
-- `components/app/MemberShell.tsx`: 앱 헤더와 사이드바
+- `app/layout.tsx`: 브라우저 제목, PWA 이름, iPhone 이름
+- `app/manifest.ts`: 설치 이름과 아이콘
+- `components/app/MemberShell.tsx`: 사이드바와 상단 제목
 - `app/login/page.tsx`: 로그인 화면
-- `public/icons/`: 설치 아이콘
+- `public/icons/`: 홈 화면 아이콘
 
-브랜드를 바꾸면 관련 테스트의 기대 문구도 함께 수정하고 `npm test && npm run build`를 다시 실행합니다.
+초보자가 직접 코드 수정이 어렵다면 이 단계는 개발 가능한 사람에게 부탁하고, **이름/성구/아이콘만 변경해 달라고 요청**하면 됩니다.
 
-## 11. 최초 운영 설정
+브랜딩 변경 후에는:
 
-정식 서비스에 들어가기 전에 관리자 화면에서 다음을 준비합니다.
+```bash
+npm test
+npm run lint
+npm run build
+```
 
-- 실제 사용자 명단 가져오기
+를 실행해 오류가 없는지 확인합니다.
+
+---
+
+# 29. GitHub에 수정사항 올리는 가장 쉬운 방법
+
+GitHub Desktop을 사용하는 경우:
+
+1. 변경한 파일을 저장합니다.
+2. GitHub Desktop을 엽니다.
+3. 왼쪽에 변경 파일 목록이 나타나는지 확인합니다.
+4. 아래 **Summary**에 변경 설명을 입력합니다.
+   - 예: `우리 공동체 이름으로 변경`
+5. **Commit to main** 또는 현재 브랜치에 Commit합니다.
+6. 위쪽 **Push origin**을 누릅니다.
+
+Vercel이 GitHub와 연결되어 있으면 `main`에 올라간 변경사항은 새 배포를 자동으로 만들 수 있습니다.
+
+---
+
+# 30. 설치 후 운영자가 반드시 할 설정
+
+정식 서비스 시작 전에 관리자 화면에서 확인합니다.
+
+- 실제 성도 명단 가져오기
 - 샘 리더 명단 등록
-- 기도운동 제목/기간/활성 상태 설정
-- 심방 신청 기간과 가능일 설정
-- Google Calendar 사용 시 연결과 운영 Calendar 선택
-- 공지/커뮤니티 폴더 확인
+- 기도운동 기간 및 활성 상태 설정
+- 심방 신청 기간/가능일 설정
+- Google Calendar 사용 시 계정 연결 및 Calendar 선택
+- 공지 작성 테스트
+- 커뮤니티 폴더 확인
+- 실제 휴대폰에서 로그인과 PWA 설치 확인
 
-실제 사용자 데이터로 시험해야 할 경우 최소한으로 사용하고 시험 자료는 정리합니다.
+---
 
-## 12. 복사하면 안 되는 것
+# 31. 절대 복사하면 안 되는 것
 
-다른 공동체로 이전할 때 다음 값/데이터는 원본에서 가져가지 않습니다.
+다른 공동체에 새로 설치할 때 **원본 56공동체에서 아래 항목을 가져가면 안 됩니다.**
 
-- 기존 Supabase DB와 DB 비밀번호
-- 기존 회원 명단/전화번호/기도요청/심방 사유/커뮤니티 자료
-- 기존 `SESSION_SECRET`, `PHONE_LOOKUP_PEPPER`
+- 기존 Supabase 프로젝트
+- 기존 `DATABASE_URL`
+- 기존 DB 비밀번호
+- 기존 회원 명단과 전화번호
+- 기존 기도요청/심방 사유/게시판 데이터
+- 기존 `SESSION_SECRET`
+- 기존 `PHONE_LOOKUP_PEPPER`
 - 기존 `ROSTER_ENCRYPTION_KEY`
-- 기존 Google OAuth Client Secret과 Google token 암호화 키
+- 기존 Google OAuth Client Secret
+- 기존 `GOOGLE_CALENDAR_TOKEN_ENCRYPTION_KEY`
 - 기존 VAPID Private Key
 - 기존 Vercel 프로젝트의 비밀 환경변수
 
-같은 조직이 **기존 데이터까지 공식 승계**해야 하는 별도 이전 작업은 이 가이드의 범위가 아닙니다. 그 경우 데이터 처리 책임과 암호화 키 이전을 별도로 검토해야 합니다.
+**코드만 Fork하고 데이터와 비밀값은 새로 만든다**고 기억하면 됩니다.
 
-## 13. 설치 완료 기준
+---
 
-아래가 모두 되면 독립 설치가 완료된 것입니다.
+# 32. 자주 막히는 문제
 
-- 새 GitHub 저장소의 `main`에서 빌드 성공
-- 새 Supabase에 `prayer_app` 테이블 생성
+## GitHub에서 Fork 버튼이 안 보임
+
+- GitHub 로그인이 되어 있는지 확인합니다.
+- 원본 주소가 맞는지 확인합니다.
+- 다시 원본 저장소 첫 화면으로 이동합니다.
+
+## Vercel에서 내 저장소가 안 보임
+
+- Vercel이 GitHub 계정과 연결되어 있는지 확인합니다.
+- Vercel GitHub App이 내 Fork 저장소에 접근할 수 있는지 확인합니다.
+- 개인 저장소라면 내가 Owner인지 확인합니다.
+
+## Vercel 배포에서 환경변수 오류
+
+필수 네 개가 모두 있는지 확인합니다.
+
+```text
+DATABASE_URL
+SESSION_SECRET
+PHONE_LOOKUP_PEPPER
+ROSTER_ENCRYPTION_KEY
+```
+
+빈 문자열로 등록하지 않습니다.
+
+## DATABASE_URL 오류
+
+- Supabase의 Connect 화면에서 **Transaction pooler** URL을 다시 복사합니다.
+- DB 비밀번호가 맞는지 확인합니다.
+- 비밀번호에 특수문자가 있으면 URL 인코딩 문제를 확인합니다.
+
+## 첫 관리자 생성 실패
+
+- 새 DB 마이그레이션이 적용됐는지 확인합니다.
+- 터미널에 필수 환경변수를 실제로 입력했는지 확인합니다.
+- 이미 관리자가 존재하면 bootstrap 명령은 다시 만들지 않습니다.
+
+## 로그인은 되는데 Google Calendar가 안 됨
+
+- Calendar API가 Enable 상태인지 확인합니다.
+- OAuth Client가 Web application인지 확인합니다.
+- callback URI가 현재 Production 주소와 정확히 같은지 확인합니다.
+- Vercel의 Google 환경변수 세 개가 있는지 확인합니다.
+- 환경변수 추가 뒤 재배포했는지 확인합니다.
+
+---
+
+# 33. 하지 말아야 할 것
+
+- 운영 Supabase에 `scripts/seed-e2e.ts`를 실행하지 않습니다.
+- 비밀값을 GitHub Issue나 README에 올리지 않습니다.
+- 다른 공동체의 `DATABASE_URL`을 재사용하지 않습니다.
+- 암호화 키를 임의로 나중에 바꾸지 않습니다.
+- 실제 회원 전화번호를 테스트 자료로 공개 저장소에 넣지 않습니다.
+
+---
+
+# 34. 설치 완료 기준
+
+아래가 모두 되면 독립 설치가 끝난 것입니다.
+
+- 내 GitHub 계정에 Fork가 존재함
+- 새 Supabase 프로젝트가 존재함
+- `prayer_app` 스키마가 생성됨
 - anon/authenticated가 private schema를 직접 사용하지 못함
-- 새 Vercel Production 주소의 `/api/health`가 DB 정상 반환
+- 첫 관리자 생성 성공
+- 새 Vercel 프로젝트가 Ready
+- `/api/health`에서 DB 정상 확인
 - 첫 관리자 로그인 성공
-- 자기 공동체의 사용자 명단 등록 가능
-- 커뮤니티 글/댓글/좋아요와 첨부파일 동작
-- 공지 이미지 동작
-- Google Calendar 사용 시 새 OAuth Client로 연결 성공
+- 자기 공동체 성도 명단 등록 가능
+- 기도운동 동작
+- 기도요청 비공개 동작
+- 커뮤니티 글/댓글/좋아요/첨부 동작
+- 공지 및 공지 이미지 동작
+- Google Calendar를 쓰는 경우 새 OAuth Client로 연결 성공
 
-문제가 있으면 [운영 가이드](operations.md)의 장애 대응을 함께 확인합니다.
+설치 후에는 [새 인스턴스 출시 체크리스트](new-instance-checklist.md)를 한 번 더 확인하세요.
+
+운영 중 문제가 생기면 [운영 가이드](operations.md)의 장애 대응도 참고합니다.
