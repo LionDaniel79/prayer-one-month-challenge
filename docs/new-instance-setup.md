@@ -4,6 +4,17 @@
 
 목표는 **프로그램 코드는 복사하되, 기존 56공동체의 회원·전화번호·기도요청·심방내용·게시글·비밀키는 전혀 가져오지 않는 독립 설치**입니다.
 
+## 시작 전에 준비할 것
+
+- Windows 10/11 또는 macOS가 설치된 **PC/Mac 한 대**를 준비합니다. 스마트폰만으로 전체 설치하는 것은 권장하지 않습니다.
+- 이메일을 받을 수 있어야 합니다.
+- Google Calendar를 쓸 예정이면 운영에 사용할 Google 계정을 하나 정해 둡니다.
+- 비밀번호와 비밀키를 저장할 **비밀번호 관리자** 또는 안전한 개인 저장공간을 준비합니다.
+- 서비스 가입에 사용하는 GitHub/Supabase/Vercel 계정은 가능하면 **실제 운영 책임자 명의**로 통일합니다.
+- Supabase/Vercel의 무료 플랜 제공 여부와 한도는 각 서비스의 현재 화면을 확인하세요.
+
+> 이 앱은 새 설치마다 별도의 DB와 비밀키가 필요합니다. 기존 56사랑 운영자의 비밀값을 받아서 쓰는 방식으로 설치하지 않습니다.
+
 ---
 
 ## 먼저 알아둘 말 6개
@@ -98,6 +109,20 @@ https://github.com/내아이디/prayer-one-month-challenge
 이제부터는 **내 Fork가 내 프로그램 원본**입니다. 여기에서 수정해도 기존 56사랑 프로그램에는 영향을 주지 않습니다.
 
 > 주의: 원본 저장소가 공개 저장소이므로 Fork도 공개 코드로 운영되는 형태입니다. 회원 데이터와 비밀키는 코드에 넣지 않기 때문에 실제 개인정보가 공개되는 구조는 아닙니다.
+
+## 2-1. Fork 직후 GitHub Actions 켜기
+
+공개 저장소를 Fork한 경우 GitHub Actions 워크플로가 기본적으로 바로 실행되지 않을 수 있습니다. 이 앱은 자동 테스트를 위해 GitHub Actions를 사용하므로 한 번 켜 둡니다.
+
+1. **내 Fork 저장소**로 이동합니다.
+2. 위쪽 **Actions** 탭을 누릅니다.
+3. 경고 화면과 함께 **I understand my workflows, go ahead and enable them** 버튼이 보이면 누릅니다.
+4. 왼쪽에 `CI`, `Public App Smoke` 같은 워크플로 이름이 보이면 준비된 것입니다.
+
+이 버튼이 보이지 않고 Actions 목록이 바로 보이면 이미 활성화된 상태입니다.
+
+GitHub 공식 안내:
+https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#workflows-in-forked-repositories
 
 ---
 
@@ -377,6 +402,8 @@ ROSTER_ENCRYPTION_KEY=<새 값>
 
 `.env.local`은 GitHub에 올라가지 않도록 이미 제외되어 있습니다.
 
+**Windows 주의:** 메모장에서 저장할 때 파일이 `.env.local.txt`가 되면 안 됩니다. 파일 탐색기에서 **파일 확장명 표시**를 켠 뒤 정확히 `.env.local`인지 확인하세요.
+
 ---
 
 # 12. 첫 관리자 계정 만들기
@@ -617,6 +644,9 @@ https://내프로젝트.vercel.app
 ```
 
 8. 저장합니다.
+9. Fork 저장소의 **Actions** 탭으로 이동합니다.
+10. 왼쪽에서 **Public App Smoke**를 선택합니다.
+11. **Run workflow → Run workflow**를 눌러 새 주소를 즉시 검사할 수 있습니다.
 
 브랜드 이름을 바꾼 경우 다음 변수도 선택적으로 추가할 수 있습니다.
 
@@ -721,6 +751,8 @@ Google Cloud Console에서:
 4. Google Calendar API를 선택합니다.
 5. **Enable**을 누릅니다.
 
+> Google Cloud는 별도 아이디를 새로 만드는 서비스가 아니라 앞 단계의 Google 계정으로 로그인해 사용하는 관리 콘솔입니다. 화면에서 결제 계정 연결을 요구하는 경우에는 Google이 표시하는 현재 안내를 따르세요.
+
 ---
 
 # 25. Google OAuth 동의화면 설정
@@ -734,9 +766,31 @@ Google Cloud Console에서:
    - 개인 Google 계정 중심이면 보통 External 방식입니다.
    - Google Workspace 조직 전용이고 Internal 선택이 가능한 경우 조직 정책에 맞게 선택합니다.
 5. 테스트 단계라면 실제 연동할 관리자 Google 계정을 **Test users**에 추가합니다.
-6. **Data Access**에서 Calendar 권한이 필요한 앱임을 확인합니다.
+6. **Data Access**에서 **Add or remove scopes**를 눌러 이 앱이 실제로 사용하는 아래 두 Calendar 권한을 추가합니다.
 
-Google의 OAuth 화면과 검증 정책은 계정 종류, Workspace 조직 정책, 사용 범위에 따라 달라질 수 있으므로 화면에 추가 확인/검증 안내가 나오면 Google의 현재 안내를 따릅니다.
+```text
+https://www.googleapis.com/auth/calendar.events
+https://www.googleapis.com/auth/calendar.calendarlist.readonly
+```
+
+- `calendar.events`: 일정 조회/생성/수정/삭제
+- `calendar.calendarlist.readonly`: 연결한 계정의 Calendar 목록 읽기
+
+필요 이상으로 넓은 `https://www.googleapis.com/auth/calendar` 전체 권한을 임의로 추가하지 않습니다.
+
+## Testing 상태를 그대로 운영하지 않기
+
+개인 Gmail 계정 등 **External** Audience에서 OAuth 앱의 Publishing status가 **Testing**이면, Calendar 같은 사용자 데이터 권한을 사용하는 refresh token은 일반적으로 **7일 후 만료**됩니다. 테스트 단계에서는 괜찮지만 실제 운영에서는 일주일마다 다시 연결해야 하는 문제가 생길 수 있습니다.
+
+장기 운영 전에는 Google Auth platform의 **Audience / Publishing status**를 확인하고 필요한 경우 **In production**으로 전환합니다. Calendar 권한은 민감한 사용자 데이터 범위로 분류될 수 있어 Google의 앱 검증이 요구될 수 있습니다. 화면에 Verification 안내가 나오면 Google의 현재 검증 절차를 완료하세요.
+
+Google Workspace 조직 내부에서만 쓰고 **Internal** Audience를 사용할 수 있는 경우에는 조직 정책에 따라 절차가 다를 수 있습니다.
+
+Google 공식 OAuth 정책:
+https://developers.google.com/identity/protocols/oauth2
+
+Google Calendar 권한 안내:
+https://developers.google.com/workspace/calendar/api/auth
 
 ---
 
