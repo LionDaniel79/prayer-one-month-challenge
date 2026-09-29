@@ -8,6 +8,7 @@
 - [ ] GitHub 이메일 인증을 완료했다.
 - [ ] 원본 저장소 `LionDaniel79/prayer-one-month-challenge`를 내 계정으로 Fork했다.
 - [ ] Fork 주소가 `https://github.com/내아이디/...` 형태인지 확인했다.
+- [ ] Fork의 Actions 탭에서 GitHub Actions를 활성화했다.
 - [ ] GitHub Desktop에 내 GitHub 계정으로 로그인했다.
 - [ ] 내 Fork를 컴퓨터에 Clone했다.
 - [ ] Node.js 22.x를 설치했고 `node -v`가 동작한다.
@@ -61,6 +62,7 @@
 
 - [ ] Fork → Settings → Secrets and variables → Actions → Variables로 들어갔다.
 - [ ] `PUBLIC_APP_URL`에 **내 Vercel 주소**를 등록했다.
+- [ ] Actions → Public App Smoke → Run workflow를 실행해 내 주소를 검사했다.
 - [ ] DB URL, 비밀번호, 암호화 키는 GitHub Variables에 넣지 않았다.
 
 ## 실제 명단과 기본 운영 설정
@@ -91,7 +93,9 @@
 - [ ] Google Cloud 프로젝트를 새로 만들었다.
 - [ ] Google Calendar API를 Enable했다.
 - [ ] Google Auth platform의 Branding/Audience를 설정했다.
+- [ ] Data Access에 `calendar.events`와 `calendar.calendarlist.readonly` 두 범위를 등록했다.
 - [ ] 필요한 경우 실제 관리자 Google 계정을 Test user로 추가했다.
+- [ ] 장기 운영이라면 External OAuth 앱을 Testing 상태로 방치하지 않았고, 필요한 Production/검증 절차를 확인했다.
 - [ ] OAuth Client를 **Web application**으로 만들었다.
 - [ ] Production callback URI를 정확히 등록했다.
 - [ ] 새 `GOOGLE_CALENDAR_TOKEN_ENCRYPTION_KEY`를 만들었다.
