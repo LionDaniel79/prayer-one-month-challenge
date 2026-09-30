@@ -11,7 +11,7 @@ const resolve="/api/admin/sams/resolve-leader", heads="/api/admin/sams/village-l
 test.describe("stable leader roster identity",()=>{
   test.skip(process.env.E2E_DATABASE_READY!=="1","Requires disposable TLS DB");
   let db:ReturnType<typeof postgres>;
-  const samId=randomUUID(),uniqueSam=randomUUID();
+  const samId=randomUUID(),uniqueSam=randomUUID(),homeSam=randomUUID();
   const a={id:randomUUID(),source:"동명검증A",name:"동명검증",phone:"01000000801",sam:"971-1",village:"971"};
   const b={id:randomUUID(),source:"동명검증B",name:"동명검증",phone:"01000000802",sam:"972-1",village:"972"};
   const c={id:randomUUID(),source:"유일검증",name:"유일검증",phone:"01000000803",sam:"971-2",village:"971"};
@@ -21,7 +21,7 @@ test.describe("stable leader roster identity",()=>{
     const url=new URL(process.env.DATABASE_URL??"");if(process.env.CI!=="true"||!["127.0.0.1","localhost"].includes(url.hostname)||url.pathname!=="/prayer_e2e")throw Error("LOCAL_DISPOSABLE_DB_ONLY");
     db=postgres(url.toString(),{ssl:"require",prepare:false,max:1});
     for(const p of original)await db`insert into prayer_app.member_roster(id,source_name,canonical_name,village,sam_label,phone_lookup_hash,phone_ciphertext,source) values(${p.id},${p.source},${p.name},${p.village},${p.sam},${phoneLookupHash(p.phone)},${encryptRosterPhone(p.phone)},'manual')`;
-    await db`insert into prayer_app.sams(id,name,leader_name) values(${samId},'971-1',${a.name}),(${uniqueSam},'971-2',${c.name})`;
+    await db`insert into prayer_app.sams(id,name,leader_name) values(${samId},'971-1',${a.name}),(${uniqueSam},'971-2',${c.name}),(${homeSam},'972-1','')`;
   });
   test.beforeEach(async()=>{
     await db`delete from prayer_app.village_leaders where village in ('971','972')`;
@@ -29,7 +29,7 @@ test.describe("stable leader roster identity",()=>{
     await db`update prayer_app.sams set leader_name=${c.name},leader_roster_id=null,leader_binding_locked=false where id=${uniqueSam}`;
     for(const p of original)await db`update prayer_app.member_roster set source_name=${p.source},canonical_name=${p.name},village=${p.village},sam_label=${p.sam},is_active=true where id=${p.id}`;
   });
-  test.afterAll(async()=>{if(!db)return;try{await db`delete from prayer_app.village_leaders where village in ('971','972')`;await db`delete from prayer_app.sams where id in (${samId},${uniqueSam})`;for(const p of original){await db`delete from prayer_app.users where roster_id=${p.id}`;await db`delete from prayer_app.member_roster where id=${p.id}`;}}finally{await db.end();}});
+  test.afterAll(async()=>{if(!db)return;try{await db`delete from prayer_app.village_leaders where village in ('971','972')`;await db`delete from prayer_app.sams where id in (${samId},${uniqueSam},${homeSam})`;for(const p of original){await db`delete from prayer_app.users where roster_id=${p.id}`;await db`delete from prayer_app.member_roster where id=${p.id}`;}}finally{await db.end();}});
 
   test("migration auto-links globally unique matches but leaves duplicate names unassigned",async()=>{
     await db`insert into prayer_app.village_leaders(name,village,leader_name) values('971마을장','971',${a.name})`;
@@ -39,7 +39,7 @@ test.describe("stable leader roster identity",()=>{
     expect((await db`select leader_roster_id from prayer_app.sams where id=${samId}`)[0].leader_roster_id).toBeNull();
     expect((await db`select leader_roster_id from prayer_app.village_leaders where village='971'`)[0].leader_roster_id).toBeNull();
   });
-  test("duplicates alone display choices, mask phone, require selection and grant first-login ID",async({page,browser},info)=>{
+  test("duplicates allow an outside-village head, mask phone and grant only the chosen first-login ID",async({page,browser},info)=>{
     await login(page,'admin');
     const input={kind:'village',name:'971마을장',leaderName:a.name};
     const r=await page.request.post(resolve,{data:input});expect(r.ok()).toBe(true);const text=await r.text();const data=JSON.parse(text);
@@ -47,18 +47,68 @@ test.describe("stable leader roster identity",()=>{
     expect(text).not.toContain(a.phone);expect(text).not.toContain('ciphertext');expect(text).not.toContain('phone_lookup');
     expect(data.candidates.find((p:{id:string})=>p.id===a.id).phoneSuffix).toBe('0801');
     expect((await page.request.put(heads,{data:input})).status()).toBe(409);
-    expect((await page.request.put(heads,{data:{...input,leaderRosterId:b.id}})).status()).toBe(409);
+    expect(data.candidates.find((p:{id:string})=>p.id===b.id).eligible).toBe(true);
+    expect((await page.request.put(heads,{data:{...input,leaderRosterId:c.id}})).status()).toBe(409);
     expect((await page.request.put(heads,{data:{...input,leaderRosterId:randomUUID()}})).status()).toBe(409);
     await page.goto('/admin/users');const panel=page.getByRole('region',{name:'마을장 관리'});
     await panel.getByLabel('마을장',{exact:true}).fill('971마을장');await panel.getByLabel('마을장 이름',{exact:true}).fill(a.name);
     await expect(panel.getByRole('group',{name:'동명이인 확인'})).toBeVisible();await expect(panel.getByRole('button',{name:'마을장 저장',exact:true})).toBeDisabled();
-    await expect(panel.getByRole('radio',{name:new RegExp(b.source)})).toBeDisabled();
-    await panel.getByRole('radio',{name:new RegExp(a.source)}).check();
-    await page.setViewportSize({width:360,height:900});await expectNoOverflow(page);await page.screenshot({path:info.outputPath('duplicate-leader-selection-360.png'),fullPage:true});
+    await expect(panel.getByRole('radio',{name:new RegExp(b.source)})).toBeEnabled();
+    await expect(panel.getByText(/마을장은 소속 마을과 관계없이/)).toBeVisible();
+    await panel.getByRole('radio',{name:new RegExp(b.source)}).check();
+    await page.setViewportSize({width:360,height:900});await expectNoOverflow(page);await page.screenshot({path:info.outputPath('cross-village-head-selection-360.png'),fullPage:true});
     await panel.getByRole('button',{name:'마을장 저장',exact:true}).click();await expect(panel.getByText('마을장 정보를 저장했습니다.',{exact:true})).toBeVisible();
     const context=await browser.newContext(),other=await context.newPage();
-    try{await member(other,a);expect((await (await other.request.get('/api/pastoral/status')).json()).visible).toBe(true);await expect(other.getByRole('link',{name:/목양지/})).toBeVisible();await other.request.post('/api/auth/logout');await member(other,b);expect((await (await other.request.get('/api/pastoral/status')).json()).visible).toBe(false);}finally{await context.close();}
-    await page.reload();const row=(await (await page.request.get(heads)).json()).rows.find((x:{name:string})=>x.name==='971마을장');expect(row.leaderRosterId).toBe(a.id);expect(row.bindingState).toBe('linked');
+    try{await member(other,b);const status=await (await other.request.get('/api/pastoral/status')).json();expect(status.visible).toBe(true);expect(status.sams.map((s:{name:string})=>s.name).sort()).toEqual(['971-1','971-2']);await expect(other.getByRole('link',{name:/목양지/})).toBeVisible();await other.request.post('/api/auth/logout');await member(other,a);expect((await (await other.request.get('/api/pastoral/status')).json()).visible).toBe(false);}finally{await context.close();}
+    await page.reload();const row=(await (await page.request.get(heads)).json()).rows.find((x:{name:string})=>x.name==='971마을장');expect(row.leaderRosterId).toBe(b.id);expect(row.bindingState).toBe('linked');
+  });
+  test("cross-village head uses assigned village for submission and retains identity after home membership changes",async({page,browser})=>{
+    await login(page,'admin');
+    const input={name:'971마을장',leaderName:a.name,leaderRosterId:b.id};
+    expect((await page.request.put(heads,{data:input})).status()).toBe(200);
+    const context=await browser.newContext(),other=await context.newPage();
+    const reportId=randomUUID();let requestId:string|null=null;let previousRequest:{id:string;enabled:boolean}|undefined;
+    try{
+      await member(other,b);
+      const status=await (await other.request.get('/api/pastoral/status')).json();
+      expect(status.visible).toBe(true);
+      expect(status.sams.map((s:{id:string})=>s.id).sort()).toEqual([samId,uniqueSam].sort());
+      expect(status.requiredSamIds).toEqual([]);
+      const [year,month]=status.today.split('-').map(Number);
+      [previousRequest]=await db<{id:string;enabled:boolean}[]>`select id,enabled from prayer_app.pastoral_requests where year=${year} and month=${month}`;
+      const [period]=await db<{id:string}[]>`insert into prayer_app.pastoral_requests(year,month,enabled) values(${year},${month},true) on conflict(year,month) do update set enabled=true returning id`;
+      requestId=period.id;
+      const report={id:reportId,requestId,samId,method:'form',writtenDate:status.today,form:{other:'담당 마을 제출 검증'},files:[]};
+      expect((await other.request.post('/api/pastoral/reports',{data:report})).status()).toBe(200);
+      expect((await other.request.post(`/api/pastoral/reports/${reportId}/publish`)).status()).toBe(200);
+      const saved=await (await other.request.get(`/api/pastoral/reports/${reportId}`)).json();
+      expect(saved.samId).toBe(samId);expect(saved.village).toBe('971');expect(saved.submittedAt).toBeTruthy();
+      // The home-village sam remains outside the assigned scope, even for API calls.
+      const denied=await other.request.post('/api/pastoral/reports',{data:{id:randomUUID(),requestId,samId:homeSam,method:'form',writtenDate:status.today,form:{},files:[]}});
+      expect(denied.status()).toBe(403);
+      expect((await denied.json()).code).toBe('FORBIDDEN');
+      await db`update prayer_app.member_roster set village='973',sam_label='973-1' where id=${b.id}`;
+      expect((await (await other.request.get('/api/pastoral/status')).json()).sams.map((s:{id:string})=>s.id).sort()).toEqual([samId,uniqueSam].sort());
+      expect((await (await page.request.get(heads)).json()).rows.find((r:{name:string})=>r.name===input.name).bindingState).toBe('linked');
+      // Neither moving residence nor re-saving changes the persisted person.
+      expect((await page.request.put(heads,{data:{name:input.name,leaderName:input.leaderName}})).status()).toBe(200);
+      expect((await db`select leader_roster_id from prayer_app.village_leaders where village='971'`)[0].leader_roster_id).toBe(b.id);
+      await db`update prayer_app.village_leaders set is_active=false where village='971'`;
+      expect((await (await other.request.get('/api/pastoral/status')).json()).visible).toBe(false);
+      await db`update prayer_app.village_leaders set is_active=true where village='971'`;
+      await db`update prayer_app.member_roster set is_active=false where id=${b.id}`;
+      // Inactive membership is denied at the session or pastoral authorization boundary.
+      const inactive=await other.request.get('/api/pastoral/status');
+      if(inactive.status()===200)expect((await inactive.json()).visible).toBe(false);
+      else expect([401,403]).toContain(inactive.status());
+    }finally{
+      await db`delete from prayer_app.pastoral_reports where id=${reportId}`;
+      if(requestId){
+        if(previousRequest)await db`update prayer_app.pastoral_requests set enabled=${previousRequest.enabled} where id=${requestId}`;
+        else await db`delete from prayer_app.pastoral_requests where id=${requestId}`;
+      }
+      await context.close();
+    }
   });
   test("unique name has no choice UI, automatically links; pinned role survives namesake addition and rename",async({page})=>{
     await login(page,'admin');await page.goto('/admin/users');const panel=page.getByRole('region',{name:'마을장 관리'});
