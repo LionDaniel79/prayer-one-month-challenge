@@ -1,0 +1,4 @@
+.choice { min-width: 0; }
+.choice fieldset { min-width: 0; border: 1px solid #d5dce5; border-radius: 10px; padding: 12px; }
+.choice label { align-items: flex-start; margin-block: 10px; }
+.choice label span { min-width: 0; overflow-wrap: anywhere; }

@@ -1,0 +1,25 @@
+name: Prepare leader identity branch
+on:
+  push:
+    branches: [feature/leader-identity]
+    paths: ['.maintenance/**', '.github/workflows/prepare-leader-identity.yml']
+permissions:
+  contents: write
+jobs:
+  apply:
+    if: github.repository == 'LionDaniel79/prayer-one-month-challenge' && github.ref == 'refs/heads/feature/leader-identity'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/leader-identity
+      - name: Apply verified source changes to the feature branch
+        run: |
+          python .maintenance/apply-leader-edits.py
+          git diff --check
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app components docs drizzle public src tests
+          git commit -m 'feat: bind leaders to roster identities with conditional duplicate selection'
+          git push origin HEAD:refs/heads/feature/leader-identity
