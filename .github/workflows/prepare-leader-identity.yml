@@ -1,3 +1,4 @@
+# Temporary source transport; remove this workflow before the feature is merged.
 name: Prepare leader identity branch
 on:
   push:
