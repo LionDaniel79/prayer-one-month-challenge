@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import "./pastoral.css";
 import { SessionHeartbeat } from "../components/auth/SessionHeartbeat";
 
 export const metadata: Metadata = {

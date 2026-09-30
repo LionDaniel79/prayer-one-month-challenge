@@ -15,7 +15,7 @@ export function prepareSamLeaderValues(input: {
 }): SamLeaderValues {
   const name = normalizeSamLabel(input.name);
   const leaderName = normalizeSamLeaderName(input.leaderName);
-  if (!name || !leaderName || name.length > 100 || leaderName.length > 100) {
+  if (input.name.includes("마을장") || !name || !leaderName || name.length > 100 || leaderName.length > 100) {
     throw new DomainError("SAM_LEADER_ROW_INVALID", 400);
   }
   return { name, leaderName, isActive: input.isActive ?? true };

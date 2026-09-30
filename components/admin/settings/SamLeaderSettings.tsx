@@ -1,5 +1,7 @@
 "use client";
 
+import { VillageLeaderSettings } from "./VillageLeaderSettings";
+
 import { fetchJson } from "../../../src/lib/fetch-json";
 import { useEffect, useState, type FormEvent } from "react";
 import type { AdminSamLeader } from "../../../src/features/sams/admin-service";
@@ -137,7 +139,7 @@ export function SamLeaderSettings() {
   return (
     <section className="card admin-section" aria-labelledby="sam-leader-heading">
       <h2 id="sam-leader-heading">샘 리더 관리</h2>
-      <p className="helper-text">샘별 리더를 등록하면 심방 일정에 표시됩니다. 회원 명단과 별도로 관리합니다.</p>
+      <p className="helper-text">샘 리더와 마을장을 회원 명단과 별도로 등록합니다. 샘 리더는 심방 일정에 표시되며, 마을장은 아래 마을장 등록에서 추가합니다.</p>
       {error && <p className="error-text" role="alert">{error}</p>}
       {message && <p className="success-text" role="status">{message}</p>}
       <form className="roster-import-form" onSubmit={upload}>
@@ -189,6 +191,7 @@ export function SamLeaderSettings() {
           {editing && <button type="button" className="text-button" disabled={busy} onClick={() => setEditing(null)}>취소</button>}
         </div>
       </form>
+      <VillageLeaderSettings />
     </section>
   );
 }

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import type { SessionUser } from "../../src/features/auth/session";
 import { LogoutButton } from "../auth/LogoutButton";
+import { ReportBadge, usePastoralBadge } from "../pastoral/ReportStatusBadge";
 import { MemberSidebar } from "./MemberSidebar";
 import { UnreadNoticeBadge, useUnreadNoticeCount } from "../notices/UnreadNoticeBadge";
 
@@ -16,6 +17,7 @@ export function MemberShell({
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const unreadCount = useUnreadNoticeCount();
+  const pastoral = usePastoralBadge();
 
   return (
     <div className="community-app">
@@ -25,7 +27,7 @@ export function MemberShell({
           <strong>56사랑</strong>
         </div>
 
-        <MemberSidebar unreadCount={unreadCount} onNavigate={() => setMenuOpen(false)} />
+        <MemberSidebar pastoralVisible={pastoral.visible} pastoralCount={pastoral.count} unreadCount={unreadCount} onNavigate={() => setMenuOpen(false)} />
 
         <div className="sidebar-footer">
           <Link href="/profile" onClick={() => setMenuOpen(false)}>내 정보</Link>
@@ -54,7 +56,7 @@ export function MemberShell({
             onClick={() => setMenuOpen((value) => !value)}
           >
             ☰
-            <UnreadNoticeBadge count={unreadCount} />
+            {pastoral.count > 0 ? <ReportBadge count={pastoral.count} /> : <UnreadNoticeBadge count={unreadCount} />}
           </button>
           <div>
             <h1>56공동체</h1>

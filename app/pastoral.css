@@ -1,0 +1,63 @@
+
+/* Private pastoral reports: no dependence on community moderation controls. */
+.pastoral { display: grid; gap: 20px; width: 100%; min-width: 0; }
+.pastoral h1 { font-size: clamp(1.6rem,5vw,2.1rem); margin: 0 0 8px; }
+.pastoral h2 { font-size: 1.25rem; margin-top: 0; }
+.pastoral h3 { font-size: 1.05rem; }
+.pastoral button, .pastoral a.pastoral-txt { min-height: 44px; border-radius: 10px; border: 1px solid #cbd5d1; background: #f8faf8; padding: 10px 14px; cursor: pointer; font: inherit; }
+.pastoral button.primary-button { color: white; background: #253b32; border-color: #253b32; }
+.pastoral button[aria-pressed="true"] { background: #253b32; color: white; border-color: #253b32; }
+.pastoral button:disabled { cursor: default; opacity: .55; }
+.pastoral :focus-visible { outline: 3px solid #688271; outline-offset: 3px; }
+.pastoral label { display: grid; gap: 8px; min-width: 0; }
+.pastoral input, .pastoral select, .pastoral textarea { width: 100%; max-width: 100%; min-width: 0; font: inherit; border: 1px solid #cbd5d1; border-radius: 10px; padding: 10px; background: white; color: inherit; min-height: 46px; }
+.pastoral textarea { resize: vertical; line-height: 1.7; }
+.pastoral input[type="checkbox"], .pastoral input[type="radio"] { width: 20px; height: 20px; min-height: 20px; flex: 0 0 20px; }
+.pastoral fieldset { border: 0; padding: 0; margin: 16px 0; min-width: 0; display: grid; gap: 16px; }
+.pastoral legend { font-weight: 700; padding: 0 0 14px; }
+.pastoral-toolbar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; }
+.pastoral-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 16px; }
+.pastoral-methods { display: flex; flex-wrap: wrap; gap: 12px; }
+.pastoral-methods label, .pastoral label.pastoral-check { display: flex; align-items: center; gap: 8px; padding: 12px 0; }
+.pastoral-section { display: grid; gap: 12px; margin-top: 20px; padding-top: 16px; border-top: 1px solid #e1e6e2; }
+.pastoral-input-row { display: grid; gap: 12px; border: 1px solid #e1e6e2; border-radius: 12px; padding: 14px; background: #fafbf9; }
+.pastoral-row-label, .pastoral-file-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; }
+.pastoral-file-row { padding: 12px 0; border-bottom: 1px solid #e1e6e2; }
+.pastoral-file-row span { overflow-wrap: anywhere; min-width: 0; flex: 1; }
+.pastoral-files { display: grid; gap: 12px; }
+.pastoral-attention { color: #9c3e13; background: #fff5e9; border-radius: 10px; padding: 12px; }
+.pastoral-success { color: #245736; background: #eaf4e9; border-radius: 10px; padding: 12px; }
+.pastoral p, .pastoral small, .pastoral dd { overflow-wrap: anywhere; }
+.pastoral-meta { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
+.pastoral-meta div { padding: 10px; background: #f5f7f3; border-radius: 8px; }
+.pastoral-meta dt { font-size: .85rem; color: #667085; margin-bottom: 6px; }
+.pastoral-meta dd { margin: 0; }
+.pastoral-photo { display: block; max-width: 100%; height: auto; border-radius: 12px; margin: 18px auto; }
+.pastoral-written { margin-top: 2lh; }
+.pastoral-prewrap, .pastoral-table td { white-space: pre-wrap; overflow-wrap: anywhere; }
+.pastoral-download { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 14px; }
+.pastoral-download button { max-width: 100%; overflow-wrap: anywhere; }
+.pastoral-table-wrap { min-width: 0; overflow-x: auto; }
+.pastoral-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: .95rem; }
+.pastoral-table td, .pastoral-table th { padding: 10px 8px; border: 1px solid #dce3dc; vertical-align: top; }
+.pastoral-table th { background: #f1f5ee; }
+.pastoral-report-list { display: grid; gap: 12px; margin: 16px 0; }
+.pastoral-report-list article { border: 1px solid #e1e6e2; border-radius: 12px; padding: 16px; display: flex; flex-wrap: wrap; gap: 16px; justify-content: space-between; align-items: center; }
+.pastoral-report-list article > div { min-width: 0; }
+.pastoral-report-list p { margin: 8px 0; }
+.pastoral-row-actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.pastoral summary { cursor: pointer; font-weight: 650; padding: 12px 0; }
+.pastoral-month-scroll { max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain; padding: 6px 4px 12px; }
+.pastoral-months { display: grid; grid-template-columns: repeat(12,minmax(72px,1fr)); min-width: 888px; gap: 8px; }
+.pastoral-month { text-align: center; min-width: 0; }
+.pastoral-month > button { width: 100%; }
+.pastoral-month small { display: block; min-height: 28px; padding-top: 8px; font-size: .72rem; }
+@media (max-width: 600px) {
+  .pastoral .card { padding: 16px; }
+  .pastoral-grid, .pastoral-meta { grid-template-columns: minmax(0,1fr); }
+  .pastoral-table { font-size: .82rem; }
+  .pastoral-table td, .pastoral-table th { padding: 8px 5px; }
+  .pastoral-toolbar > div { max-width: 100%; }
+}
+
+.village-leaders { border-top:1px solid #e1e6e2; margin-top:24px; padding-top:20px; }

@@ -1,0 +1,79 @@
+import { writeFile, readFile } from 'node:fs/promises';
+import { pathToFileURL } from 'node:url';
+
+export function productionDeployment(items, sha) {
+  return items.find(d => d.sha === sha && d.creator?.login === 'vercel[bot]' &&
+    (d.production_environment === true || d.environment?.toLowerCase() === 'production'));
+}
+export function deploymentOrigin(value, custom) {
+  const url = new URL(value);
+  const configured = custom ? new URL(custom).origin : null;
+  if (url.protocol !== 'https:' || url.username || url.password || url.port ||
+      (!url.hostname.endsWith('.vercel.app') && url.origin !== configured)) throw new Error('UNTRUSTED_DEPLOYMENT_URL');
+  return url.origin;
+}
+async function main() {
+  const repository = process.env.GITHUB_REPOSITORY;
+  const sha = process.env.GITHUB_SHA;
+  if (!/^[\w.-]+\/[\w.-]+$/.test(repository ?? '') || !/^[a-f0-9]{40}$/.test(sha ?? '')) throw new Error('INVALID_WORKFLOW_CONTEXT');
+  const production = process.env.GITHUB_REF === 'refs/heads/main';
+  const result = { workflowCommit: sha, mode: production ? 'production-verification' : 'production-discovery-only', authenticatedSiteRequests: false, checkedAt: new Date().toISOString(), checks: [] };
+  async function github(path) {
+    // The workflow token is sent ONLY to this fixed GitHub API origin; never to the app.
+    const response = await fetch(`https://api.github.com/repos/${repository}/${path}`, {
+      headers: { Accept: 'application/vnd.github+json', Authorization: `Bearer ${process.env.GITHUB_TOKEN}`, 'X-GitHub-Api-Version': '2022-11-28' },
+      redirect: 'error', signal: AbortSignal.timeout(12000),
+    });
+    if (!response.ok) throw new Error(`GITHUB_METADATA_${response.status}`);
+    return response.json();
+  }
+  try {
+    let deployment, status;
+    for (let attempt = 0; attempt < (production ? 20 : 1); attempt++) {
+      const items = await github(`deployments?per_page=100${production ? `&sha=${sha}` : ''}`);
+      deployment = production ? productionDeployment(items, sha) : items.find(d => d.creator?.login === 'vercel[bot]' && (d.production_environment === true || d.environment?.toLowerCase() === 'production'));
+      if (deployment) {
+        const statuses = await github(`deployments/${deployment.id}/statuses?per_page=10`);
+        status = statuses[0];
+        if (status?.state === 'success') break;
+        if (['failure','error'].includes(status?.state)) throw new Error('PRODUCTION_DEPLOYMENT_FAILED');
+      }
+      if (production) await new Promise(resolve => setTimeout(resolve, 10000));
+    }
+    if (!deployment || status?.state !== 'success' || !status.environment_url) throw new Error('PRODUCTION_METADATA_NOT_READY');
+    const origin = deploymentOrigin(status.environment_url, process.env.PUBLIC_APP_URL);
+    Object.assign(result, { deploymentId: deployment.id, deploymentSha: deployment.sha, environment: deployment.environment, deploymentState: status.state, url: origin });
+    if (!production) return;
+    const expected = JSON.parse(await readFile('public/pastoral-release.json','utf8')).release;
+    const checks = [
+      ['/pastoral-release.json',200,'release'], ['/login',200,'login'], ['/api/health',200,'health'],
+      ['/pastoral-reports',307,'redirect'], ['/admin/pastoral-reports',307,'redirect'],
+      ['/api/pastoral/status',401,'private'], ['/api/pastoral/reports',401,'private'],
+      ['/api/admin/pastoral/schedule',403,'private'], ['/api/admin/sams/village-leaders',403,'private'],
+    ];
+    for (const [path, expectedStatus, kind] of checks) {
+      const response = await fetch(origin + path, { redirect: 'manual', cache: 'no-store', signal: AbortSignal.timeout(15000) });
+      let passed = response.status === expectedStatus;
+      const body = await response.text();
+      if (passed && kind === 'release') passed = JSON.parse(body).release === expected;
+      if (passed && kind === 'health') { const data = JSON.parse(body); passed = data.status === 'ok' && data.database === 'ok'; }
+      if (passed && kind === 'login') passed = body.includes('비밀번호');
+      if (passed && kind === 'private') passed = ['UNAUTHORIZED','FORBIDDEN'].includes(JSON.parse(body).code);
+      if (passed && kind === 'redirect') { const target = new URL(response.headers.get('location') ?? '', origin); passed = target.origin === origin && target.pathname === '/login'; }
+      result.checks.push({ path, status: response.status, passed });
+      // Do not circumvent deployment protection or follow sign-in redirects.
+      if (!passed) throw new Error(`PUBLIC_CHECK_FAILED_${response.status}`);
+    }
+    result.passed = true;
+  } catch (e) {
+    result.error = e instanceof Error ? e.message : 'VERIFICATION_FAILED';
+    process.exitCode = 1;
+  } finally {
+    // No response bodies, cookies, credentials or member content are written.
+    await writeFile('production-readiness.json', JSON.stringify(result,null,2));
+    console.log(JSON.stringify(result,null,2));
+  }
+}
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch(() => { console.error('PRODUCTION_VERIFICATION_FAILED'); process.exitCode = 1; });
+}
