@@ -12,6 +12,12 @@ export function deploymentOrigin(value, custom) {
       (!url.hostname.endsWith('.vercel.app') && url.origin !== configured)) throw new Error('UNTRUSTED_DEPLOYMENT_URL');
   return url.origin;
 }
+// Vercel Standard Protection can protect generated deployment URLs while leaving
+// the production domain public. Use an explicit site URL or the repository's
+// declared homepage; never change protection or follow authentication redirects.
+export function publicVerificationOrigin(deploymentUrl, configuredUrl, repositoryHomepage) {
+  return deploymentOrigin(configuredUrl || repositoryHomepage || deploymentUrl, configuredUrl);
+}
 async function main() {
   const repository = process.env.GITHUB_REPOSITORY;
   const sha = process.env.GITHUB_SHA;
@@ -20,7 +26,7 @@ async function main() {
   const result = { workflowCommit: sha, mode: production ? 'production-verification' : 'production-discovery-only', authenticatedSiteRequests: false, checkedAt: new Date().toISOString(), checks: [] };
   async function github(path) {
     // The workflow token is sent ONLY to this fixed GitHub API origin; never to the app.
-    const response = await fetch(`https://api.github.com/repos/${repository}/${path}`, {
+    const response = await fetch(`https://api.github.com/repos/${repository}${path ? `/${path}` : ""}`, {
       headers: { Accept: 'application/vnd.github+json', Authorization: `Bearer ${process.env.GITHUB_TOKEN}`, 'X-GitHub-Api-Version': '2022-11-28' },
       redirect: 'error', signal: AbortSignal.timeout(12000),
     });
@@ -41,7 +47,10 @@ async function main() {
       if (production) await new Promise(resolve => setTimeout(resolve, 10000));
     }
     if (!deployment || status?.state !== 'success' || !status.environment_url) throw new Error('PRODUCTION_METADATA_NOT_READY');
-    const origin = deploymentOrigin(status.environment_url, process.env.PUBLIC_APP_URL);
+    const repositoryInfo = await github('');
+    const origin = publicVerificationOrigin(status.environment_url, process.env.PUBLIC_APP_URL, repositoryInfo.homepage);
+    result.publicUrlSource = process.env.PUBLIC_APP_URL ? 'PUBLIC_APP_URL' : repositoryInfo.homepage ? 'repository-homepage' : 'deployment-url';
+    result.generatedDeploymentUrl = deploymentOrigin(status.environment_url, process.env.PUBLIC_APP_URL);
     Object.assign(result, { deploymentId: deployment.id, deploymentSha: deployment.sha, environment: deployment.environment, deploymentState: status.state, url: origin });
     if (!production) return;
     const expected = JSON.parse(await readFile('public/pastoral-release.json','utf8')).release;
