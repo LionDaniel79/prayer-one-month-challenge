@@ -41,7 +41,7 @@ test("photo revision UI preserves original on failed upload, retries and convert
     await page.getByRole("radio",{name:"직접 입력",exact:true}).check();
     await page.getByLabel("이번 기간 샘모임 없음",{exact:true}).check();
     await page.getByRole("button",{name:"수정 저장",exact:true}).click();
-    await expect(page.getByLabel("샘모임을 하지 못한 이유",{exact:true})).toHaveJSProperty("validationMessage",expect.any(String));
+    expect(await page.getByLabel("샘모임을 하지 못한 이유",{exact:true}).evaluate((element:HTMLTextAreaElement)=>element.validity.valueMissing)).toBe(true);
     expect((await (await page.request.get(`/api/pastoral/reports/${id}`)).json()).report.version).toBe(1);
     await page.getByLabel("샘모임을 하지 못한 이유",{exact:true}).fill("가상 사유");
     await page.getByLabel("기타",{exact:true}).fill("선택 입력 확인");
