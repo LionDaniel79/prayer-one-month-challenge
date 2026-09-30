@@ -18,7 +18,8 @@
     "admin:bootstrap": "tsx scripts/bootstrap-admin.ts",
     "admin:promote": "tsx scripts/promote-admin.ts",
     "db:smoke": "tsx scripts/smoke-db.ts",
-    "roster:import": "tsx scripts/roster-import.ts"
+    "roster:import": "tsx scripts/roster-import.ts",
+    "test:pastoral": "node --experimental-strip-types --test tests/pastoral/*.test.mjs"
   },
   "dependencies": {
     "@vercel/functions": "3.9.9",
