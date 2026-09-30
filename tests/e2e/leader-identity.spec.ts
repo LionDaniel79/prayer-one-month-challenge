@@ -79,9 +79,9 @@ test.describe("stable leader roster identity",()=>{
       const [period]=await db<{id:string}[]>`insert into prayer_app.pastoral_requests(year,month,enabled) values(${year},${month},true) on conflict(year,month) do update set enabled=true returning id`;
       requestId=period.id;
       const report={id:reportId,requestId,samId,method:'form',writtenDate:status.today,form:{other:'담당 마을 제출 검증'},files:[]};
-      expect((await other.request.post('/api/pastoral/reports',{data:report})).status()).toBe(200);
+      expect((await other.request.post('/api/pastoral/reports',{data:report})).status()).toBe(201);
       expect((await other.request.post(`/api/pastoral/reports/${reportId}/publish`)).status()).toBe(200);
-      const saved=await (await other.request.get(`/api/pastoral/reports/${reportId}`)).json();
+      const {report:saved}=await (await other.request.get(`/api/pastoral/reports/${reportId}`)).json();
       expect(saved.samId).toBe(samId);expect(saved.village).toBe('971');expect(saved.submittedAt).toBeTruthy();
       // The home-village sam remains outside the assigned scope, even for API calls.
       const denied=await other.request.post('/api/pastoral/reports',{data:{id:randomUUID(),requestId,samId:homeSam,method:'form',writtenDate:status.today,form:{},files:[]}});
