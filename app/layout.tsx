@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import "../components/pastoral/refinement.css";
 import "./pastoral.css";
 import { SessionHeartbeat } from "../components/auth/SessionHeartbeat";
 

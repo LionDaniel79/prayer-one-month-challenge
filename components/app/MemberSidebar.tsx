@@ -10,7 +10,7 @@ const memberNav = [
   { href: "/visits", label: "심방신청", icon: "♡" },
   { href: "/prayer-requests", label: "기도요청", icon: "♥" },
   { href: "/community", label: "커뮤니티", icon: "💬" },
-  { href: "/pastoral-reports", label: "목양지 제출", icon: "📝" },
+  { href: "/pastoral-reports", label: "목양지", icon: "📝" },
   { href: "/notices", label: "공지", icon: "🔔" },
 ] as const;
 

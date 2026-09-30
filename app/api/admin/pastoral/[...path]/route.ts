@@ -1,3 +1,4 @@
+import { revisionResponse } from "../../../../../src/features/pastoral/edit-http";
 import { requireReportAdmin } from "../../../../../src/features/pastoral/access";
 import { getSchedule, requestOverview, saveSchedule } from "../../../../../src/features/pastoral/schedules";
 import { listReports } from "../../../../../src/features/pastoral/reports";
@@ -21,7 +22,19 @@ export async function PUT(request: Request, context: Context) {
   try {
     const actor = await requireAdminActor(); requireReportAdmin(actor); sameOrigin(request);
     const path = (await context.params).path;
+    const revision=await revisionResponse(request,path,actor,true); if(revision)return revision;
     if (path.length !== 1 || path[0] !== "schedule") throw new ReportError("NOT_FOUND", 404);
     return json(await saveSchedule(actor, await boundedJson(request)));
   } catch (error) { return errorResponse(error); }
 }
+
+async function mutateReport(request:Request,context:Context) {
+  try {
+    const actor=await requireAdminActor();sameOrigin(request);
+    const response=await revisionResponse(request,(await context.params).path,actor,true);
+    if(response)return response;
+    throw new ReportError("NOT_FOUND",404);
+  }catch(error){return errorResponse(error);}
+}
+export async function POST(request:Request,context:Context) { return mutateReport(request,context); }
+export async function DELETE(request:Request,context:Context) { return mutateReport(request,context); }

@@ -4,10 +4,10 @@ import { requireReportAccess, requireReportAdmin, requireReportTarget } from "./
 import { requestColumns } from "./schedules";
 import { rasterPreview } from "./images";
 import { CHUNK_LIMIT, chunkSize, int, parseSubmission, periodLabel, photoName, ReportError, reportId, reportText, requestState, type Actor, type ReportRequest, type Submission } from "./policy";
-export type StoredReport = Submission & { authorId: string | null; samName: string; village: string; leaderName: string; submittedBy: string; submittedAt: string | null; createdAt: string; fingerprint: string; year: number; month: number };
+export type StoredReport = Submission & { version: number; authorId: string | null; samName: string; village: string; leaderName: string; submittedBy: string; submittedAt: string | null; createdAt: string; fingerprint: string; year: number; month: number };
 type StoredSummary = Pick<StoredReport, "id" | "requestId" | "samId" | "samName" | "village" | "leaderName" | "submittedBy" | "method" | "year" | "month"> & { submittedAt: string };
-const reportColumns = sql`p.id,p.request_id as "requestId",p.sam_id as "samId",p.author_user_id as "authorId",p.sam_name as "samName",p.village,p.leader_name as "leaderName",p.submitted_by as "submittedBy",p.written_date::text as "writtenDate",p.method,p.form,p.files,p.fingerprint,to_char(p.submitted_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') as "submittedAt",to_char(p.created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') as "createdAt",r.year,r.month`;
-async function lockedReport(db: Executor, id: string): Promise<StoredReport> {
+const reportColumns = sql`p.version,p.id,p.request_id as "requestId",p.sam_id as "samId",p.author_user_id as "authorId",p.sam_name as "samName",p.village,p.leader_name as "leaderName",p.submitted_by as "submittedBy",p.written_date::text as "writtenDate",p.method,p.form,p.files,p.fingerprint,to_char(p.submitted_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') as "submittedAt",to_char(p.created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') as "createdAt",r.year,r.month`;
+export async function lockedReport(db: Executor, id: string): Promise<StoredReport> {
   const [report] = await rows<StoredReport>(db, sql`select ${reportColumns} from prayer_app.pastoral_reports p join prayer_app.pastoral_requests r on r.id=p.request_id where p.id=${id} for update of p`);
   if (!report) throw new ReportError("REPORT_NOT_FOUND", 404);
   return report;
@@ -55,10 +55,10 @@ export async function putReportChunk(actor: Actor, id: string, slot: number, ind
     await tx.execute(sql`insert into prayer_app.pastoral_report_chunks(report_id,slot,chunk_index,data) values(${id},${slot},${index},${bytes}) on conflict(report_id,slot,chunk_index) do update set data=excluded.data`);
   });
 }
-async function readFile(db: Executor, report: StoredReport, slot: number): Promise<Buffer> {
+export async function readFile(db: Executor, report: StoredReport, slot: number): Promise<Buffer> {
   const file = report.files[slot];
   if (!file) throw new ReportError("FILE_NOT_FOUND", 404);
-  const chunks = await rows<{ index: number; data: Buffer }>(db, sql`select chunk_index as index,data from prayer_app.pastoral_report_chunks where report_id=${report.id} and slot=${slot} order by chunk_index`);
+  const chunks = await rows<{ index: number; data: Buffer }>(db, sql`select c.chunk_index as index,c.data from prayer_app.pastoral_report_chunks c join prayer_app.pastoral_reports p on p.id=c.report_id where c.report_id=${report.id} and c.slot=${slot} and p.version=${report.version} order by c.chunk_index`);
   if (chunks.length !== Math.ceil(file.size / CHUNK_LIMIT)) throw new ReportError("UPLOAD_INCOMPLETE", 409);
   for (let i = 0; i < chunks.length; i++) if (chunks[i].index !== i || chunks[i].data.length !== chunkSize(file.size, i)) throw new ReportError("FILE_INTEGRITY_FAILED", 409);
   const buffer = Buffer.concat(chunks.map(c => c.data));
@@ -104,7 +104,7 @@ export async function getReport(actor: Actor, id: string) {
   if (!report) throw new ReportError("REPORT_NOT_FOUND", 404);
   // Keep credential-independent data and opaque IDs only; fingerprint is not a public API field.
   const { fingerprint: _fingerprint, ...result } = report; void _fingerprint;
-  return { ...result, periodLabel: periodLabel(report) };
+  return { ...result, isOwner: report.authorId === actor.id, periodLabel: periodLabel(report) };
 }
 export async function listReports(actor: Actor, page: number, admin = false, requestId?: string | null) {
   if (admin) requireReportAdmin(actor); else await requireReportAccess(actor);
@@ -121,7 +121,7 @@ export async function getReportChunk(actor: Actor, id: string, slot: number, ind
   const report = await getReport(actor, id); const file = report.files[slot];
   if (!file) throw new ReportError("FILE_NOT_FOUND", 404);
   const expected = chunkSize(file.size, index);
-  const [chunk] = await rows<{ data: Buffer }>(getDb(), sql`select data from prayer_app.pastoral_report_chunks where report_id=${id} and slot=${slot} and chunk_index=${index}`);
+  const [chunk] = await rows<{ data: Buffer }>(getDb(), sql`select c.data from prayer_app.pastoral_report_chunks c join prayer_app.pastoral_reports p on p.id=c.report_id where c.report_id=${id} and c.slot=${slot} and c.chunk_index=${index} and p.version=${report.version}`);
   if (!chunk || chunk.data.length !== expected) throw new ReportError("FILE_INTEGRITY_FAILED", 409);
   return chunk.data;
 }

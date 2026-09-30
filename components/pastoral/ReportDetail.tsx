@@ -1,7 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
+import { ReportEditor } from "./ReportEditor";
 import { CHUNK_LIMIT, photoName, type Attachment } from "../../src/features/pastoral/policy";
-import { api, localDateTime, message, methodLabel, type ReportView } from "./client";
+import { api, jsonBody, localDateTime, message, methodLabel, type ReportView } from "./client";
 function DownloadFile({ reportId, file, slot }: { reportId: string; file: Attachment; slot: number }) {
   const [progress, setProgress] = useState<number | null>(null); const [error, setError] = useState("");
   async function download() {
@@ -34,23 +35,33 @@ function Photo({ id, slot, name }: { id: string; slot: number; name: string }) {
 function Rows({ title, headers, rows }: { title: string; headers: string[]; rows: string[][] }) {
   return <section className="pastoral-section"><h3>{title}</h3>{!rows.length ? <p className="helper-text">기록 없음</p> : <div className="pastoral-table-wrap"><table className="pastoral-table"><thead><tr>{headers.map(h => <th key={h}>{h}</th>)}</tr></thead><tbody>{rows.map((row, i) => <tr key={i}>{row.map((cell, j) => <td key={j}>{cell || "—"}</td>)}</tr>)}</tbody></table></div>}</section>;
 }
-export function ReportDetail({ id, onClose }: { id: string; onClose: () => void }) {
+export function ReportDetail({ id, onClose, onChanged, admin = false }: { id: string; onClose: () => void; onChanged?: () => void; admin?: boolean }) {
+  const [editing,setEditing]=useState(false);const [busy,setBusy]=useState(false);const [reload,setReload]=useState(0);
   const [report, setReport] = useState<ReportView | null>(null); const [error, setError] = useState("");
   useEffect(() => {
     const controller = new AbortController();
     void api<{ report: ReportView }>(`/api/pastoral/reports/${id}`, { cache: "no-store", signal: controller.signal }).then(r => { if (!controller.signal.aborted) setReport(r.report); }).catch(e => { if (!controller.signal.aborted) setError(message(e)); });
     return () => controller.abort();
-  }, [id]);
+  }, [id,reload]);
+  function changed(){onChanged?.();window.dispatchEvent(new Event("pastoral:changed"));}
+  async function remove(){
+    if(!report||busy||!window.confirm("이 목양지를 삭제할까요? 첨부도 함께 삭제되며 되돌릴 수 없습니다."))return;
+    setBusy(true);setError("");
+    try{await api(`/api/${admin?"admin/":""}pastoral/reports/${id}/submission`,jsonBody("DELETE",{expectedVersion:report.version}));changed();onClose();}
+    catch(e){setError(message(e));}finally{setBusy(false);}
+  }
+  if(editing&&report)return <ReportEditor report={report} admin={admin} onCancel={()=>setEditing(false)} onSaved={()=>{setEditing(false);setReport(null);setError("");setReload(n=>n+1);changed();}}/>;
   const f = report?.form;
-  return <article className="pastoral-detail card" aria-label="제출 목양지 상세"><div className="pastoral-toolbar"><h2>샘목양지</h2><button type="button" onClick={onClose}>목록으로</button></div>{error && <p className="error-text" role="alert">{error}</p>}{!report && !error && <p role="status">목양지를 불러오는 중입니다.</p>}{report && <>
-    <dl className="pastoral-meta"><div><dt>제출 대상</dt><dd>{report.periodLabel}</dd></div><div><dt>작성일</dt><dd>{report.writtenDate}</dd></div><div><dt>샘</dt><dd>{report.samName}</dd></div><div><dt>샘리더</dt><dd>{report.leaderName}</dd></div><div><dt>제출자</dt><dd>{report.submittedBy}</dd></div><div><dt>제출 방법</dt><dd>{methodLabel(report.method)}</dd></div><div><dt>제출일시</dt><dd>{report.submittedAt ? localDateTime(report.submittedAt) : "작성 중"}</dd></div></dl>
-    {report.files.map((file, slot) => <div key={slot}>{photoName(file.name) && <Photo id={id} slot={slot} name={file.name} />}<DownloadFile reportId={id} file={file} slot={slot} /></div>)}
+  return <article className="pastoral-detail card" aria-label="제출 목양지 상세"><div className="pastoral-toolbar"><h2>샘목양지</h2><button type="button" disabled={busy} onClick={onClose}>목록으로</button></div>{error && <p className="error-text" role="alert">{error}</p>}{!report && !error && <p role="status">목양지를 불러오는 중입니다.</p>}{report && <>
+    {(admin||report.isOwner)&&report.submittedAt&&<div className="pastoral-toolbar"><button type="button" disabled={busy} onClick={()=>setEditing(true)}>목양지 수정</button><button className="danger-button" type="button" disabled={busy} onClick={()=>void remove()}>목양지 삭제</button></div>}
+    <dl className="pastoral-meta"><div><dt>제출 대상</dt><dd>{report.periodLabel}</dd></div><div><dt>작성일</dt><dd>{report.writtenDate}</dd></div><div><dt>샘</dt><dd>{report.samName}</dd></div><div><dt>샘리더</dt><dd>{report.leaderName}</dd></div><div><dt>제출자</dt><dd>{report.submittedBy}</dd></div>{!admin&&<><div><dt>제출 방법</dt><dd>{methodLabel(report.method)}</dd></div><div><dt>제출일시</dt><dd>{report.submittedAt ? localDateTime(report.submittedAt) : "작성 중"}</dd></div></>}</dl>
+    {report.files.map((file, slot) => <div key={slot}>{photoName(file.name) && <Photo key={`${id}:${report.version}:${slot}`} id={id} slot={slot} name={file.name} />}<DownloadFile reportId={id} file={file} slot={slot} /></div>)}
     {f && <div className="pastoral-written"><a className="pastoral-txt" href={`/api/pastoral/reports/${id}/txt`} download>입력 내용 TXT 내려받기</a>{f.noMeeting && <div className="pastoral-prewrap"><strong>이번 기간 샘모임 없음</strong><p>사유: {f.noMeetingReason}</p></div>}
       <Rows title="샘모임" headers={["일시", "장소", "참석자(가정)"]} rows={f.meetings.map(r => [r.when, r.place, r.attendees])} />
       <Rows title="나눔/기도제목 (예배·성경통독은혜·기도제목)" headers={["샘원", "나눔 / 기도제목"]} rows={f.sharing.map(r => [r.member, r.content])} />
-      <Rows title="상담/심방 요청" headers={["샘원", "일시", "장소", "사유"]} rows={f.visits.map(r => [r.member, r.when, r.place, r.reason])} />
       <Rows title="샘소식 (결혼, 장례, 이사, 입원 등)" headers={["샘원", "소식"]} rows={f.news.map(r => [r.member, r.content])} />
       <section className="pastoral-section"><h3>샘리더 기도제목</h3><p className="pastoral-prewrap">{f.leaderPrayer || "기록 없음"}</p></section>
+      <section className="pastoral-section"><h3>기타</h3><p className="pastoral-prewrap">{f.other || "기록 없음"}</p></section>
     </div>}
   </>}</article>;
 }

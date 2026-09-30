@@ -21,8 +21,8 @@ export function PastoralPortal({displayName}:{displayName:string}){
   const sam=status?.sams.find(s=>s.id===samId);const request=status?.requests.find(r=>r.id===requestId);
   const completed=!!status?.completed.some(c=>c.requestId===requestId&&c.samId===samId);
   const state=request&&status?requestState(request,false,status.today):null;
-  if(viewId)return <div className="pastoral"><ReportDetail key={viewId} id={viewId} onClose={()=>setViewId("")}/></div>;
-  return <div className="pastoral"><header className="pastoral-toolbar"><div><h1>목양지 제출</h1><p>샘의 모임과 기도제목을 담당 목회자에게 전달합니다.</p></div><button type="button" onClick={()=>{setRefresh(n=>n+1);window.dispatchEvent(new Event("pastoral:changed"));}}>새로고침</button></header>
+  if(viewId)return <div className="pastoral"><ReportDetail key={viewId} id={viewId} onChanged={()=>{setRefresh(n=>n+1);window.dispatchEvent(new Event("pastoral:changed"));}} onClose={()=>setViewId("")}/></div>;
+  return <div className="pastoral"><header className="pastoral-toolbar"><div><h1>목양지</h1><p>샘의 모임과 기도제목을 담당 목회자에게 전달합니다.</p></div><button type="button" onClick={()=>{setRefresh(n=>n+1);window.dispatchEvent(new Event("pastoral:changed"));}}>새로고침</button></header>
     {error&&<p role="alert" className="error-text">{error}</p>}{notice&&<p role="status" className="pastoral-success">{notice}</p>}
     {!status&&!error&&<p role="status">제출 요청을 불러오는 중입니다.</p>}
     {status&&!status.visible&&<p>목양지 제출은 관리자·마을장·리더만 이용할 수 있습니다.</p>}

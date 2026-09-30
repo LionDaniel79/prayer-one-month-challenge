@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
 
     return clearState(
       NextResponse.redirect(
-        new URL("/admin/settings?calendar=connected", request.url),
+        new URL("/admin/visits?calendar=connected#google-calendar", request.url),
       ),
     );
   } catch (error) {

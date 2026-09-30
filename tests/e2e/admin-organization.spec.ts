@@ -29,7 +29,11 @@ test.describe("management organization and booking period", () => {
       expect((await page.request.put("/api/admin/visits/booking-period", {data:{startDate:null,endDate:null}})).ok()).toBe(true);
     }
     await page.goto("/admin/settings");
-    await expect(page.getByRole("heading", {name:"심방 신청 가능일",exact:true})).toHaveCount(0);
+    await expect(page).toHaveURL(/\/admin\/visits#google-calendar$/);
+    await expect(page.getByRole("heading", {name:"심방 신청 가능일",exact:true})).toBeVisible();
+    await expect(page.getByRole("heading", {name:"Google Calendar",exact:true})).toBeVisible();
+    await expect(page.getByRole("link", {name:"설정",exact:true})).toHaveCount(0);
+    await expect(page.getByText("새 공지 Push",{exact:true})).toHaveCount(0);
     await expect(page.getByRole("heading", {name:"샘 리더 관리",exact:true})).toHaveCount(0);
   });
 
