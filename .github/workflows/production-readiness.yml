@@ -1,0 +1,32 @@
+name: Production Readiness
+on:
+  push:
+    branches: [main, feature/pastoral-monthly]
+  workflow_dispatch:
+permissions:
+  contents: read
+  deployments: read
+concurrency:
+  group: production-readiness-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  readiness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Read deployment metadata and verify production without app credentials
+        run: node scripts/verify-production.mjs
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PUBLIC_APP_URL: ${{ vars.PUBLIC_APP_URL }}
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: production-readiness-${{ github.sha }}
+          path: production-readiness.json
+          retention-days: 7
+          if-no-files-found: error

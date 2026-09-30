@@ -1,4 +1,5 @@
 import { randomUUID, createHash } from "node:crypto";
+import { readFile } from "node:fs/promises";
 import postgres from "postgres";
 import sharp from "sharp";
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
@@ -195,6 +196,7 @@ test.describe("private pastoral reports", () => {
     await expect(page.getByText("목양지가 제출되었습니다.",{exact:true})).toBeVisible();
     expect((await (await page.request.get("/api/pastoral/status")).json()).count).toBe(0);
     await page.getByRole("button",{name:"이 달에 추가 제출",exact:true}).click();
+    await expect(page.getByText("목양지가 제출되었습니다.",{exact:true})).toHaveCount(0);
     await page.getByRole("radio",{name:"칸에 입력"}).check();
     await page.getByLabel("이번 기간 샘모임 없음",{exact:true}).check();
     const reason=page.getByLabel("샘모임을 하지 못한 이유",{exact:true}); await expect(reason).toHaveAttribute("required","");
@@ -240,6 +242,30 @@ test.describe("private pastoral reports", () => {
     }finally{await ctx.close();}
     expect((await db`select id from prayer_app.sams where name='901마을장'`).length).toBe(0);
     expect((await page.request.put("/api/admin/pastoral/schedule",{data:{year,expectedVersion:0,selected:[{month,week:1}]}})).status()).toBe(400);
+  });
+
+  for (const method of ["photo", "file"] as const) test(`${method} UI submission clears reminder and administrator downloads the original`, async ({page,browser})=>{
+    const bytes=method==="photo"?await sharp({create:{width:320,height:400,channels:3,background:{r:220,g:230,b:220}}}).png().toBuffer():Buffer.from("가상 목양지 파일 내용", "utf8");
+    const filename=method==="photo"?"사진검증.png":"파일검증.txt";
+    await loginAs(page,"leader"); await page.goto("/pastoral-reports");
+    await page.getByRole("radio",{name:method==="photo"?"사진으로 제출":"파일로 제출",exact:true}).check();
+    await page.getByLabel(method==="photo"?"목양지 사진 선택":"목양지 파일 선택",{exact:true}).setInputFiles({name:filename,mimeType:method==="photo"?"image/png":"text/plain",buffer:bytes});
+    await page.getByRole("button",{name:"목양지 제출",exact:true}).click();
+    await expect(page.getByText("목양지가 제출되었습니다.",{exact:true})).toBeVisible();
+    await expect(page.getByRole("link",{name:/목양지 제출/}).locator(".nav-badge")).toHaveCount(0);
+    const context=await browser.newContext(); const admin=await context.newPage();
+    try {
+      await login(admin,"admin");await admin.setViewportSize({width:360,height:900});await admin.goto("/admin/pastoral-reports");
+      await admin.locator(".pastoral-history").getByRole("button",{name:/목양지 보기/}).first().click();
+      if(method==="photo") {
+        const img=admin.getByRole("img",{name:"목양지 사진 1",exact:true});await expect(img).toBeVisible();
+        await expect.poll(()=>img.evaluate((el:HTMLImageElement)=>el.complete&&el.naturalWidth>0)).toBe(true);
+      }
+      await expectNoOverflow(admin);await admin.screenshot({path:test.info().outputPath(`pastoral-${method}-detail-360.png`),fullPage:true});
+      const waiting=admin.waitForEvent("download");await admin.getByRole("button",{name:`${filename} 내려받기`,exact:true}).click();
+      const download=await waiting;expect(download.suggestedFilename()).toBe(filename);
+      const path=await download.path();expect(path).not.toBeNull();expect(digest(await readFile(path!))).toBe(digest(bytes));
+    } finally { await context.close(); }
   });
 
   test("four report tables and village leader directory are private", async () => {

@@ -4,11 +4,12 @@ import { countMissing, int, parseSchedule, periodLabel, reportId, seoulToday, Re
 export const requestColumns = sql`id,year,month,enabled`;
 export async function getSchedule(actor: Actor, year: number) {
   requireReportAdmin(actor); int(year, 2000, 9998);
-  const [requests, versions] = await Promise.all([
-    rows<ReportRequest>(getDb(), sql`select ${requestColumns} from prayer_app.pastoral_requests where year=${year} order by month`),
-    rows<{ version: number }>(getDb(), sql`select version from prayer_app.pastoral_schedule_versions where year=${year}`),
-  ]);
-  return { year, currentYear: Number(seoulToday().slice(0, 4)), version: versions[0]?.version ?? 0, requests };
+  // Read the version and month selection from a single PostgreSQL snapshot.
+  const [snapshot] = await rows<{ version: number; requests: ReportRequest[] }>(getDb(), sql`
+    select coalesce((select version from prayer_app.pastoral_schedule_versions where year=${year}),0)::int as version,
+      coalesce((select json_agg(json_build_object('id',id,'year',year,'month',month,'enabled',enabled) order by month)
+        from prayer_app.pastoral_requests where year=${year}),'[]'::json) as requests`);
+  return { year, currentYear: Number(seoulToday().slice(0, 4)), ...snapshot };
 }
 export async function saveSchedule(actor: Actor, input: unknown) {
   requireReportAdmin(actor);

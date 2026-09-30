@@ -31,7 +31,7 @@ export function PastoralPortal({displayName}:{displayName:string}){
         <div className="pastoral-grid"><label>제출 대상 월<select value={requestId} onChange={e=>{setRequestId(e.target.value);setAdditional(false);setNotice("");}}>{status.requests.map(r=><option key={r.id} value={r.id}>{periodLabel(r)}</option>)}</select></label><label>제출할 샘<select value={samId} onChange={e=>{setSamId(e.target.value);setAdditional(false);setNotice("");}}>{status.sams.map(s=><option key={s.id} value={s.id}>{s.name}샘 · {s.leaderName||"리더 미등록"}</option>)}</select></label></div>
         {completed&&<p className="pastoral-success">이 달의 목양지는 제출 완료되었습니다.</p>}
         {state==="upcoming"&&<p>선택한 달이 시작되면 제출할 수 있습니다.</p>}{state==="closed"&&<p>이 달은 제출이 종료되었습니다. 제출 내역은 계속 확인할 수 있습니다.</p>}
-        {state==="pending"&&completed&&!additional&&<button type="button" onClick={()=>setAdditional(true)}>이 달에 추가 제출</button>}
+        {state==="pending"&&completed&&!additional&&<button type="button" onClick={()=>{setNotice("");setAdditional(true);}}>이 달에 추가 제출</button>}
       </>}</section>
       {sam&&request&&state==="pending"&&(!completed||additional)&&<ReportEntry key={`${request.id}:${sam.id}:${refresh}`} request={request} sam={sam} today={status.today} displayName={displayName} onSubmitted={()=>{setNotice("목양지가 제출되었습니다.");setAdditional(false);setRefresh(n=>n+1);}}/>}
       <ReportHistory refresh={refresh} onView={setViewId}/>

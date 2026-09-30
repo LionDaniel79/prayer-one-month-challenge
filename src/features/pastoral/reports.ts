@@ -78,7 +78,13 @@ export async function publishReport(actor: Actor, id: string) {
       const bytes = await readFile(tx, report, slot);
       if (report.method === "photo") await rasterPreview(bytes);
     }
-    await tx.execute(sql`update prayer_app.pastoral_reports set submitted_at=now() where id=${id}`);
+    // Recheck the actual month AFTER image decoding. One clock value is both
+    // the admission check and the stored completion timestamp, even at midnight.
+    const accepted = await rows<{ id: string }>(tx, sql`with moment as materialized (select clock_timestamp() as ts)
+      update prayer_app.pastoral_reports p set submitted_at=moment.ts from moment
+      where p.id=${id} and to_char(moment.ts at time zone 'Asia/Seoul','YYYY-MM')=${`${report.year}-${String(report.month).padStart(2,"0")}`}
+      returning p.id`);
+    if (!accepted.length) throw new ReportError("MONTH_CLOSED", 409);
   });
   return { id, submitted: true };
 }

@@ -52,7 +52,7 @@ test.describe("collapsible roster and selected leader deletion", () => {
       await page.setViewportSize({ width: 360, height: 800 });
       await page.goto("/admin/users");
       const leaders = page.getByRole("region", { name: "샘 리더 관리", exact: true });
-      await leaders.locator("summary").click();
+      await leaders.locator("summary").filter({ hasText: "등록된 샘 리더" }).click();
       const all = leaders.getByLabel("샘 리더 전체 선택", { exact: true });
       await all.check();
       for (const name of names) await expect(leaders.getByLabel(`${name}샘 리더 선택`, { exact: true })).toBeChecked();
@@ -81,7 +81,7 @@ test.describe("collapsible roster and selected leader deletion", () => {
       await expect(leaders.getByRole("button", { name: "선택 삭제", exact: true })).toBeDisabled();
       await expectNoOverflow(page);
       await page.reload();
-      await leaders.locator("summary").click();
+      await leaders.locator("summary").filter({ hasText: "등록된 샘 리더" }).click();
       for (const name of names.slice(0, 2)) await expect(leaders.getByLabel(`${name}샘 리더 선택`, { exact: true })).toHaveCount(0);
       await expect(leaders.getByLabel(`${names[2]}샘 리더 선택`, { exact: true })).toBeVisible();
       expect(await (await page.request.get("/api/admin/roster")).json()).toEqual(rosterBefore);
@@ -107,7 +107,7 @@ test.describe("collapsible roster and selected leader deletion", () => {
     await page.route("**/api/admin/sams", (route) => route.fulfill({ json: { rows } }));
     await page.goto("/admin/users");
     const leaders = page.getByRole("region", { name: "샘 리더 관리", exact: true });
-    await leaders.locator("summary").click();
+    await leaders.locator("summary").filter({ hasText: "등록된 샘 리더" }).click();
     const all = leaders.getByLabel("샘 리더 500개 선택", { exact: true });
     await all.check();
     await expect(leaders.getByRole("button", { name: "선택 삭제 (500)", exact: true })).toBeEnabled();
