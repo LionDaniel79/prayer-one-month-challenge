@@ -377,7 +377,7 @@ test.describe("private pastoral reports", () => {
 
   test("revision response loss retries once and preserves legacy JSON without showing retired fields",async({page})=>{
     await loginAs(page,'leader');const v=await submitted(page.request);
-    await db`update prayer_app.pastoral_reports set form=form || ${JSON.stringify({visits:[{reason:'과거 기록 보존'}]})}::jsonb where id=${v.id}`;
+    await db`update prayer_app.pastoral_reports set form=form || ${db.json({visits:[{reason:'과거 기록 보존'}]})}::jsonb where id=${v.id}`;
     await page.goto('/pastoral-reports');await page.locator('.pastoral-history').getByRole('button',{name:/목양지 보기/}).first().click();
     await expect(page.locator('.pastoral-detail')).not.toContainText('과거 기록 보존');
     await page.getByRole('button',{name:'목양지 수정',exact:true}).click();await page.getByLabel('기타',{exact:true}).fill('응답유실검증');
