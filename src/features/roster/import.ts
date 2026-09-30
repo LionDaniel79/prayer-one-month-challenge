@@ -1,3 +1,4 @@
+import { reconcileUnboundLeaders } from "../sams/identity-service";
 import * as fs from "node:fs";
 import { and, eq } from "drizzle-orm";
 import * as XLSX from "xlsx";
@@ -315,6 +316,8 @@ export const dbRosterImportRepository: RosterImportRepository = {
         .select({ id: users.id, rosterId: users.rosterId })
         .from(users)
         .where(eq(users.isActive, true));
+
+      await reconcileUnboundLeaders(tx);
 
       if (activeUsers.some((row) => !row.rosterId)) {
         throw new Error("UNMAPPED_ACTIVE_USER");

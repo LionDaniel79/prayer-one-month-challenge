@@ -1,5 +1,6 @@
 "use client";
 
+import { LeaderIdentityChoice, useLeaderIdentity, leaderStateText } from "./LeaderIdentityChoice";
 import { VillageLeaderSettings } from "./VillageLeaderSettings";
 
 import { fetchJson } from "../../../src/lib/fetch-json";
@@ -14,6 +15,8 @@ async function readJson(url: string, init?: RequestInit) {
 
 function errorCopy(code: string): string {
   const messages: Record<string, string> = {
+    LEADER_SELECTION_REQUIRED:"동명이인이 있습니다. 성도 명단을 확인해 한 분을 선택해 주세요.",
+    LEADER_SELECTION_INVALID:"선택한 성도의 이름·소속이 변경되었습니다. 다시 확인해 주세요.",
     SAM_LEADER_FILE_TYPE: ".xls 또는 .xlsx 파일을 선택해 주세요.",
     SAM_LEADER_FILE_TOO_LARGE: "비어 있지 않은 2MB 이하의 파일을 선택해 주세요.",
     SAM_LEADER_FILE_REQUIRED: "샘 리더 파일을 선택해 주세요.",
@@ -35,6 +38,10 @@ export function SamLeaderSettings() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [editing, setEditing] = useState<AdminSamLeader | null>(null);
+  const [name,setName]=useState("");
+  const [leaderName,setLeaderName]=useState("");
+  const identity=useLeaderIdentity("sam",name,leaderName);
+  function edit(row:AdminSamLeader|null){setEditing(row);setName(row?.name??"");setLeaderName(row?.leaderName??"");}
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const selectableRows = rows.slice(0, MAX_SELECTED_LEADERS);
   const allSelected = selectableRows.length > 0 && selectableRows.every((row) => selectedIds.has(row.id));
@@ -52,6 +59,7 @@ export function SamLeaderSettings() {
     const body = await readJson("/api/admin/sams");
     setRows(body.rows ?? []);
     setSelectedIds(new Set());
+    window.dispatchEvent(new Event("pastoral:changed"));
   }
 
   function toggle(id: string, checked: boolean) {
@@ -80,7 +88,7 @@ export function SamLeaderSettings() {
       });
       setRows((current) => current.filter((row) => !selectedIds.has(row.id)));
       setSelectedIds(new Set());
-      if (editing && selectedIds.has(editing.id)) setEditing(null);
+      if (editing && selectedIds.has(editing.id)) edit(null);
       setMessage(`${body.deleted}개 샘의 리더 정보를 삭제했습니다.`);
     } catch (cause) {
       setError(errorCopy(cause instanceof Error ? cause.message : ""));
@@ -98,7 +106,7 @@ export function SamLeaderSettings() {
     try {
       const body = await readJson("/api/admin/sams/import", { method: "POST", body: new FormData(form) });
       await refresh();
-      setEditing(null);
+      edit(null);
       setMessage(`${body.summary.imported}개 샘의 리더 정보를 가져왔습니다.`);
       form.reset();
     } catch (cause) {
@@ -112,6 +120,7 @@ export function SamLeaderSettings() {
     event.preventDefault();
     const form = event.currentTarget;
     const data = new FormData(form);
+    if(!identity.canSave||busy)return;
     setBusy(true);
     setError("");
     setMessage("");
@@ -123,10 +132,11 @@ export function SamLeaderSettings() {
           name: String(data.get("name") ?? ""),
           leaderName: String(data.get("leaderName") ?? ""),
           isActive: data.get("isActive") === "on",
+          leaderRosterId:identity.rosterId,
         }),
       });
       await refresh();
-      setEditing(null);
+      edit(null);
       setMessage("샘 리더 정보를 저장했습니다.");
       form.reset();
     } catch (cause) {
@@ -152,6 +162,7 @@ export function SamLeaderSettings() {
         <button type="submit" className="text-button" disabled={busy || loading}>가져오기</button>
       </form>
 
+      {rows.some(row=>row.bindingState==="ambiguous")&&<p className="setting-warning" role="status">동명이인 확인이 필요한 샘 리더가 있습니다. 등록된 명단을 펼쳐 해당 리더의 수정 버튼을 눌러 주세요.</p>}
       <details className="roster-disclosure">
         <summary>등록된 샘 리더 {rows.length}개 확인</summary>
         {loading ? <p className="helper-text">불러오는 중...</p> : rows.length === 0 ? <p className="helper-text">등록된 샘 리더가 없습니다.</p> : (
@@ -171,9 +182,9 @@ export function SamLeaderSettings() {
               <li key={row.id}>
                 <label className="checkbox-row">
                   <input type="checkbox" checked={selectedIds.has(row.id)} disabled={busy || (selectedIds.size >= MAX_SELECTED_LEADERS && !selectedIds.has(row.id))} onChange={(event) => toggle(row.id, event.target.checked)} aria-label={`${row.name}샘 리더 선택`} />
-                  <span><strong>{row.name}샘</strong> · {row.leaderName}{row.isActive ? "" : " · 비활성"}</span>
+                  <span><strong>{row.name}샘</strong> · {row.leaderName}{row.isActive ? "" : " · 비활성"} · {leaderStateText(row.bindingState)}</span>
                 </label>
-                <button type="button" className="text-button" disabled={busy} onClick={() => setEditing(row)} aria-label={`${row.name}샘 리더 수정`}>수정</button>
+                <button type="button" className="text-button" disabled={busy} onClick={() => edit(row)} aria-label={`${row.name}샘 리더 수정`}>수정</button>
               </li>
             ))}
           </ul>
@@ -183,12 +194,13 @@ export function SamLeaderSettings() {
 
       <form className="admin-form" key={editing?.id ?? "new"} onSubmit={save}>
         <h3>{editing ? `${editing.name}샘 리더 수정` : "샘 리더 추가"}</h3>
-        <label>샘<input name="name" placeholder="예: 1-2" defaultValue={editing?.name ?? ""} readOnly={Boolean(editing)} maxLength={100} required disabled={busy} /></label>
-        <label>리더 이름<input name="leaderName" defaultValue={editing?.leaderName ?? ""} maxLength={120} required disabled={busy} /></label>
+        <label>샘<input name="name" placeholder="예: 1-2" value={name} onChange={event=>setName(event.target.value)} readOnly={Boolean(editing)} maxLength={100} required disabled={busy} /></label>
+        <label>리더 이름<input name="leaderName" value={leaderName} onChange={event=>setLeaderName(event.target.value)} maxLength={120} required disabled={busy} /></label>
+        <LeaderIdentityChoice identity={identity}/>
         <label className="checkbox-row"><input type="checkbox" name="isActive" defaultChecked={editing?.isActive ?? true} disabled={busy} /> 리더 정보 사용</label>
         <div className="header-actions">
-          <button type="submit" className="primary-button compact-button" disabled={busy || loading}>{busy ? "저장 중..." : "저장"}</button>
-          {editing && <button type="button" className="text-button" disabled={busy} onClick={() => setEditing(null)}>취소</button>}
+          <button type="submit" className="primary-button compact-button" disabled={busy || loading || !identity.canSave}>{busy ? "저장 중..." : "저장"}</button>
+          {editing && <button type="button" className="text-button" disabled={busy} onClick={() => edit(null)}>취소</button>}
         </div>
       </form>
       <VillageLeaderSettings />

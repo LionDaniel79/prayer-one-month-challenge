@@ -12,7 +12,7 @@ type Statement = { text: string };
 
 function databaseWithSams(existing: Array<[string, string]>) {
   boundary.query.mockImplementation(async (query: Statement | string) => ({
-    rows: (typeof query === "string" ? query : query.text).startsWith("select") ? existing : [],
+    rows: (typeof query === "string" ? query : query.text).startsWith("select") && !(typeof query === "string" ? query : query.text).includes("member_roster") ? existing.map(([id,name])=>[id,name,"",null,false]) : [],
   }));
 }
 
@@ -31,8 +31,8 @@ describe("sam leader persistence", () => {
       prepareSamLeaderValues({ name: "1마을-2샘", leaderName: "김가람A 집사" }),
     ]);
     expect(writes()).toEqual([{
-      text: expect.stringMatching(/^update "prayer_app"\."sams" set "name" = \$1, "leader_name" = \$2, "is_active" = \$3 where "prayer_app"\."sams"\."id" = \$4$/),
-      params: ["1-2", "김가람A", true, "existing-sam"],
+      text: expect.stringMatching(/^update "prayer_app"\."sams" set .*"leader_roster_id".*"leader_binding_locked".* where "prayer_app"\."sams"\."id" = \$6$/),
+      params: ["1-2", "김가람A", null, false, true, "existing-sam"],
     }]);
   });
 
@@ -43,7 +43,7 @@ describe("sam leader persistence", () => {
     ]);
     expect(writes()).toHaveLength(1);
     expect(writes()[0].text).toMatch(/^insert into "prayer_app"\."sams"/);
-    expect(writes()[0].params).toEqual(["1-2", "김가람", false, "김가람", false]);
+    expect(writes()[0].params).toEqual(["1-2", "김가람", null, false, false, "1-2", "김가람", null, false, false]);
   });
 
   it("rejects ambiguous existing mappings before changing either row", async () => {

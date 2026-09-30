@@ -1,3 +1,4 @@
+import { reconcileUnboundLeaders } from "../sams/identity-service";
 import { and, asc, eq, inArray, isNull, ne } from "drizzle-orm";
 import { getDb } from "../../db/client";
 import { memberRoster, sessions, users } from "../../db/schema";
@@ -244,7 +245,8 @@ export async function createRosterMember(input: AdminRosterInput): Promise<strin
   }
 
   try {
-    const [created] = await getDb()
+    return await getDb().transaction(async tx=>{
+    const [created] = await tx
       .insert(memberRoster)
       .values({
         ...values,
@@ -252,7 +254,9 @@ export async function createRosterMember(input: AdminRosterInput): Promise<strin
         sourceRow: null,
       })
       .returning({ id: memberRoster.id });
+    await reconcileUnboundLeaders(tx);
     return created.id;
+    });
   } catch (error) {
     if ((error as { code?: string }).code === "23505") {
       throw new DomainError("ROSTER_DUPLICATE", 409);
@@ -307,6 +311,7 @@ export async function updateRosterMember(
       .where(eq(users.rosterId, id))
       .limit(1);
 
+    await reconcileUnboundLeaders(tx);
     if (!linked) return;
 
     const userUpdate: {

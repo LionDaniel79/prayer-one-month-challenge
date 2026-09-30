@@ -14,8 +14,9 @@ export type ReportForm = { noMeeting: boolean; noMeetingReason: string; meetings
 export type Submission = { id: string; requestId: string; samId: string; method: Method; writtenDate: string; form: ReportForm | null; files: Attachment[] };
 export type Period = { month: number };
 export type ReportRequest = { id: string; year: number; month: number; enabled: boolean };
-export type VillageLeader = { id: string; name: string; village: string; leaderName: string; isActive: boolean };
-export type SamTarget = { id: string; name: string; leaderName: string; village: string; isActive: boolean };
+export type LeaderBinding = { leaderRosterId?: string | null; leaderBindingLocked?: boolean };
+export type VillageLeader = LeaderBinding & { id: string; name: string; village: string; leaderName: string; isActive: boolean };
+export type SamTarget = LeaderBinding & { id: string; name: string; leaderName: string; village: string; isActive: boolean };
 export type Identity = { id: string; sourceName: string; canonicalName: string; samLabel: string | null; village: string | null; isActive: boolean };
 export type ReportAccess = { visible: boolean; sams: SamTarget[]; requiredSamIds: string[]; rosterId: string | null };
 export type Actor = { id: string; displayName: string; role: "member" | "admin" };
@@ -96,16 +97,37 @@ function nameKey(value: string): string {
   // Preserve A/B suffixes. Do not use the app's login canonicalizer for authorization.
   return value.normalize("NFC").trim().replace(/\s*(?:\(|\[)?(?:담임목사|부목사|목사|전도사|장로|권사|안수집사|집사|성도)(?:님)?(?:\)|\])?$/u, "").replace(/\s+/gu, "");
 }
-/** Compute once for the directory; never repeat a full directory scan per roster member. */
-export function automaticLeaders(allSams: SamTarget[], roster: Identity[]): { samId: string; rosterId: string; name: string }[] {
-  const candidates = new Map<string, Identity[]>();
-  for (const person of roster.filter(r => r.isActive)) {
-    const key = JSON.stringify([samKey(person.samLabel), nameKey(person.sourceName)]);
-    candidates.set(key, [...(candidates.get(key) ?? []), person]);
+export type LeaderTarget = { kind: "sam" | "village"; name: string; scope: string; leaderName: string };
+export function leaderCandidates(target: LeaderTarget, roster: Identity[]): Identity[] {
+  const key = nameKey(target.leaderName);
+  if (!key) return [];
+  // Count namesakes across all villages, not only the target scope. Preserve explicit suffixes.
+  return roster.filter(r => r.isActive && (nameKey(r.sourceName) === key || nameKey(r.canonicalName) === key));
+}
+export function leaderInScope(target: LeaderTarget, person: Identity): boolean {
+  return person.isActive && (target.kind === "sam" ? samKey(person.samLabel) === samKey(target.scope) : villageKey(person.village) === villageKey(target.scope));
+}
+export function selectLeaderIdentity(target: LeaderTarget, roster: Identity[], existing: (LeaderBinding & {leaderName: string}) | null = null, chosen?: string): {rosterId: string | null; locked: boolean} {
+  const unchanged = existing && nameKey(existing.leaderName) === nameKey(target.leaderName);
+  const pinned = unchanged && existing.leaderBindingLocked;
+  if (chosen !== undefined) {
+    const person = roster.find(r => r.id === chosen);
+    if (!person || !leaderInScope(target, person) || (!(pinned && existing.leaderRosterId === chosen) && !leaderCandidates(target, roster).some(r => r.id === chosen))) throw new ReportError("LEADER_SELECTION_INVALID", 409);
+    return {rosterId: chosen, locked: true};
   }
-  return allSams.filter(s => s.isActive && s.leaderName).flatMap(sam => {
-    const matches = candidates.get(JSON.stringify([samKey(sam.name), nameKey(sam.leaderName)])) ?? [];
-    return matches.length === 1 ? [{ samId: sam.id, rosterId: matches[0].id, name: matches[0].sourceName }] : [];
+  // A removed identity must never transfer its role to a newly added namesake.
+  if (pinned) return {rosterId: existing.leaderRosterId ?? null, locked: true};
+  const candidates = leaderCandidates(target, roster);
+  if (candidates.length > 1) throw new ReportError("LEADER_SELECTION_REQUIRED", 409);
+  if (candidates.length === 1 && leaderInScope(target, candidates[0])) return {rosterId:candidates[0].id,locked:true};
+  return {rosterId:null,locked:false};
+}
+/** Runtime authority uses persisted roster IDs, never display names. */
+export function automaticLeaders(allSams: SamTarget[], roster: Identity[]): { samId: string; rosterId: string; name: string }[] {
+  const people = new Map(roster.map(r => [r.id, r]));
+  return allSams.filter(s => s.isActive && s.leaderName && s.leaderRosterId).flatMap(sam => {
+    const person = people.get(sam.leaderRosterId!);
+    return person && leaderInScope({kind:"sam",name:sam.name,scope:sam.name,leaderName:sam.leaderName},person) ? [{samId:sam.id,rosterId:person.id,name:person.sourceName}] : [];
   });
 }
 export function parseVillageLeader(value: unknown): Omit<VillageLeader, "id"> {
@@ -117,9 +139,10 @@ export function parseVillageLeader(value: unknown): Omit<VillageLeader, "id"> {
   return { name: `${village}마을장`, village, leaderName: clean(input.leaderName, 100, true), isActive: input.isActive !== false };
 }
 export function automaticVillageLeaders(heads: VillageLeader[], roster: Identity[]): { village: string; rosterId: string }[] {
-  return heads.filter(h => h.isActive).flatMap(head => {
-    const matches = roster.filter(r => r.isActive && villageKey(r.village) === head.village && (nameKey(r.sourceName) === nameKey(head.leaderName) || nameKey(r.canonicalName) === nameKey(head.leaderName)));
-    return matches.length === 1 ? [{ village: head.village, rosterId: matches[0].id }] : [];
+  const people = new Map(roster.map(r => [r.id, r]));
+  return heads.filter(h => h.isActive && h.leaderRosterId).flatMap(head => {
+    const person = people.get(head.leaderRosterId!);
+    return person && leaderInScope({kind:"village",name:head.name,scope:head.village,leaderName:head.leaderName},person) ? [{village:head.village,rosterId:person.id}] : [];
   });
 }
 export function deriveAccess(actor: Actor, identity: Identity | null, allSams: SamTarget[], roster: Identity[], heads: VillageLeader[]): ReportAccess {

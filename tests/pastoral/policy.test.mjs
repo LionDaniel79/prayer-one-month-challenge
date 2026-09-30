@@ -11,12 +11,12 @@ test('calendar accepts this and next year only',()=>{assert.equal(p.parseSchedul
 test('year validation moves at Seoul New Year',()=>{assert.equal(p.parseSchedule({year:2028,expectedVersion:0,selected:[]},new Date('2026-12-31T15:01:00Z')).year,2028);});
 test('empty schedule is an explicit cancel all',()=>assert.deepEqual(p.parseSchedule(schedule([]),now).selected,[]));
 const roster=(n,name='가상리더',sam='3-4',village='3')=>({id:id(n),sourceName:name,canonicalName:name,samLabel:sam,village,isActive:true});
-const sams=[{id:id(30),name:'3-4',leaderName:'가상리더',isActive:true,village:'3'},{id:id(31),name:'4-1',leaderName:'다른리더',isActive:true,village:'4'}];
+const sams=[{id:id(30),name:'3-4',leaderName:'가상리더',leaderRosterId:id(5),leaderBindingLocked:true,isActive:true,village:'3'},{id:id(31),name:'4-1',leaderName:'다른리더',isActive:true,village:'4'}];
 const user={id:id(100),role:'member',displayName:'가상리더'};
-test('ordinary member cannot gain access from display name alone',()=>assert.equal(p.deriveAccess(user,roster(5,'일반회원'),sams,[roster(5,'일반회원')],[]).visible,false));
+test('ordinary member cannot gain access from display name alone',()=>assert.equal(p.deriveAccess(user,roster(50,'일반회원'),sams,[roster(50,'일반회원')],[]).visible,false));
 test('unique stored roster name and same sam grant leader only that sam',()=>{const r=roster(5);const a=p.deriveAccess(user,r,sams,[r],[]);assert.deepEqual(a.requiredSamIds,[id(30)]);assert.equal(a.sams.length,1);});
 test('same name at different sam never receives leader role',()=>{const r=roster(5,'가상리더','4-1','4');assert.equal(p.deriveAccess(user,r,sams,[r],[]).visible,false);});
-test('ambiguous duplicate stored names fail closed',()=>{const r=roster(5);assert.equal(p.deriveAccess(user,r,sams,[r,roster(6)],[]).visible,false);});
+test('ambiguous duplicate stored names fail closed',()=>{const r=roster(5);assert.equal(p.deriveAccess(user,r,sams.map(s=>({...s,leaderRosterId:null})),[r,roster(6)],[]).visible,false);});
 test('excess form rows rejected',()=>assert.throws(()=>p.parseSubmission({...sample(),form:{sharing:Array.from({length:41},()=>({member:'a',content:'b'}))}})));
 const file=(name='목양지.pdf',size=6291456)=>({name,size,sha256:'a'.repeat(64)});
 test('two full sized documents accepted with no text form',()=>assert.equal(p.parseSubmission({...sample(),method:'file',form:null,files:[file(),file('기록.hwp')]}).files.length,2));
@@ -32,8 +32,8 @@ test('bounded body checks actual bytes when length header is absent',async()=>{a
 test('JSON requires exact media type and valid syntax',async()=>{await assert.rejects(p.readReportJson(new Request('https://app.example/api',{method:'POST',headers:{'content-type':'text/plain'},body:'{}'})));await assert.rejects(p.readReportJson(new Request('https://app.example/api',{method:'POST',headers:{'content-type':'application/json'},body:'{'})));assert.deepEqual(await p.readReportJson(new Request('https://app.example/api',{method:'POST',headers:{'content-type':'application/json; charset=utf-8'},body:'{"a":1}'})),{a:1});});
 test('photo sniffing rejects SVG HTML and supports actual raster signatures',()=>{assert.equal(p.isRaster(new TextEncoder().encode('<svg xmlns="http://www.w3.org/2000/svg"></svg>')),false);assert.equal(p.isRaster(new TextEncoder().encode('<html>')),false);assert.equal(p.isRaster(Buffer.from('89504e470d0a1a0a','hex')),true);assert.equal(p.isRaster(Buffer.from('ffd8ffe000104a464946','hex')),true);});
 test('directory leader bindings share the same unique-match authorization rule',()=>{const r=roster(5);assert.deepEqual(p.automaticLeaders(sams,[r]),[{samId:id(30),rosterId:r.id,name:r.sourceName}]);});
-test('directory leader bindings exclude ambiguous and inactive entries',()=>{assert.deepEqual(p.automaticLeaders(sams,[roster(5),roster(6)]),[]);assert.deepEqual(p.automaticLeaders(sams,[{...roster(5),isActive:false}]),[]);});
-test('directory leader bindings preserve name suffixes and reject inactive sams',()=>{assert.deepEqual(p.automaticLeaders(sams,[roster(5,'가상리더A')]),[]);assert.deepEqual(p.automaticLeaders(sams.map(s=>({...s,isActive:false})),[roster(5)]),[]);});
+test('directory leader bindings exclude ambiguous and inactive entries',()=>{assert.deepEqual(p.automaticLeaders(sams.map(s=>({...s,leaderRosterId:null})),[roster(5),roster(6)]),[]);assert.deepEqual(p.automaticLeaders(sams,[{...roster(5),isActive:false}]),[]);});
+test('directory leader bindings preserve name suffixes and reject inactive sams',()=>{assert.deepEqual(p.automaticLeaders(sams,[roster(50,'가상리더A')]),[]);assert.deepEqual(p.automaticLeaders(sams.map(s=>({...s,isActive:false})),[roster(5)]),[]);});
 
 test('monthly schedule has only year/month and rejects legacy week/windows',()=>{
  const result=p.parseSchedule(schedule([{month:10},{month:1}]),now);
@@ -79,14 +79,14 @@ test('village directory input requires numbered village head label and stored na
  assert.throws(()=>p.parseVillageLeader({name:'1마을장',leaderName:''}));
 });
 test('village leader is mapped by unique name and same village, without grant management',()=>{
- const person=roster(20,'가상마을장','3-2','3');const heads=[{id:id(41),name:'3마을장',village:'3',leaderName:'가상마을장',isActive:true}];
+ const person=roster(20,'가상마을장','3-2','3');const heads=[{id:id(41),name:'3마을장',village:'3',leaderName:'가상마을장',leaderRosterId:id(20),leaderBindingLocked:true,isActive:true}];
  const access=p.deriveAccess(user,person,sams,[person],heads);assert.equal(access.visible,true);assert.deepEqual(access.sams.map(s=>s.id),[id(30)]);assert.deepEqual(access.requiredSamIds,[]);
  assert.equal(p.deriveAccess(user,{...person,village:'4'},sams,[{...person,village:'4'}],heads).visible,false);
- assert.equal(p.deriveAccess(user,person,sams,[person,roster(21,'가상마을장','3-3','3')],heads).visible,false);
+ assert.equal(p.deriveAccess(user,person,sams,[person,roster(21,'가상마을장','3-3','3')],heads.map(h=>({...h,leaderRosterId:null}))).visible,false);
  assert.equal(p.deriveAccess(user,person,sams,[person],heads.map(h=>({...h,isActive:false}))).visible,false);
 });
 test('inactive roster and ambiguous name suffix do not acquire village authority',()=>{
- const person=roster(20,'가상마을장A','3-2','3');const heads=[{id:id(41),name:'3마을장',village:'3',leaderName:'가상마을장',isActive:true}];
+ const person=roster(21,'가상마을장A','3-2','3');const heads=[{id:id(41),name:'3마을장',village:'3',leaderName:'가상마을장',leaderRosterId:id(20),leaderBindingLocked:true,isActive:true}];
  assert.equal(p.deriveAccess(user,person,sams,[person],heads).visible,false);
 });
 test('TXT matches reduced header and includes no-meeting reason with optional empty sections',()=>{

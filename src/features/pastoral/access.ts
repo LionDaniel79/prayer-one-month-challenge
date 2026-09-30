@@ -6,8 +6,8 @@ export function requireReportAdmin(actor: Actor) {
 export async function directory(db: Executor = getDb()) {
   const [roster, samRows, heads] = await Promise.all([
     rows<Identity>(db, sql`select id,source_name as "sourceName",canonical_name as "canonicalName",sam_label as "samLabel",village,is_active as "isActive" from prayer_app.member_roster`),
-    rows<Omit<SamTarget, "village">>(db, sql`select id,name,leader_name as "leaderName",is_active as "isActive" from prayer_app.sams order by name,id`),
-    rows<VillageLeader>(db, sql`select id,name,village,leader_name as "leaderName",is_active as "isActive" from prayer_app.village_leaders order by village,id`),
+    rows<Omit<SamTarget, "village">>(db, sql`select id,name,leader_name as "leaderName",leader_roster_id as "leaderRosterId",leader_binding_locked as "leaderBindingLocked",is_active as "isActive" from prayer_app.sams order by name,id`),
+    rows<VillageLeader>(db, sql`select id,name,village,leader_name as "leaderName",leader_roster_id as "leaderRosterId",leader_binding_locked as "leaderBindingLocked",is_active as "isActive" from prayer_app.village_leaders order by village,id`),
   ]);
   const sams: SamTarget[] = samRows.map(sam => {
     const key = samKey(sam.name);

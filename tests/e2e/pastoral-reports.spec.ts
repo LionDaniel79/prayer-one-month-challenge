@@ -49,11 +49,13 @@ test.describe("private pastoral reports", () => {
     }
   });
   test.beforeEach(async () => {
+    await db`update prayer_app.sams set leader_roster_id=${accounts.leader.rosterId},leader_binding_locked=true where id=${ids.sam}`;
+    await db`update prayer_app.sams set leader_roster_id=${accounts.outsider.rosterId},leader_binding_locked=true where id=${ids.foreignSam}`;
     // Only the new module's synthetic data in the explicitly disposable CI database.
     await db`delete from prayer_app.pastoral_reports`; await db`delete from prayer_app.pastoral_requests`; await db`delete from prayer_app.village_leaders`; await db`delete from prayer_app.pastoral_schedule_versions`;
     requestId = randomUUID();
     await db`insert into prayer_app.pastoral_requests(id,year,month) values(${requestId},${year},${month})`;
-    await db`insert into prayer_app.village_leaders(name,village,leader_name) values('901마을장','901',${accounts.head.name})`;
+    await db`insert into prayer_app.village_leaders(name,village,leader_name,leader_roster_id,leader_binding_locked) values('901마을장','901',${accounts.head.name},${accounts.head.rosterId},true)`;
   });
   test.afterAll(async () => {
     if (!db) return;
