@@ -13,7 +13,7 @@ function SchedulePanel({ onSaved }: { onSaved: (requests: ReportRequest[]) => vo
   const [selected,setSelected] = useState<Period[]>([]);
   const [busy,setBusy] = useState(false); const [error,setError] = useState(""); const [notice,setNotice] = useState(""); const [reload,setReload] = useState(0);
   useEffect(() => {
-    const c = new AbortController(); setData(null); setError(""); setNotice("");
+    const c = new AbortController();
     void api<Schedule>(`/api/admin/pastoral/schedule?year=${year}`,{cache:"no-store",signal:c.signal}).then(value => {
       if (!c.signal.aborted) { setData(value); setSelected(value.requests.filter(r=>r.enabled).map(r=>({month:r.month}))); onSaved(value.requests); }
     }).catch(e=>{if(!c.signal.aborted)setError(message(e));});
@@ -28,8 +28,8 @@ function SchedulePanel({ onSaved }: { onSaved: (requests: ReportRequest[]) => vo
   }
   return <section className="card pastoral-schedule"><h2>월별 제출 요청</h2>
     <p>요청할 달을 누르면 선택되고, 다시 누르면 취소됩니다. 선택한 달 안에 사진·파일·직접 입력 중 하나로 1회 이상 제출하면 완료입니다.</p>
-    <label>요청 연도<select value={year} disabled={busy} onChange={e=>setYear(Number(e.target.value))}><option value={currentYear}>{currentYear}년 (올해)</option><option value={currentYear+1}>{currentYear+1}년 (내년)</option></select></label>
-    {error&&<p role="alert" className="error-text">{error} <button type="button" onClick={()=>setReload(n=>n+1)}>다시 불러오기</button></p>}
+    <label>요청 연도<select value={year} disabled={busy} onChange={e=>{setData(null);setError("");setNotice("");setYear(Number(e.target.value));}}><option value={currentYear}>{currentYear}년 (올해)</option><option value={currentYear+1}>{currentYear+1}년 (내년)</option></select></label>
+    {error&&<p role="alert" className="error-text">{error} <button type="button" onClick={()=>{setData(null);setError("");setNotice("");setReload(n=>n+1);}}>다시 불러오기</button></p>}
     {notice&&<p role="status" className="pastoral-success">{notice}</p>}
     {!data&&!error&&<p role="status">요청 설정을 불러오는 중입니다.</p>}
     {data&&<fieldset disabled={busy}><legend>{year}년 요청할 달</legend>
@@ -45,7 +45,7 @@ function SchedulePanel({ onSaved }: { onSaved: (requests: ReportRequest[]) => vo
 type OverviewData={request:ReportRequest;label:string;rows:{sam:SamTarget;count:number;submitted:Pick<Summary,"id"|"leaderName"|"submittedBy"|"method"|"submittedAt">|null}[]};
 function Overview({requestId,onView}:{requestId:string;onView:(id:string)=>void}){
   const [data,setData]=useState<OverviewData|null>(null);const [error,setError]=useState("");
-  useEffect(()=>{const c=new AbortController();setData(null);setError("");void api<OverviewData>(`/api/admin/pastoral/overview?requestId=${requestId}`,{cache:"no-store",signal:c.signal}).then(v=>{if(!c.signal.aborted)setData(v);}).catch(e=>{if(!c.signal.aborted)setError(message(e));});return()=>c.abort();},[requestId]);
+  useEffect(()=>{const c=new AbortController();void api<OverviewData>(`/api/admin/pastoral/overview?requestId=${requestId}`,{cache:"no-store",signal:c.signal}).then(v=>{if(!c.signal.aborted)setData(v);}).catch(e=>{if(!c.signal.aborted)setError(message(e));});return()=>c.abort();},[requestId]);
   if(error)return <p role="alert" className="error-text">{error}</p>;
   if(!data)return <p role="status">제출 현황을 불러오는 중입니다.</p>;
   return <div className="pastoral-overview"><p><strong>{data.label}</strong> · 제출 {data.rows.filter(r=>r.submitted).length} / 대상 {data.rows.length}샘</p>

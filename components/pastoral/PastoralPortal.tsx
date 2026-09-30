@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { periodLabel, requestState } from "../../src/features/pastoral/policy";
 import { api, message, type Status } from "./client";
 import { ReportEntry } from "./ReportEntry";
@@ -8,8 +8,16 @@ import { ReportHistory } from "./ReportHistory";
 export function PastoralPortal({displayName}:{displayName:string}){
   const [status,setStatus]=useState<Status|null>(null);const [error,setError]=useState("");const [notice,setNotice]=useState("");
   const [samId,setSamId]=useState("");const [requestId,setRequestId]=useState("");const [viewId,setViewId]=useState("");const [refresh,setRefresh]=useState(0);const [additional,setAdditional]=useState(false);
-  const load=useCallback(async()=>{try{const value=await api<Status>("/api/pastoral/status",{cache:"no-store"});setStatus(value);setError("");setSamId(current=>value.sams.some(s=>s.id===current)?current:value.sams[0]?.id??"");setRequestId(current=>value.requests.some(r=>r.id===current)?current:value.requests.find(r=>requestState(r,false,value.today)==="pending")?.id??value.requests[0]?.id??"");}catch(e){setError(message(e));}},[]);
-  useEffect(()=>{void load();},[load,refresh]);
+  useEffect(()=>{
+    const controller=new AbortController();
+    void api<Status>("/api/pastoral/status",{cache:"no-store",signal:controller.signal}).then(value=>{
+      if(controller.signal.aborted)return;
+      setStatus(value);setError("");
+      setSamId(current=>value.sams.some(s=>s.id===current)?current:value.sams[0]?.id??"");
+      setRequestId(current=>value.requests.some(r=>r.id===current)?current:value.requests.find(r=>requestState(r,false,value.today)==="pending")?.id??value.requests[0]?.id??"");
+    }).catch(e=>{if(!controller.signal.aborted)setError(message(e));});
+    return()=>controller.abort();
+  },[refresh]);
   const sam=status?.sams.find(s=>s.id===samId);const request=status?.requests.find(r=>r.id===requestId);
   const completed=!!status?.completed.some(c=>c.requestId===requestId&&c.samId===samId);
   const state=request&&status?requestState(request,false,status.today):null;
