@@ -10,6 +10,7 @@ export const methodLabel = (method: string) => ({ photo: "사진", file: "파일
 export function message(error: unknown): string {
   const code = error instanceof Error ? error.message : "";
   return ({
+    LEADER_SELECTION_REQUIRED:"동명이인이 있습니다. 소속을 확인해 한 분을 선택해 주세요.", LEADER_SELECTION_INVALID:"선택한 성도의 이름·소속을 다시 확인해 주세요.",
     REPORT_CHANGED: "다른 수정이 먼저 저장되었습니다. 입력 내용을 보관하고 목양지를 다시 열어 주세요.", EDIT_APPLIED: "이미 수정 저장되었습니다. 최신 목양지를 확인해 주세요.", EDIT_NOT_FOUND: "수정 초안을 찾을 수 없습니다. 목양지를 다시 열어 주세요.", REPORT_NOT_FINALIZED: "제출 완료된 목양지만 수정·삭제할 수 있습니다.",
     INVALID_INPUT: "입력 내용과 날짜를 확인해 주세요.", INVALID_DATE: "올바른 날짜를 선택해 주세요.",
     MONTH_CLOSED: "선택한 달 안에서만 제출할 수 있습니다. 현재 월을 확인해 주세요.", INVALID_VILLAGE_LABEL: "마을장은 1마을장과 같은 형식으로 입력해 주세요.", NO_MEETING_REASON_REQUIRED: "샘모임을 하지 못한 이유를 입력해 주세요.", INVALID_FILE_COUNT: "사진이나 파일은 1~2개, 직접 입력은 파일 없이 제출해 주세요.",

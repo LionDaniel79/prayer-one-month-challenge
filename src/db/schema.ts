@@ -47,6 +47,8 @@ export const sams = appSchema.table(
     id: uuid("id").defaultRandom().primaryKey(),
     name: varchar("name", { length: 100 }).notNull(),
     leaderName: varchar("leader_name", { length: 100 }).notNull(),
+    leaderRosterId: uuid("leader_roster_id").references(() => memberRoster.id, { onDelete: "set null" }),
+    leaderBindingLocked: boolean("leader_binding_locked").notNull().default(false),
     isActive: boolean("is_active").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },

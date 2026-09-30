@@ -3,12 +3,12 @@ import assert from 'node:assert/strict';
 import * as p from '../../src/features/pastoral/policy.ts';
 const id='00000000-0000-4000-8000-000000000010';
 const person={id,sourceName:'가상마을장A',canonicalName:'가상마을장',samLabel:'1-1',village:'1마을',isActive:true};
-const head={id:'head',name:'1마을장',village:'1',leaderName:'가상마을장',isActive:true};
+const head={id:'head',name:'1마을장',village:'1',leaderName:'가상마을장',leaderRosterId:id,leaderBindingLocked:true,isActive:true};
 test('village head matches unique canonical name in assigned village',()=>{
  assert.deepEqual(p.automaticVillageLeaders([head],[person]),[{village:'1',rosterId:id}]);
 });
 test('canonical names never grant ambiguous or different-village identities',()=>{
- assert.deepEqual(p.automaticVillageLeaders([head],[person,{...person,id:'another',sourceName:'가상마을장B'}]),[]);
+ assert.deepEqual(p.automaticVillageLeaders([{...head,leaderRosterId:null}],[person,{...person,id:'another',sourceName:'가상마을장B'}]),[]);
  assert.deepEqual(p.automaticVillageLeaders([head],[{...person,village:'2마을'}]),[]);
  assert.deepEqual(p.automaticVillageLeaders([head],[{...person,isActive:false}]),[]);
 });
