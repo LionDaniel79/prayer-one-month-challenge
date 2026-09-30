@@ -78,10 +78,10 @@ test('village directory input requires numbered village head label and stored na
  for(const name of ['1-2','0마을장','마을장','1마을','x마을장'])assert.throws(()=>p.parseVillageLeader({name,leaderName:'가상마을장'}));
  assert.throws(()=>p.parseVillageLeader({name:'1마을장',leaderName:''}));
 });
-test('village leader is mapped by unique name and same village, without grant management',()=>{
+test('village leader is mapped by roster ID to assigned village, independent of home membership',()=>{
  const person=roster(20,'가상마을장','3-2','3');const heads=[{id:id(41),name:'3마을장',village:'3',leaderName:'가상마을장',leaderRosterId:id(20),leaderBindingLocked:true,isActive:true}];
  const access=p.deriveAccess(user,person,sams,[person],heads);assert.equal(access.visible,true);assert.deepEqual(access.sams.map(s=>s.id),[id(30)]);assert.deepEqual(access.requiredSamIds,[]);
- assert.equal(p.deriveAccess(user,{...person,village:'4'},sams,[{...person,village:'4'}],heads).visible,false);
+ assert.deepEqual(p.deriveAccess(user,{...person,village:'4',samLabel:'4-1'},sams,[{...person,village:'4',samLabel:'4-1'}],heads).sams.map(s=>s.id),[id(30)]);
  assert.equal(p.deriveAccess(user,person,sams,[person,roster(21,'가상마을장','3-3','3')],heads.map(h=>({...h,leaderRosterId:null}))).visible,false);
  assert.equal(p.deriveAccess(user,person,sams,[person],heads.map(h=>({...h,isActive:false}))).visible,false);
 });

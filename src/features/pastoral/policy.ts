@@ -105,7 +105,9 @@ export function leaderCandidates(target: LeaderTarget, roster: Identity[]): Iden
   return roster.filter(r => r.isActive && (nameKey(r.sourceName) === key || nameKey(r.canonicalName) === key));
 }
 export function leaderInScope(target: LeaderTarget, person: Identity): boolean {
-  return person.isActive && (target.kind === "sam" ? samKey(person.samLabel) === samKey(target.scope) : villageKey(person.village) === villageKey(target.scope));
+  // Village heads may belong to another village. Their responsibility is the
+  // registered target village; sam leaders must still belong to their own sam.
+  return person.isActive && (target.kind === "village" || samKey(person.samLabel) === samKey(target.scope));
 }
 export function selectLeaderIdentity(target: LeaderTarget, roster: Identity[], existing: (LeaderBinding & {leaderName: string}) | null = null, chosen?: string): {rosterId: string | null; locked: boolean} {
   const unchanged = existing && nameKey(existing.leaderName) === nameKey(target.leaderName);

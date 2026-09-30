@@ -7,9 +7,9 @@ const head={id:'head',name:'1마을장',village:'1',leaderName:'가상마을장'
 test('village head matches unique canonical name in assigned village',()=>{
  assert.deepEqual(p.automaticVillageLeaders([head],[person]),[{village:'1',rosterId:id}]);
 });
-test('canonical names never grant ambiguous or different-village identities',()=>{
+test('only an active bound identity has village authority, regardless of home village',()=>{
  assert.deepEqual(p.automaticVillageLeaders([{...head,leaderRosterId:null}],[person,{...person,id:'another',sourceName:'가상마을장B'}]),[]);
- assert.deepEqual(p.automaticVillageLeaders([head],[{...person,village:'2마을'}]),[]);
+ assert.deepEqual(p.automaticVillageLeaders([head],[{...person,village:'2마을'}]),[{village:'1',rosterId:id}]);
  assert.deepEqual(p.automaticVillageLeaders([head],[{...person,isActive:false}]),[]);
 });
 test('other is optional and retained; retired visits not accepted in new form',()=>{
