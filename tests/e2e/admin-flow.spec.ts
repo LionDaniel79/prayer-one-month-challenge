@@ -4,13 +4,13 @@ import { expectNoOverflow, login } from "./helpers";
 const pages = [
   ["/admin", "대시보드"], ["/admin/prayer", "기도운동 관리"],
   ["/admin/visits", "심방 신청 관리"], ["/admin/prayer-requests", "기도요청 관리"],
-  ["/admin/notices", "공지 관리"], ["/admin/users", "사용자 관리"], ["/admin/settings", "설정"],
+  ["/admin/notices", "공지 관리"], ["/admin/users", "사용자 관리"],
 ] as const;
 
 test.describe("database-backed administrator flows", () => {
   test.skip(process.env.E2E_DATABASE_READY !== "1", "Requires the disposable CI database, never a production session.");
 
-  test("logs in normally and opens all seven focused management pages", async ({ page }, testInfo) => {
+  test("logs in normally and opens all focused management pages", async ({ page }, testInfo) => {
     const errors: string[] = [];
     page.on("pageerror", (error) => errors.push(error.message));
     await login(page, "admin");

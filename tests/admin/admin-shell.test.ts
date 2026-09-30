@@ -11,7 +11,6 @@ describe("admin shell", () => {
       "기도요청 관리",
       "공지 관리",
       "사용자 관리",
-      "설정",
     ];
     let cursor = -1;
     for (const label of labels) {

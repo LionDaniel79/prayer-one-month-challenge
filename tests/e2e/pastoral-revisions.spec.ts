@@ -1,0 +1,60 @@
+import { randomUUID, createHash } from "node:crypto";
+import postgres from "postgres";
+import sharp from "sharp";
+import { expect, test } from "@playwright/test";
+import { seoulToday } from "../../src/features/pastoral/policy";
+import { login, expectNoOverflow } from "./helpers";
+
+test("photo revision UI preserves original on failed upload, retries and converts to optional form", async ({ page }, info) => {
+  test.skip(process.env.E2E_DATABASE_READY !== "1", "Disposable CI database only");
+  const url=new URL(process.env.DATABASE_URL ?? "");
+  if(process.env.CI!=="true"||!["127.0.0.1","localhost"].includes(url.hostname)||url.pathname!=="/prayer_e2e")throw new Error("LOCAL_TEST_DB_REQUIRED");
+  const db=postgres(url.toString(),{ssl:"require",prepare:false,max:1});
+  const id=randomUUID(), requestId=randomUUID(), today=seoulToday();
+  const hash=(bytes:Buffer)=>createHash("sha256").update(bytes).digest("hex");
+  try {
+    await db`insert into prayer_app.pastoral_requests(id,year,month) values(${requestId},${Number(today.slice(0,4))},${Number(today.slice(5,7))})`;
+    await login(page,"admin");
+    const state=await (await page.request.get("/api/pastoral/status")).json();
+    const first=await sharp({create:{width:64,height:64,channels:3,background:"white"}}).png().toBuffer();
+    const second=await sharp({create:{width:80,height:60,channels:3,background:"gray"}}).png().toBuffer();
+    const payload={id,requestId,samId:state.sams[0].id,method:"photo",writtenDate:today,form:null,files:[{name:"원본사진.png",size:first.length,sha256:hash(first)}]};
+    expect((await page.request.post("/api/pastoral/reports",{data:payload})).status()).toBe(201);
+    expect((await page.request.put(`/api/pastoral/reports/${id}/files/0/chunks/0`,{headers:{"content-type":"application/octet-stream"},data:first})).status()).toBe(200);
+    expect((await page.request.post(`/api/pastoral/reports/${id}/publish`)).status()).toBe(200);
+    await page.goto("/pastoral-reports");
+    await page.locator(".pastoral-history").getByRole("button",{name:/목양지 보기/}).first().click();
+    await page.getByRole("button",{name:"목양지 수정",exact:true}).click();
+    await page.getByLabel("원본사진.png 유지",{exact:true}).uncheck();
+    await page.getByLabel("새 첨부파일 추가",{exact:true}).setInputFiles({name:"교체사진.png",mimeType:"image/png",buffer:second});
+    await page.route("**/api/pastoral/reports/*/edits/*/files/*/chunks/*",route=>route.abort("failed"));
+    await page.getByRole("button",{name:"수정 저장",exact:true}).click();
+    await expect(page.locator(".pastoral-entry").getByRole("alert")).toBeVisible();
+    expect(await (await page.request.get(`/api/pastoral/reports/${id}/files/0/chunks/0`)).body()).toEqual(first);
+    await page.unroute("**/api/pastoral/reports/*/edits/*/files/*/chunks/*");
+    await page.getByRole("button",{name:"같은 수정으로 다시 시도",exact:true}).click();
+    await expect(page.locator(".pastoral-detail").getByRole("button",{name:"교체사진.png 내려받기",exact:true})).toBeVisible();
+    const image=page.getByRole("img",{name:"목양지 사진 1",exact:true});
+    await expect.poll(()=>image.evaluate((el:HTMLImageElement)=>el.complete&&el.naturalWidth>0)).toBe(true);
+    expect(await (await page.request.get(`/api/pastoral/reports/${id}/files/0/chunks/0`)).body()).toEqual(second);
+    await page.getByRole("button",{name:"목양지 수정",exact:true}).click();
+    await page.getByRole("radio",{name:"직접 입력",exact:true}).check();
+    await page.getByLabel("이번 기간 샘모임 없음",{exact:true}).check();
+    await page.getByRole("button",{name:"수정 저장",exact:true}).click();
+    expect(await page.getByLabel("샘모임을 하지 못한 이유",{exact:true}).evaluate((element:HTMLTextAreaElement)=>element.validity.valueMissing)).toBe(true);
+    expect((await (await page.request.get(`/api/pastoral/reports/${id}`)).json()).report.version).toBe(1);
+    await page.getByLabel("샘모임을 하지 못한 이유",{exact:true}).fill("가상 사유");
+    await page.getByLabel("기타",{exact:true}).fill("선택 입력 확인");
+    await page.setViewportSize({width:360,height:900});await expectNoOverflow(page);
+    await page.screenshot({path:info.outputPath("pastoral-revision-editor-360.png"),fullPage:true});
+    await page.getByRole("button",{name:"수정 저장",exact:true}).click();
+    await expect(page.locator(".pastoral-detail")).toContainText("선택 입력 확인");
+    const converted=(await (await page.request.get(`/api/pastoral/reports/${id}`)).json()).report;
+    expect(converted.method).toBe("form");expect(converted.files).toEqual([]);expect(converted.version).toBe(2);
+    expect((await page.request.get(`/api/pastoral/reports/${id}/files/0/image`)).status()).toBe(415);
+  } finally {
+    await db`delete from prayer_app.pastoral_reports where id=${id}`;
+    await db`delete from prayer_app.pastoral_requests where id=${requestId}`;
+    await db.end();
+  }
+});

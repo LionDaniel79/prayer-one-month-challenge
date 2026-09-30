@@ -10,8 +10,7 @@ export type Method = "photo" | "file" | "form";
 export type Attachment = { name: string; size: number; sha256: string };
 export type Meeting = { when: string; place: string; attendees: string };
 export type Sharing = { member: string; content: string };
-export type Visit = { member: string; when: string; place: string; reason: string };
-export type ReportForm = { noMeeting: boolean; noMeetingReason: string; meetings: Meeting[]; sharing: Sharing[]; visits: Visit[]; news: Sharing[]; leaderPrayer: string };
+export type ReportForm = { noMeeting: boolean; noMeetingReason: string; meetings: Meeting[]; sharing: Sharing[]; news: Sharing[]; leaderPrayer: string; other: string };
 export type Submission = { id: string; requestId: string; samId: string; method: Method; writtenDate: string; form: ReportForm | null; files: Attachment[] };
 export type Period = { month: number };
 export type ReportRequest = { id: string; year: number; month: number; enabled: boolean };
@@ -119,7 +118,7 @@ export function parseVillageLeader(value: unknown): Omit<VillageLeader, "id"> {
 }
 export function automaticVillageLeaders(heads: VillageLeader[], roster: Identity[]): { village: string; rosterId: string }[] {
   return heads.filter(h => h.isActive).flatMap(head => {
-    const matches = roster.filter(r => r.isActive && villageKey(r.village) === head.village && nameKey(r.sourceName) === nameKey(head.leaderName));
+    const matches = roster.filter(r => r.isActive && villageKey(r.village) === head.village && (nameKey(r.sourceName) === nameKey(head.leaderName) || nameKey(r.canonicalName) === nameKey(head.leaderName)));
     return matches.length === 1 ? [{ village: head.village, rosterId: matches[0].id }] : [];
   });
 }
@@ -147,9 +146,9 @@ export function parseForm(value: unknown): ReportForm {
     noMeetingReason: v.noMeeting === true ? clean(v.noMeetingReason, 2000) : "",
     meetings: formRows<Meeting>(v.meetings, 12, ["when", "place", "attendees"], [100, 300, 1200]),
     sharing: formRows<Sharing>(v.sharing, 40, ["member", "content"], [100, 2000]),
-    visits: formRows<Visit>(v.visits, 20, ["member", "when", "place", "reason"], [100, 100, 300, 2000]),
     news: formRows<Sharing>(v.news, 30, ["member", "content"], [100, 2000]),
     leaderPrayer: clean(v.leaderPrayer, 5000),
+    other: clean(v.other, 5000),
   };
   if (form.noMeeting && !form.noMeetingReason) throw new ReportError("NO_MEETING_REASON_REQUIRED");
   if (form.noMeeting) form.meetings = [];
@@ -183,12 +182,12 @@ export function reportText(report: Pick<Submission, "method" | "writtenDate" | "
   if (report.method !== "form" || !report.form) throw new ReportError("TEXT_REPORT_REQUIRED", 409);
   const f = report.form;
   const section = (title: string, lines: string[]) => `\n■ ${title}\n${lines.length ? lines.join("\n\n") : "기록 없음"}\n`;
-  return `샘목양지\n제출 대상: ${report.periodLabel}\n작성일: ${report.writtenDate}\n샘: ${report.samName}\n샘리더: ${report.leaderName}\n제출자: ${report.submittedBy}\n제출일시: ${report.submittedAt ?? ""}\n`
+  return `샘목양지\n제출 대상: ${report.periodLabel}\n작성일: ${report.writtenDate}\n샘: ${report.samName}\n샘리더: ${report.leaderName}\n제출자: ${report.submittedBy}\n`
     + section("샘모임", [...(f.noMeeting ? [`이번 기간 샘모임 없음\n사유: ${f.noMeetingReason}`] : []), ...f.meetings.map((r, i) => `${i + 1}. 일시: ${r.when}\n장소: ${r.place}\n참석 가정: ${r.attendees}`)])
     + section("나눔/기도제목 (예배·성경통독은혜·기도제목)", f.sharing.map(r => `샘원: ${r.member}\n${r.content}`))
-    + section("상담/심방 요청", f.visits.map(r => `샘원: ${r.member}\n일시: ${r.when}\n장소: ${r.place}\n사유: ${r.reason}`))
     + section("샘소식 (결혼, 장례, 이사, 입원 등)", f.news.map(r => `샘원: ${r.member}\n${r.content}`))
-    + section("샘리더 기도제목", f.leaderPrayer ? [f.leaderPrayer] : []);
+    + section("샘리더 기도제목", f.leaderPrayer ? [f.leaderPrayer] : [])
+    + section("기타", f.other ? [f.other] : []);
 }
 
 export function checkOrigin(request: Request): void {
@@ -223,4 +222,25 @@ export function isRaster(data: Uint8Array): boolean {
   return hex.startsWith("ffd8ff") || hex === "89504e470d0a1a0a" || /^GIF8[79]a/.test(head) ||
     (head.startsWith("RIFF") && head.slice(8, 12) === "WEBP") || /^(49492a00|4d4d002a|49492b00|4d4d002b)/.test(hex) ||
     (head.slice(4, 8) === "ftyp" && /avif|avis|heic|heix|hevc|hevx|mif1|msf1/.test(head.slice(8)));
+}
+
+/** A revision never changes the report's original author, target or completion month. */
+export type ReportEdit = { id: string; expectedVersion: number; writtenDate: string; method: Method; form: ReportForm | null; files: Attachment[]; keepSlots: number[] };
+export function parseReportEdit(value: unknown): ReportEdit {
+  const v = object(value);
+  if (v.method !== "photo" && v.method !== "file" && v.method !== "form") throw new ReportError("INVALID_METHOD");
+  if (!Array.isArray(v.keepSlots) || v.keepSlots.length > 2) throw new ReportError("INVALID_FILE_COUNT");
+  const keepSlots = v.keepSlots.map(slot => int(slot, 0, 1));
+  if (new Set(keepSlots).size !== keepSlots.length) throw new ReportError("INVALID_FILE_COUNT");
+  // New files are independently validated; retained slots are validated against the locked original.
+  const files = Array.isArray(v.files) && !v.files.length ? [] : parseFiles(v.files, v.method);
+  const count = keepSlots.length + files.length;
+  if ((v.method === "form" && count !== 0) || (v.method !== "form" && (count < 1 || count > 2))) throw new ReportError("INVALID_FILE_COUNT");
+  return { id: reportId(v.id), expectedVersion: int(v.expectedVersion, 0, 2147483646),
+    method: v.method, writtenDate: isoDate(v.writtenDate), keepSlots,
+    form: v.method === "form" ? parseForm(v.form) : null, files };
+}
+export function assertReportMutation(actor: Pick<Actor, "id" | "role">, report: { authorId: string | null; submittedAt: string | null }, admin: boolean) {
+  if (admin ? actor.role !== "admin" : report.authorId !== actor.id) throw new ReportError("FORBIDDEN", 403);
+  if (!report.submittedAt) throw new ReportError("REPORT_NOT_FINALIZED", 409);
 }

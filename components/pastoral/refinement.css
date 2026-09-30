@@ -1,0 +1,3 @@
+.pastoral-targets { margin-block: 1rem; }
+.pastoral-targets > summary { cursor: pointer; font-weight: 700; padding: .8rem; border: 1px solid var(--border, #ddd); border-radius: 10px; }
+#google-calendar { scroll-margin-top: 5rem; margin-top: 2rem; }

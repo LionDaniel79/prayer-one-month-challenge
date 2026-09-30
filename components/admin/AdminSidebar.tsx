@@ -10,7 +10,6 @@ const adminNav = [
   { href: "/admin/pastoral-reports", label: "목양지 관리" },
   { href: "/admin/notices", label: "공지 관리" },
   { href: "/admin/users", label: "사용자 관리" },
-  { href: "/admin/settings", label: "설정" },
 ] as const;
 function activePath(pathname: string, href: string) {
   if (href === "/admin") return pathname === "/admin";
