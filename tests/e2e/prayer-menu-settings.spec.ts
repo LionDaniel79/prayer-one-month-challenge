@@ -23,7 +23,7 @@ test("saved global visibility controls member and admin navigation on mobile and
     expect(await (await member.request.get("/api/prayer-menu")).json()).toEqual({ enabled: true });
     await section.getByRole("button", { name: "저장", exact: true }).click();
     await expect(section.getByRole("status")).toContainText("숨겨집니다");
-    await page.screenshot({ path: testInfo.outputPath("admin-prayer-menu-disabled.png"), fullPage: true });
+    await page.screenshot({ path: testInfo.outputPath("admin-prayer-menu-disabled.png"), fullPage: true, animations: "disabled" });
 
     // An already-open root page learns of the change without reloading and goes to notices.
     await member.evaluate(() => window.dispatchEvent(new Event("focus")));
@@ -33,8 +33,9 @@ test("saved global visibility controls member and admin navigation on mobile and
     await expect(memberNav.getByRole("link", { name: "기도운동", exact: true })).toHaveCount(0);
     await expect(memberNav.getByRole("link").first()).toContainText("공지");
     await expect(memberNav.getByRole("link", { name: "심방신청" })).toBeVisible();
+    await expect(memberNav).toBeInViewport({ ratio: 1 });
     await expectNoOverflow(member);
-    await member.screenshot({ path: testInfo.outputPath("mobile-menu-disabled.png"), fullPage: true });
+    await member.screenshot({ path: testInfo.outputPath("mobile-menu-disabled.png"), fullPage: true, animations: "disabled" });
     expect(await (await member.request.get("/api/checkins")).json()).toEqual(beforeRecords);
     expect(await (await page.request.get("/api/admin/challenge")).json()).toEqual(beforeChallenge);
 
@@ -59,12 +60,13 @@ test("saved global visibility controls member and admin navigation on mobile and
     if (await opener.isVisible()) await opener.click();
     await expect(memberNav.getByRole("link").nth(0)).toContainText("공지");
     await expect(memberNav.getByRole("link").nth(1)).toContainText("기도운동");
-    await member.screenshot({ path: testInfo.outputPath("mobile-menu-enabled.png"), fullPage: true });
+    await expect(memberNav).toBeInViewport({ ratio: 1 });
+    await member.screenshot({ path: testInfo.outputPath("mobile-menu-enabled.png"), fullPage: true, animations: "disabled" });
     await page.goto("/notices");
     const adminNav = page.getByRole("navigation", { name: "56사랑 메뉴" });
     await expect(adminNav.getByRole("link").nth(0)).toContainText("공지");
     await expect(adminNav.getByRole("link").nth(1)).toContainText("기도운동");
-    await page.screenshot({ path: testInfo.outputPath("desktop-menu-enabled.png"), fullPage: true });
+    await page.screenshot({ path: testInfo.outputPath("desktop-menu-enabled.png"), fullPage: true, animations: "disabled" });
   } finally {
     expect((await page.request.put(endpoint, { data: { enabled: true } })).status()).toBe(200);
     await memberContext.close();

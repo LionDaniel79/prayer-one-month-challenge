@@ -54,7 +54,10 @@ async function main() {
     Object.assign(result, { deploymentId: deployment.id, deploymentSha: deployment.sha, environment: deployment.environment, deploymentState: status.state, url: origin });
     if (!production) return;
     const expected = JSON.parse(await readFile('public/pastoral-release.json','utf8')).release;
+    const expectedPrayerMenu = JSON.parse(await readFile('public/prayer-menu-release.json','utf8')).release;
     const checks = [
+      ['/prayer-menu-release.json',200,'prayer-menu-release'],
+      ['/api/prayer-menu',401,'private'], ['/api/admin/prayer/menu-settings',403,'private'],
       ['/pastoral-release.json',200,'release'], ['/login',200,'login'], ['/api/health',200,'health'],
       ['/pastoral-reports',307,'redirect'], ['/admin/pastoral-reports',307,'redirect'],
       ['/api/pastoral/status',401,'private'], ['/api/pastoral/reports',401,'private'],
@@ -64,6 +67,7 @@ async function main() {
       const response = await fetch(origin + path, { redirect: 'manual', cache: 'no-store', signal: AbortSignal.timeout(15000) });
       let passed = response.status === expectedStatus;
       const body = await response.text();
+      if (passed && kind === 'prayer-menu-release') passed = JSON.parse(body).release === expectedPrayerMenu;
       if (passed && kind === 'release') passed = JSON.parse(body).release === expected;
       if (passed && kind === 'health') { const data = JSON.parse(body); passed = data.status === 'ok' && data.database === 'ok'; }
       if (passed && kind === 'login') passed = body.includes('비밀번호');
