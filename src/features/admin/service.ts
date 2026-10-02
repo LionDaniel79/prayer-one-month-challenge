@@ -226,6 +226,10 @@ export async function getAdminDashboard(now = new Date()): Promise<AdminDashboar
 
   const completedByUser = new Map<string, string[]>();
   for (const row of checkinRows) {
+    if (
+      row.prayerDate < activeChallenge.startDate ||
+      row.prayerDate > activeChallenge.endDate
+    ) continue;
     const values = completedByUser.get(row.userId) ?? [];
     values.push(row.prayerDate);
     completedByUser.set(row.userId, values);
