@@ -1,4 +1,4 @@
-import { and, asc, eq, gt, lt, or } from "drizzle-orm";
+import { and, asc, eq, gte, lte } from "drizzle-orm";
 import { getDb } from "../../db/client";
 import { challenges, memberRoster, prayerCheckins, users } from "../../db/schema";
 import { DomainError } from "../../lib/http";
@@ -218,10 +218,18 @@ export async function getAdminDashboard(now = new Date()): Promise<AdminDashboar
       prayerDate: prayerCheckins.prayerDate,
     })
     .from(prayerCheckins)
-    .where(eq(prayerCheckins.challengeId, activeChallenge.id));
+    .where(and(
+      eq(prayerCheckins.challengeId, activeChallenge.id),
+      gte(prayerCheckins.prayerDate, activeChallenge.startDate),
+      lte(prayerCheckins.prayerDate, activeChallenge.endDate),
+    ));
 
   const completedByUser = new Map<string, string[]>();
   for (const row of checkinRows) {
+    if (
+      row.prayerDate < activeChallenge.startDate ||
+      row.prayerDate > activeChallenge.endDate
+    ) continue;
     const values = completedByUser.get(row.userId) ?? [];
     values.push(row.prayerDate);
     completedByUser.set(row.userId, values);
@@ -283,23 +291,6 @@ export async function updateChallenge(input: {
   const db = getDb();
 
   return db.transaction(async (tx) => {
-    if (input.id) {
-      const [outside] = await tx
-        .select({ id: prayerCheckins.id })
-        .from(prayerCheckins)
-        .where(
-          and(
-            eq(prayerCheckins.challengeId, input.id),
-            or(
-              lt(prayerCheckins.prayerDate, input.startDate),
-              gt(prayerCheckins.prayerDate, endDate),
-            ),
-          ),
-        )
-        .limit(1);
-      if (outside) throw new DomainError("CHECKINS_OUTSIDE_RANGE", 409);
-    }
-
     if (input.isActive) {
       await tx.update(challenges).set({ isActive: false }).where(eq(challenges.isActive, true));
     }

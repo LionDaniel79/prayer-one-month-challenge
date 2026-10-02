@@ -1,4 +1,6 @@
 import { expect, test } from "@playwright/test";
+import type { MemberDashboard } from "../../src/lib/types";
+import { addDays, defaultEndDate, isPrayerDay } from "../../src/features/challenge/date";
 import { expectNoOverflow, login } from "./helpers";
 
 const pages = [
@@ -42,6 +44,54 @@ test.describe("database-backed administrator flows", () => {
     await expect.poll(() => page.locator(".admin-hub-sidebar").evaluate((element) => element.getBoundingClientRect().right)).toBeLessThanOrEqual(0);
     await expectNoOverflow(page);
     await page.screenshot({ path: testInfo.outputPath("admin-mobile.png"), fullPage: true });
+  });
+
+  test("changing challenge dates preserves existing check-ins while excluding them from the current range", async ({ page }) => {
+    await login(page, "admin");
+    const initialResponse = await page.request.get("/api/checkins");
+    expect(initialResponse.status()).toBe(200);
+    const { dashboard: initial } = await initialResponse.json() as { dashboard: MemberDashboard };
+    const prayerDate = isPrayerDay(initial.today) ? initial.today : addDays(initial.today, -1);
+    const checkinRequest = { prayerDate, challengeId: initial.challenge.id };
+
+    expect((await page.request.post("/api/checkins", { data: { ...checkinRequest, checked: false } })).ok()).toBe(true);
+    expect((await page.request.post("/api/checkins", { data: { ...checkinRequest, checked: true } })).ok()).toBe(true);
+
+    try {
+      const shiftedStart = addDays(prayerDate, 1);
+      const shiftedResponse = await page.request.post("/api/admin/challenge", { data: {
+        id: initial.challenge.id,
+        title: initial.challenge.title,
+        startDate: shiftedStart,
+        endDate: defaultEndDate(shiftedStart),
+        isActive: true,
+      } });
+      expect(shiftedResponse.status()).toBe(200);
+
+      const shifted = await (await page.request.get("/api/checkins")).json() as { dashboard: MemberDashboard };
+      expect(shifted.dashboard.completedDates).not.toContain(prayerDate);
+
+      const restoredResponse = await page.request.post("/api/admin/challenge", { data: {
+        id: initial.challenge.id,
+        title: initial.challenge.title,
+        startDate: initial.challenge.startDate,
+        endDate: initial.challenge.endDate,
+        isActive: true,
+      } });
+      expect(restoredResponse.status()).toBe(200);
+
+      const restored = await (await page.request.get("/api/checkins")).json() as { dashboard: MemberDashboard };
+      expect(restored.dashboard.completedDates).toContain(prayerDate);
+    } finally {
+      await page.request.post("/api/admin/challenge", { data: {
+        id: initial.challenge.id,
+        title: initial.challenge.title,
+        startDate: initial.challenge.startDate,
+        endDate: initial.challenge.endDate,
+        isActive: true,
+      } });
+      await page.request.post("/api/checkins", { data: { ...checkinRequest, checked: false } });
+    }
   });
 
   test("Calendar setup reports missing configuration and invalid OAuth state safely", async ({ page }) => {

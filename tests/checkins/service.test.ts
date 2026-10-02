@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   type CheckinRepository,
+  getMemberDashboard,
   toggleCheckin,
 } from "../../src/features/checkins/service";
 
@@ -60,5 +61,12 @@ describe("prayer check-in toggle", () => {
     const error = Object.assign(new Error("duplicate"), { code: "23505" });
     const { repo } = fakeRepo([], error);
     await expect(toggleCheckin({ userId: "u1", prayerDate: "2026-09-17", now }, repo)).resolves.toBe("checked");
+  });
+
+  it("keeps preserved out-of-range records out of the current member dashboard", async () => {
+    const { repo } = fakeRepo(["2026-08-31", "2026-09-17", "2026-10-01"]);
+    const dashboard = await getMemberDashboard("u1", now, repo);
+    expect(dashboard?.completedDates).toEqual(["2026-09-17"]);
+    expect(dashboard?.progress).toEqual({ completed: 1, eligible: 15, rate: 1 / 15 });
   });
 });
