@@ -157,7 +157,7 @@ describe("prayer participation exclusion query scope", () => {
   it("applies the same challenge exclusion to hub population and today's completion count", async () => {
     boundary.query.mockImplementation(async (query: Query) => {
       const text = sqlText(query);
-      if (text.includes('from "prayer_app"."challenges"')) return { rows: [[challengeId]] };
+      if (text.includes('from "prayer_app"."challenges"')) return { rows: [[challengeId, "2026-09-01", "2026-09-30"]] };
       if (text.includes("count(*)")) return { rows: [[0]] };
       return { rows: [] };
     });
