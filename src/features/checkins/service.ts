@@ -154,7 +154,8 @@ export async function getMemberDashboard(
   const identity = await repository.getMemberIdentity(userId);
   if (!identity) throw new DomainError("USER_NOT_FOUND", 404);
 
-  const completedDates = await repository.getCompletedDates(userId, challenge.id);
+  const completedDates = (await repository.getCompletedDates(userId, challenge.id))
+    .filter((date) => date >= challenge.startDate && date <= challenge.endDate);
   const today = todayInSeoul(now);
   const progress = calculateProgress({
     startDate: challenge.startDate,
