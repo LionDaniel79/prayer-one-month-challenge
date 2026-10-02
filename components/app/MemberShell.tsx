@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { usePrayerMenuEnabled } from "./usePrayerMenuEnabled";
 import type { SessionUser } from "../../src/features/auth/session";
 import { LogoutButton } from "../auth/LogoutButton";
 import { ReportBadge, usePastoralBadge } from "../pastoral/ReportStatusBadge";
@@ -10,12 +12,20 @@ import { UnreadNoticeBadge, useUnreadNoticeCount } from "../notices/UnreadNotice
 
 export function MemberShell({
   user,
+  initialPrayerMenuEnabled,
   children,
 }: {
   user: SessionUser;
+  initialPrayerMenuEnabled: boolean;
   children: React.ReactNode;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const prayerMenuEnabled = usePrayerMenuEnabled(initialPrayerMenuEnabled, menuOpen);
+  const pathname = usePathname();
+  const router = useRouter();
+  useEffect(() => {
+    if (!prayerMenuEnabled && pathname === "/") router.replace("/notices");
+  }, [prayerMenuEnabled, pathname, router]);
   const unreadCount = useUnreadNoticeCount();
   const pastoral = usePastoralBadge();
 
@@ -27,7 +37,7 @@ export function MemberShell({
           <strong>56사랑</strong>
         </div>
 
-        <MemberSidebar pastoralVisible={pastoral.visible} pastoralCount={pastoral.count} unreadCount={unreadCount} onNavigate={() => setMenuOpen(false)} />
+        <MemberSidebar prayerMenuEnabled={prayerMenuEnabled} pastoralVisible={pastoral.visible} pastoralCount={pastoral.count} unreadCount={unreadCount} onNavigate={() => setMenuOpen(false)} />
 
         <div className="sidebar-footer">
           <Link href="/profile" onClick={() => setMenuOpen(false)}>내 정보</Link>
@@ -63,7 +73,7 @@ export function MemberShell({
             <p className="community-verse">성령이 하나 되게 하신 것을 힘써 지키라(엡 4:3)</p>
           </div>
         </header>
-        <div className="community-content">{children}</div>
+        <div className="community-content">{!prayerMenuEnabled && pathname === "/" ? null : children}</div>
       </div>
     </div>
   );
