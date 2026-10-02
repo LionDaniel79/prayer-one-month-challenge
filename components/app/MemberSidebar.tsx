@@ -6,12 +6,12 @@ import { ReportBadge } from "../pastoral/ReportStatusBadge";
 import { UnreadNoticeBadge } from "../notices/UnreadNoticeBadge";
 
 const memberNav = [
+  { href: "/notices", label: "공지", icon: "🔔" },
   { href: "/", label: "기도운동", icon: "🙏" },
   { href: "/visits", label: "심방신청", icon: "♡" },
   { href: "/prayer-requests", label: "기도요청", icon: "♥" },
   { href: "/community", label: "커뮤니티", icon: "💬" },
   { href: "/pastoral-reports", label: "목양지", icon: "📝" },
-  { href: "/notices", label: "공지", icon: "🔔" },
 ] as const;
 
 function isActive(pathname: string, href: string) {
@@ -19,11 +19,13 @@ function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function MemberSidebar({ onNavigate, unreadCount, pastoralVisible = false, pastoralCount = 0 }: { onNavigate?: () => void; unreadCount: number; pastoralVisible?: boolean; pastoralCount?: number }) {
+export function MemberSidebar({ onNavigate, unreadCount, pastoralVisible = false, pastoralCount = 0, prayerMenuEnabled = true }: { onNavigate?: () => void; unreadCount: number; pastoralVisible?: boolean; pastoralCount?: number; prayerMenuEnabled?: boolean }) {
   const pathname = usePathname();
   return (
     <nav className="member-nav" aria-label="56사랑 메뉴">
-      {memberNav.filter(item => item.href !== "/pastoral-reports" || pastoralVisible).map((item) => {
+      {memberNav.filter(item =>
+        (item.href !== "/" || prayerMenuEnabled) &&
+        (item.href !== "/pastoral-reports" || pastoralVisible)).map((item) => {
         const active = isActive(pathname, item.href);
         return (
           <Link key={item.href} href={item.href} className={`member-nav-link${active ? " is-active" : ""}`} aria-current={active ? "page" : undefined} onClick={onNavigate}>
