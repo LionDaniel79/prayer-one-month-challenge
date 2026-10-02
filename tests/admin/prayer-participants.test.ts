@@ -107,6 +107,26 @@ function expectChallengeFilter(statement: { sql: string; params: unknown[] }) {
 }
 
 describe("prayer participation exclusion query scope", () => {
+  it("ignores preserved check-ins outside an edited range in current prayer statistics", async () => {
+    boundary.query.mockImplementation(async (query: Query) => {
+      const text = sqlText(query);
+      if (text.includes('from "prayer_app"."challenges"')) {
+        return { rows: [[challengeId, "가을 기도", "2026-09-18", "2026-10-17", true]] };
+      }
+      if (text.includes('from "prayer_app"."users"')) {
+        return { rows: [[userId, "성도검증", "성도검증", "성도", null, "검증샘", "member", true]] };
+      }
+      if (text.includes('from "prayer_app"."prayer_checkins"')) {
+        return { rows: [[userId, "2026-09-17"]] };
+      }
+      return { rows: [] };
+    });
+    const result = await getAdminDashboard(new Date("2026-09-17T03:00:00Z"));
+    expect(result.members[0]?.completed).toBe(0);
+    expect(result.members[0]?.completedToday).toBe(false);
+    expect(result.totals.todayCompleted).toBe(0);
+  });
+
   it("filters the participant list before calculating all prayer statistics", async () => {
     boundary.query.mockImplementation(async (query: Query) => {
       const text = sqlText(query);
@@ -117,6 +137,21 @@ describe("prayer participation exclusion query scope", () => {
     const participantRead = statements().find(({ sql }) => sql.includes('from "prayer_app"."users"'))!;
     expectChallengeFilter(participantRead);
     expect(result.totals).toEqual({ members: 0, todayCompleted: 0, todayRate: 0, averageRate: 0 });
+  });
+
+  it("does not count preserved today's check-in when today is outside the edited challenge range", async () => {
+    boundary.query.mockImplementation(async (query: Query) => {
+      const text = sqlText(query);
+      if (text.includes('from "prayer_app"."challenges"')) {
+        return { rows: [[challengeId, "2026-09-18", "2026-10-17"]] };
+      }
+      if (text.includes("count(*)") && text.includes('from "prayer_app"."users"')) return { rows: [[1]] };
+      if (text.includes("count(*)") && text.includes('from "prayer_app"."prayer_checkins"')) return { rows: [[1]] };
+      if (text.includes("count(*)")) return { rows: [[0]] };
+      return { rows: [] };
+    });
+    const result = await getAdminHubDashboard(new Date("2026-09-17T03:00:00Z"));
+    expect(result.prayer).toEqual({ participants: 1, todayCompleted: 0, todayRate: 0 });
   });
 
   it("applies the same challenge exclusion to hub population and today's completion count", async () => {
