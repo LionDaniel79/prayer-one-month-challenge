@@ -31,7 +31,7 @@ describe("global prayer menu setting", () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ enabled: false });
     expect(response.headers.get("cache-control")).toContain("no-store");
-    expect(boundary.query.mock.calls[0][1]).toEqual([1]);
+    expect(boundary.query.mock.calls[0][1]).toEqual([1, 1]); // singleton id and LIMIT
   });
   it("rejects anonymous reads without accessing the database", async () => {
     boundary.actor = null;
@@ -53,7 +53,8 @@ describe("global prayer menu setting", () => {
     expect(response.status).toBe(400);
     expect(boundary.query).not.toHaveBeenCalled();
   });
-  it.each([{ origin: "https://other.invalid" }, { "sec-fetch-site": "cross-site" }])("rejects cross-site writes", async (headers) => {
+  const crossSiteHeaders: Record<string, string>[] = [{ origin: "https://other.invalid" }, { "sec-fetch-site": "cross-site" }];
+  it.each(crossSiteHeaders)("rejects cross-site writes", async (headers) => {
     expect((await put({ enabled: false }, headers)).status).toBe(403);
     expect(boundary.query).not.toHaveBeenCalled();
   });
