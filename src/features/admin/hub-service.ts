@@ -114,7 +114,11 @@ export async function getAdminHubDashboard(
   const week = weekRangeInSeoul(now);
 
   const [activeChallenge] = await db
-    .select({ id: challenges.id })
+    .select({
+      id: challenges.id,
+      startDate: challenges.startDate,
+      endDate: challenges.endDate,
+    })
     .from(challenges)
     .where(eq(challenges.isActive, true))
     .limit(1);
@@ -129,7 +133,11 @@ export async function getAdminHubDashboard(
   const participants = Number(participantRow?.count ?? 0);
 
   let todayCompleted = 0;
-  if (activeChallenge) {
+  if (
+    activeChallenge &&
+    today >= activeChallenge.startDate &&
+    today <= activeChallenge.endDate
+  ) {
     const [todayRow] = await db
       .select({ count: sql<number>`count(*)::int` })
       .from(prayerCheckins)
