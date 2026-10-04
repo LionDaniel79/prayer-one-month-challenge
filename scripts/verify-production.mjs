@@ -56,6 +56,7 @@ async function main() {
     const expected = JSON.parse(await readFile('public/pastoral-release.json','utf8')).release;
     const expectedPrayerMenu = JSON.parse(await readFile('public/prayer-menu-release.json','utf8')).release;
     const checks = [
+      ['/about',200,'public-about'], ['/privacy',200,'public-privacy'],
       ['/prayer-menu-release.json',200,'prayer-menu-release'],
       ['/api/prayer-menu',401,'private'], ['/api/admin/prayer/menu-settings',403,'private'],
       ['/pastoral-release.json',200,'release'], ['/login',200,'login'], ['/api/health',200,'health'],
@@ -70,6 +71,8 @@ async function main() {
       if (passed && kind === 'prayer-menu-release') passed = JSON.parse(body).release === expectedPrayerMenu;
       if (passed && kind === 'release') passed = JSON.parse(body).release === expected;
       if (passed && kind === 'health') { const data = JSON.parse(body); passed = data.status === 'ok' && data.database === 'ok'; }
+      if (passed && kind === 'public-about') passed = body.includes('56사랑') && body.includes('Google Calendar') && body.includes('href="/privacy"');
+      if (passed && kind === 'public-privacy') passed = body.includes('개인정보처리방침') && body.includes('calendar.calendarlist.readonly') && body.includes('Limited Use') && body.includes('mailto:ditto0310@gmail.com');
       if (passed && kind === 'login') passed = body.includes('비밀번호');
       if (passed && kind === 'private') passed = ['UNAUTHORIZED','FORBIDDEN'].includes(JSON.parse(body).code);
       if (passed && kind === 'redirect') { const target = new URL(response.headers.get('location') ?? '', origin); passed = target.origin === origin && target.pathname === '/login'; }

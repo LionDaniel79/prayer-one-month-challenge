@@ -146,6 +146,11 @@ export function GoogleCalendarSettings({
         </div>
       </div>
 
+      <p className="helper-text">
+        운영 캘린더의 일정 확인과 심방 일정 동기화에만 사용합니다.{" "}
+        <a href="/privacy#google-calendar" target="_blank" rel="noopener noreferrer">Google 데이터 이용 안내 (새 창)</a>
+      </p>
+
       {!configured ? (
         <div className="setting-warning">
           <strong>Google Calendar 연동 환경설정이 필요합니다.</strong>
