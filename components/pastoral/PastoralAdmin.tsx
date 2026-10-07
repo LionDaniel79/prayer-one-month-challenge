@@ -52,13 +52,13 @@ function Overview({requestId,onView}:{requestId:string;onView:(id:string)=>void}
     <details className="pastoral-targets"><summary>제출 대상 {data.rows.length}샘 · 명단 펼치기/접기</summary><div className="pastoral-report-list">{data.rows.map(({sam,submitted,count})=><article key={sam.id}><div><strong>{sam.name}샘 · {submitted?.leaderName||sam.leaderName||"리더 미등록"}</strong>{submitted?<p>제출 완료 ({count}건) · {submitted.submittedBy}</p>:<p className="pastoral-attention">{requestState(data.request,false)==="upcoming"?"요청 월 시작 전":!data.request.enabled?"요청 해제":"미제출"}</p>}</div>{submitted&&<div className="pastoral-row-actions"><button type="button" onClick={()=>onView(submitted.id)}>최근 목양지 보기</button>{submitted.method==="form"&&<a href={`/api/pastoral/reports/${submitted.id}/txt`} download>TXT 내려받기</a>}</div>}</article>)}</div></details>
   </div>;
 }
-export function PastoralAdmin(){
-  const [requests,setRequests]=useState<ReportRequest[]>([]);const [requestId,setRequestId]=useState("");const [viewId,setViewId]=useState("");const [refresh,setRefresh]=useState(0);
+export function PastoralAdmin({initialId="",initialUnreviewed=false}:{initialId?:string;initialUnreviewed?:boolean}){
+  const [requests,setRequests]=useState<ReportRequest[]>([]);const [requestId,setRequestId]=useState("");const [viewId,setViewId]=useState(initialId);const [refresh,setRefresh]=useState(0);
   const saved=useCallback((next:ReportRequest[])=>{setRequests(next);setRequestId(current=>next.some(r=>r.id===current)?current:next.find(r=>requestState(r,false)==="pending")?.id??next[0]?.id??"");setRefresh(n=>n+1);},[]);
-  if(viewId)return <div className="pastoral"><ReportDetail key={viewId} id={viewId} admin onChanged={()=>{setRefresh(n=>n+1);window.dispatchEvent(new Event("pastoral:changed"));}} onClose={()=>setViewId("")}/></div>;
+  if(viewId)return <div className="pastoral"><ReportDetail key={viewId} id={viewId} admin onChanged={()=>{setRefresh(n=>n+1);window.dispatchEvent(new Event("pastoral:changed"));}} onClose={()=>{setViewId("");setRefresh(n=>n+1);}}/></div>;
   return <div className="pastoral"><header className="pastoral-toolbar"><div><h1>목양지 관리</h1><p>월별 요청과 샘별 제출 현황을 확인합니다. 마을장·샘리더 등록은 <Link href="/admin/users">사용자 관리 → 샘 리더 관리</Link>에서 합니다.</p></div><Link href="/pastoral-reports">제출 화면으로</Link></header>
     <SchedulePanel onSaved={saved}/>
     <section className="card"><div className="pastoral-toolbar"><h2>샘별 제출 현황</h2><button type="button" onClick={()=>setRefresh(n=>n+1)}>현황 새로고침</button></div>{requests.length?<><label>확인할 월<select value={requestId} onChange={e=>setRequestId(e.target.value)}>{requests.map(r=><option key={r.id} value={r.id}>{periodLabel(r)}{!r.enabled?" · 요청 해제":""}</option>)}</select></label>{requestId&&<Overview key={`${requestId}:${refresh}`} requestId={requestId} onView={setViewId}/>}</>:<p>월별 제출 요청을 저장하면 현황이 표시됩니다.</p>}</section>
-    <ReportHistory admin refresh={refresh} onView={setViewId}/>
+    <ReportHistory admin initialUnreviewed={initialUnreviewed} refresh={refresh} onView={setViewId}/>
   </div>;
 }

@@ -46,4 +46,16 @@ describe("admin statistics", () => {
     });
     expect(result.sams).toEqual([]);
   });
+  it("excludes login-only users without any completed prayer day",()=>{
+    const result=aggregateAdminDashboard([...rows,{...rows[0],userId:"login-only",completed:0,completedToday:false}]);
+    expect(result.members.map(row=>row.userId)).not.toContain("login-only");
+    expect(result.totals.members).toBe(4);
+  });
+  it("hides both the population and sam statistics when the tab is disabled",()=>{
+    const result=aggregateAdminDashboard(rows,null,false);
+    expect(result.prayerMenuEnabled).toBe(false);
+    expect(result.members).toEqual([]);expect(result.sams).toEqual([]);
+    expect(result.totals.members).toBe(0);
+  });
+
 });

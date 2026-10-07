@@ -20,9 +20,16 @@ test("saved global visibility controls member and admin navigation on mobile and
     // The settings section follows, rather than replacing, the existing management content.
     expect(await section.evaluate((el) => Boolean(el.previousElementSibling?.querySelector(".participant-table")))).toBe(true);
     await checkbox.uncheck();
+    await expect(page.getByRole("heading", { name: "참여자 명단", exact: true })).toBeVisible();
     expect(await (await member.request.get("/api/prayer-menu")).json()).toEqual({ enabled: true });
     await section.getByRole("button", { name: "저장", exact: true }).click();
     await expect(section.getByRole("status")).toContainText("숨겨집니다");
+    await expect(page.getByRole("heading", {name:"참여자 명단",exact:true})).toHaveCount(0);
+    await expect(page.getByRole("heading", {name:"샘별 통계",exact:true})).toHaveCount(0);
+    const disabledData=await (await page.request.get("/api/admin/prayer")).json();
+    expect(disabledData.prayerMenuEnabled).toBe(false);
+    expect(disabledData.members).toEqual([]);expect(disabledData.sams).toEqual([]);
+    expect((await (await page.request.get("/api/admin/dashboard")).json()).prayer.participants).toBe(0);
     await page.screenshot({ path: testInfo.outputPath("admin-prayer-menu-disabled.png"), fullPage: true, animations: "disabled" });
 
     // An already-open root page learns of the change without reloading and goes to notices.
@@ -53,6 +60,8 @@ test("saved global visibility controls member and admin navigation on mobile and
     await checkbox.check();
     await section.getByRole("button", { name: "저장", exact: true }).click();
     await expect(section.getByRole("status")).toContainText("표시됩니다");
+    await expect(page.getByRole("heading",{name:"참여자 명단",exact:true})).toBeVisible();
+    await expect(page.getByRole("heading",{name:"샘별 통계",exact:true})).toBeVisible();
     await page.reload();
     await expect(checkbox).toBeChecked();
     await member.evaluate(() => window.dispatchEvent(new Event("focus")));

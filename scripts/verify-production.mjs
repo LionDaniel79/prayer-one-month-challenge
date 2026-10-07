@@ -55,7 +55,11 @@ async function main() {
     if (!production) return;
     const expected = JSON.parse(await readFile('public/pastoral-release.json','utf8')).release;
     const expectedPrayerMenu = JSON.parse(await readFile('public/prayer-menu-release.json','utf8')).release;
+    const expectedDashboard = JSON.parse(await readFile('public/admin-dashboard-release.json','utf8')).release;
     const checks = [
+      ['/admin-dashboard-release.json',200,'dashboard-release'],
+      ['/api/admin/dashboard',403,'private'],
+      ['/api/admin/pastoral/reports?unreviewed=1',403,'private'],
       ['/about',200,'public-about'], ['/privacy',200,'public-privacy'],
       ['/prayer-menu-release.json',200,'prayer-menu-release'],
       ['/api/prayer-menu',401,'private'], ['/api/admin/prayer/menu-settings',403,'private'],
@@ -69,6 +73,7 @@ async function main() {
       let passed = response.status === expectedStatus;
       const body = await response.text();
       if (passed && kind === 'prayer-menu-release') passed = JSON.parse(body).release === expectedPrayerMenu;
+      if (passed && kind === 'dashboard-release') passed = JSON.parse(body).release === expectedDashboard;
       if (passed && kind === 'release') passed = JSON.parse(body).release === expected;
       if (passed && kind === 'health') { const data = JSON.parse(body); passed = data.status === 'ok' && data.database === 'ok'; }
       if (passed && kind === 'public-about') passed = body.includes('56사랑') && body.includes('Google Calendar') && body.includes('href="/privacy"');

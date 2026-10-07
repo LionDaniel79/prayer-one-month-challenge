@@ -420,8 +420,8 @@ export function AdminDashboard({
           />
           <select value={participation} onChange={(event) => setParticipation(event.target.value as typeof participation)}>
             <option value="all">전체</option>
-            <option value="joined">참여자</option>
-            <option value="not_joined">미참여</option>
+            <option value="joined">활성</option>
+            <option value="not_joined">비활성</option>
           </select>
           <button className="text-button" type="submit">검색</button>
         </form>
@@ -460,7 +460,7 @@ export function AdminDashboard({
                   ? "초기(전화번호)"
                   : "변경됨"}
               </span>
-              <span>{row.joined ? "참여 중" : "미참여"}{row.isActive ? "" : " · 비활성"}</span>
+              <span>{row.joined ? "활성" : "비활성"}{row.isActive ? "" : " · 로그인 제한"}</span>
               <span>
                 <button className="text-button" type="button" onClick={() => openEditRoster(row)}>
                   수정

@@ -1,4 +1,4 @@
-import { and, eq, gt, isNull } from "drizzle-orm";
+import { and, eq, gt, isNull, sql } from "drizzle-orm";
 import { getDb } from "../../db/client";
 import { sessions, users } from "../../db/schema";
 import { newSessionToken, sessionTokenHash } from "./crypto";
@@ -35,11 +35,17 @@ export function shouldRollSession(lastSeenAt: Date, now = new Date()): boolean {
 export async function createSession(userId: string, now = new Date()) {
   const token = newSessionToken();
   const expiresAt = sessionExpiry(now);
-  await getDb().insert(sessions).values({
-    userId,
-    tokenHash: sessionTokenHash(token),
-    expiresAt,
-    lastSeenAt: now,
+  await getDb().transaction(async (tx) => {
+    await tx.insert(sessions).values({
+      userId,
+      tokenHash: sessionTokenHash(token),
+      expiresAt,
+      lastSeenAt: now,
+      createdAt: now,
+    });
+    // Persist login history only if session creation succeeds. Never reset it on logout.
+    await tx.update(users).set({ firstLoginAt: sql`coalesce(${users.firstLoginAt}, ${now.toISOString()}::timestamptz)` })
+      .where(eq(users.id, userId));
   });
   return { token, expiresAt };
 }

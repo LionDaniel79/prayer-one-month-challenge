@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { AdminDashboardData } from "../../../src/features/admin/service";
 import { defaultEndDate } from "../../../src/features/challenge/date";
 import { fetchJson } from "../../../src/lib/fetch-json";
@@ -17,6 +17,7 @@ async function jsonRequest<T>(url: string, init: RequestInit = {}): Promise<T> {
 }
 
 export function AdminPrayerManagement({ initial }: { initial: AdminDashboardData }) {
+  const requestVersion=useRef(0);
   const [data, setData] = useState(initial);
   const [showChallenge, setShowChallenge] = useState(false);
   const [error, setError] = useState("");
@@ -40,12 +41,26 @@ export function AdminPrayerManagement({ initial }: { initial: AdminDashboardData
     });
   }, [data.members, participantQuery, samFilter]);
 
-  async function loadLatest() {
+  const loadLatest = useCallback(async () => {
+    const version=++requestVersion.current;
     const next = await jsonRequest<AdminDashboardData>("/api/admin/prayer", { cache: "no-store" });
+    if(version!==requestVersion.current)return;
     setData(next);
     setChallengeStart(next.challenge?.startDate ?? "");
     setChallengeEnd(next.challenge?.endDate ?? "");
-  }
+  }, []);
+
+  useEffect(() => {
+    const refresh = (event: Event) => {
+      const enabled = (event as CustomEvent<{enabled:boolean}>).detail?.enabled;
+      // Hide immediately when save succeeds; ignore older responses already in flight.
+      if(enabled === false) {requestVersion.current++;setData(current=>({...current,prayerMenuEnabled:false,members:[],sams:[]}));}
+      void loadLatest().catch(()=>setError("최신 상태를 확인하지 못했습니다. 새로고침해 주세요."));
+    };
+    window.addEventListener("prayer-menu:changed",refresh);
+    window.addEventListener("focus",refresh);
+    return () => { requestVersion.current++;window.removeEventListener("prayer-menu:changed",refresh);window.removeEventListener("focus",refresh); };
+  },[loadLatest]);
 
   async function refreshParticipants() {
     if (removingId || refreshing) return;
@@ -139,6 +154,7 @@ export function AdminPrayerManagement({ initial }: { initial: AdminDashboardData
       {error && <p className="error-text" role="alert">{error}</p>}
       {message && <p className="success-text" role="status">{message}</p>}
 
+      {data.prayerMenuEnabled && data.challenge?.isActive ? <>
       <section className="admin-kpis" aria-label="기도운동 현황">
         <article className="card"><span>전체 참여자</span><strong>{data.totals.members}명</strong></article>
         <article className="card"><span>오늘 완료</span><strong>{data.totals.todayCompleted}명 · {percent(data.totals.todayRate)}</strong></article>
@@ -174,7 +190,7 @@ export function AdminPrayerManagement({ initial }: { initial: AdminDashboardData
 
       <section className="card admin-section">
         <div className="section-heading">
-          <h2>참여자 명단</h2>
+          <h2>참여자 명단</h2><p className="helper-text">설정 기간에 1회 이상 기도 체크한 사용자만 표시합니다.</p>
           <div className="admin-filters">
             <button type="button" className="text-button" disabled={Boolean(removingId) || refreshing} onClick={() => void refreshParticipants()}>{refreshing ? "불러오는 중..." : "새로고침"}</button>
             <input
@@ -210,6 +226,8 @@ export function AdminPrayerManagement({ initial }: { initial: AdminDashboardData
           ))}
         </div>
       </section>
+
+      </> : <p className="card helper-text">기도운동 탭이 비활성화되어 있거나 활성 도전이 없습니다. 참여자 명단과 샘별 통계는 표시하지 않습니다.</p>}
 
       {showChallenge && (
         <div className="modal-backdrop" role="presentation" onMouseDown={() => setShowChallenge(false)}>

@@ -36,6 +36,7 @@ function Rows({ title, headers, rows }: { title: string; headers: string[]; rows
   return <section className="pastoral-section"><h3>{title}</h3>{!rows.length ? <p className="helper-text">기록 없음</p> : <div className="pastoral-table-wrap"><table className="pastoral-table"><thead><tr>{headers.map(h => <th key={h}>{h}</th>)}</tr></thead><tbody>{rows.map((row, i) => <tr key={i}>{row.map((cell, j) => <td key={j}>{cell || "—"}</td>)}</tr>)}</tbody></table></div>}</section>;
 }
 export function ReportDetail({ id, onClose, onChanged, admin = false }: { id: string; onClose: () => void; onChanged?: () => void; admin?: boolean }) {
+  const [reviewError,setReviewError]=useState(""); const [reviewRetry,setReviewRetry]=useState(0);
   const [editing,setEditing]=useState(false);const [busy,setBusy]=useState(false);const [reload,setReload]=useState(0);
   const [report, setReport] = useState<ReportView | null>(null); const [error, setError] = useState("");
   useEffect(() => {
@@ -43,6 +44,23 @@ export function ReportDetail({ id, onClose, onChanged, admin = false }: { id: st
     void api<{ report: ReportView }>(`/api/pastoral/reports/${id}`, { cache: "no-store", signal: controller.signal }).then(r => { if (!controller.signal.aborted) setReport(r.report); }).catch(e => { if (!controller.signal.aborted) setError(message(e)); });
     return () => controller.abort();
   }, [id,reload]);
+  // A successful admin screen load acknowledges that exact stored version.
+  const reviewVersion = report?.version;
+  const submitted = !!report?.submittedAt;
+  const isReviewed = report?.isReviewed === true;
+  useEffect(() => {
+    if (!admin || reviewVersion === undefined || !submitted || isReviewed) return;
+    const controller = new AbortController();
+    setReviewError("");
+    void api<{isReviewed: boolean}>(`/api/admin/pastoral/reports/${id}/review`, {
+      ...jsonBody("POST",{expectedVersion:reviewVersion}), signal:controller.signal,
+    }).then(() => {
+      if (controller.signal.aborted) return;
+      setReport(current => current?.id===id && current.version===reviewVersion ? {...current,isReviewed:true} : current);
+      window.dispatchEvent(new Event("pastoral:changed"));
+    }).catch(e => {if (!controller.signal.aborted) setReviewError(message(e));});
+    return () => controller.abort();
+  },[admin,id,reviewVersion,submitted,isReviewed,reviewRetry]);
   function changed(){onChanged?.();window.dispatchEvent(new Event("pastoral:changed"));}
   async function remove(){
     if(!report||busy||!window.confirm("이 목양지를 삭제할까요? 첨부도 함께 삭제되며 되돌릴 수 없습니다."))return;
@@ -54,6 +72,8 @@ export function ReportDetail({ id, onClose, onChanged, admin = false }: { id: st
   const f = report?.form;
   return <article className="pastoral-detail card" aria-label="제출 목양지 상세"><div className="pastoral-toolbar"><h2>샘목양지</h2><button type="button" disabled={busy} onClick={onClose}>목록으로</button></div>{error && <p className="error-text" role="alert">{error}</p>}{!report && !error && <p role="status">목양지를 불러오는 중입니다.</p>}{report && <>
     {(admin||report.isOwner)&&report.submittedAt&&<div className="pastoral-toolbar"><button type="button" disabled={busy} onClick={()=>setEditing(true)}>목양지 수정</button><button className="danger-button" type="button" disabled={busy} onClick={()=>void remove()}>목양지 삭제</button></div>}
+    {admin && <div className="helper-text" role="status">{report.isReviewed ? "관리자 확인 완료" : reviewError ? "관리자 미확인" : "확인 상태 저장 중…"}</div>}
+    {admin && reviewError && <div className="error-text" role="alert">확인 상태를 저장하지 못했습니다. {reviewError} <button type="button" onClick={()=>setReviewRetry(n=>n+1)}>확인 다시 저장</button></div>}
     <dl className="pastoral-meta"><div><dt>제출 대상</dt><dd>{report.periodLabel}</dd></div><div><dt>작성일</dt><dd>{report.writtenDate}</dd></div><div><dt>샘</dt><dd>{report.samName}</dd></div><div><dt>샘리더</dt><dd>{report.leaderName}</dd></div><div><dt>제출자</dt><dd>{report.submittedBy}</dd></div>{!admin&&<><div><dt>제출 방법</dt><dd>{methodLabel(report.method)}</dd></div><div><dt>제출일시</dt><dd>{report.submittedAt ? localDateTime(report.submittedAt) : "작성 중"}</dd></div></>}</dl>
     {report.files.map((file, slot) => <div key={slot}>{photoName(file.name) && <Photo key={`${id}:${report.version}:${slot}`} id={id} slot={slot} name={file.name} />}<DownloadFile reportId={id} file={file} slot={slot} /></div>)}
     {f && <div className="pastoral-written"><a className="pastoral-txt" href={`/api/pastoral/reports/${id}/txt`} download>입력 내용 TXT 내려받기</a>{f.noMeeting && <div className="pastoral-prewrap"><strong>이번 기간 샘모임 없음</strong><p>사유: {f.noMeetingReason}</p></div>}

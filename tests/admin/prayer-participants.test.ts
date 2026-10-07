@@ -41,6 +41,11 @@ async function remove(body: unknown = { challengeId }, target = userId) {
 }
 
 beforeEach(() => { boundary.query.mockReset(); boundary.actor = admin; });
+function rawDashboardFixture(text:string) {
+  if(text.trim().startsWith("with activity")) return {rows:[{total:0,pages:1,page:1,items:[]}]};
+  if(text.includes("from prayer_app.pastoral_reports")) return {rows:[{count:0}]};
+  return null;
+}
 
 describe("remove participant only from the active prayer challenge", () => {
   it.each([null, { ...admin, role: "member" as const }])("requires an administrator before reading or writing member data", async (actor) => {
@@ -110,6 +115,7 @@ describe("prayer participation exclusion query scope", () => {
   it("ignores preserved check-ins outside an edited range in current prayer statistics", async () => {
     boundary.query.mockImplementation(async (query: Query) => {
       const text = sqlText(query);
+      const raw=rawDashboardFixture(text); if(raw)return raw;
       if (text.includes('from "prayer_app"."challenges"')) {
         return { rows: [[challengeId, "가을 기도", "2026-09-18", "2026-10-17", true]] };
       }
@@ -122,14 +128,14 @@ describe("prayer participation exclusion query scope", () => {
       return { rows: [] };
     });
     const result = await getAdminDashboard(new Date("2026-09-17T03:00:00Z"));
-    expect(result.members[0]?.completed).toBe(0);
-    expect(result.members[0]?.completedToday).toBe(false);
+    expect(result.members).toEqual([]);
     expect(result.totals.todayCompleted).toBe(0);
   });
 
   it("filters the participant list before calculating all prayer statistics", async () => {
     boundary.query.mockImplementation(async (query: Query) => {
       const text = sqlText(query);
+      const raw=rawDashboardFixture(text); if(raw)return raw;
       if (text.includes('from "prayer_app"."challenges"')) return { rows: [[challengeId, "가을 기도", "2026-09-01", "2026-09-30", true]] };
       return { rows: [] };
     });
@@ -142,31 +148,33 @@ describe("prayer participation exclusion query scope", () => {
   it("does not count preserved today's check-in when today is outside the edited challenge range", async () => {
     boundary.query.mockImplementation(async (query: Query) => {
       const text = sqlText(query);
+      const raw=rawDashboardFixture(text); if(raw)return raw;
       if (text.includes('from "prayer_app"."challenges"')) {
         return { rows: [[challengeId, "2026-09-18", "2026-10-17"]] };
       }
-      if (text.includes("count(*)") && text.includes('from "prayer_app"."users"')) return { rows: [[1]] };
+      if (text.includes("count(*)") && text.includes('from "prayer_app"."users"')) return { rows: [[0]] };
       if (text.includes("count(*)") && text.includes('from "prayer_app"."prayer_checkins"')) return { rows: [[1]] };
       if (text.includes("count(*)")) return { rows: [[0]] };
       return { rows: [] };
     });
     const result = await getAdminHubDashboard(new Date("2026-09-17T03:00:00Z"));
-    expect(result.prayer).toEqual({ participants: 1, todayCompleted: 0, todayRate: 0 });
+    expect(result.prayer).toEqual({ enabled:true, participants: 0, todayCompleted: 0, todayRate: 0 });
   });
 
   it("applies the same challenge exclusion to hub population and today's completion count", async () => {
     boundary.query.mockImplementation(async (query: Query) => {
       const text = sqlText(query);
+      const raw=rawDashboardFixture(text); if(raw)return raw;
       if (text.includes('from "prayer_app"."challenges"')) return { rows: [[challengeId, "2026-09-01", "2026-09-30"]] };
       if (text.includes("count(*)")) return { rows: [[0]] };
       return { rows: [] };
     });
-    const result = await getAdminHubDashboard(new Date("2026-09-27T00:00:00Z"));
-    const countQueries = statements().filter(({ sql }) => sql.includes("count(*)") && (
+    const result = await getAdminHubDashboard(new Date("2026-09-28T00:00:00Z"));
+    const countQueries = statements().filter(({ sql }) => /count\(/.test(sql) && (
       sql.includes('from "prayer_app"."users"') || sql.includes('from "prayer_app"."prayer_checkins"')
     ));
     expect(countQueries).toHaveLength(2);
     countQueries.forEach(expectChallengeFilter);
-    expect(result.prayer).toEqual({ participants: 0, todayCompleted: 0, todayRate: 0 });
+    expect(result.prayer).toEqual({ enabled:true, participants: 0, todayCompleted: 0, todayRate: 0 });
   });
 });

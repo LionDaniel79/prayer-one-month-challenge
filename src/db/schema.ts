@@ -92,6 +92,7 @@ export const users = appSchema.table(
     normalizedName: varchar("normalized_name", { length: 80 }).notNull(),
     phoneLookupHash: varchar("phone_lookup_hash", { length: 64 }).notNull(),
     phonePasswordHash: text("phone_password_hash").notNull(),
+    firstLoginAt: timestamp("first_login_at", { withTimezone: true }),
     samId: uuid("sam_id").references(() => sams.id),
     rosterId: uuid("roster_id").references(() => memberRoster.id),
     role: roleEnum("role").notNull().default("member"),

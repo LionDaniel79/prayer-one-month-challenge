@@ -11,7 +11,8 @@ describe("admin hub dashboard UI", () => {
       "/admin/prayer",
       "/admin/visits",
       "/admin/prayer-requests",
-      "/admin/notices",
+      "/admin/pastoral-reports",
+      "/admin/users",
     ]) {
       expect(source).toContain(href);
     }

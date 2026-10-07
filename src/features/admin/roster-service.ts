@@ -1,3 +1,4 @@
+import { hasLoginHistory } from "./metrics-policy";
 import { reconcileUnboundLeaders } from "../sams/identity-service";
 import { and, asc, eq, inArray, isNull, ne } from "drizzle-orm";
 import { getDb } from "../../db/client";
@@ -159,7 +160,7 @@ export async function listRosterForAdmin({
       isActive: memberRoster.isActive,
       isAdmin: memberRoster.isAdmin,
       passwordHash: memberRoster.passwordHash,
-      userId: users.id,
+      firstLoginAt: users.firstLoginAt,
     })
     .from(memberRoster)
     .leftJoin(users, eq(users.rosterId, memberRoster.id))
@@ -175,7 +176,7 @@ export async function listRosterForAdmin({
     samLabel: row.samLabel,
     isActive: row.isActive,
     isAdmin: row.isAdmin,
-    joined: Boolean(row.userId),
+    joined: hasLoginHistory(row.firstLoginAt),
     passwordMode: passwordModeFromHash(row.passwordHash),
   }));
 

@@ -189,7 +189,7 @@ export function AdminUserManagement({ initial }: { initial: AdminRosterPage }) {
         <section className="admin-page-heading">
           <p className="eyebrow">로그인 허용 명단</p>
           <h1>사용자 관리</h1>
-          <p>공동체 명단, 참여 여부, 관리자 권한과 비밀번호를 관리합니다.</p>
+          <p>공동체 명단, 로그인 기준 활성 상태, 관리자 권한과 비밀번호를 관리합니다.</p>
         </section>
         <div className="header-actions">
           <button className="primary-button compact-button" type="button" onClick={openCreate}>
@@ -223,12 +223,13 @@ export function AdminUserManagement({ initial }: { initial: AdminRosterPage }) {
 
         <details className="roster-disclosure">
         <summary>사용자 명단 · 현재 {rows.length}명 표시</summary>
+        <p className="helper-text">활성은 한 번 이상 로그인한 사용자, 비활성은 아직 로그인하지 않은 사용자입니다. 기도운동 참여와 로그인 허용 여부는 별도입니다.</p>
         <form className="admin-filters roster-filters" onSubmit={search}>
           <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="이름, 전화번호 또는 샘" aria-label="허용 명단 검색" />
           <select value={participation} onChange={(event) => setParticipation(event.target.value as typeof participation)}>
             <option value="all">전체</option>
-            <option value="joined">참여자</option>
-            <option value="not_joined">미참여</option>
+            <option value="joined">활성</option>
+            <option value="not_joined">비활성</option>
           </select>
           <button className="text-button" type="submit">검색</button>
         </form>
@@ -261,7 +262,7 @@ export function AdminUserManagement({ initial }: { initial: AdminRosterPage }) {
               <span>{row.phone ?? "미등록"}</span>
               <span>{row.samLabel ?? "미지정"}</span>
               <span>{row.passwordMode === "initial" ? "초기(전화번호)" : "변경됨"}</span>
-              <span>{row.joined ? "참여 중" : "미참여"}{row.isActive ? "" : " · 비활성"}</span>
+              <span>{row.joined ? "활성" : "비활성"}{row.isActive ? "" : " · 로그인 제한"}</span>
               <span><button className="text-button" type="button" onClick={() => openEdit(row)}>수정</button></span>
             </div>
           ))}

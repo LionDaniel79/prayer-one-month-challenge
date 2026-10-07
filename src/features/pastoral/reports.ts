@@ -4,9 +4,9 @@ import { requireReportAccess, requireReportAdmin, requireReportTarget } from "./
 import { requestColumns } from "./schedules";
 import { rasterPreview } from "./images";
 import { CHUNK_LIMIT, chunkSize, int, parseSubmission, periodLabel, photoName, ReportError, reportId, reportText, requestState, type Actor, type ReportRequest, type Submission } from "./policy";
-export type StoredReport = Submission & { version: number; authorId: string | null; samName: string; village: string; leaderName: string; submittedBy: string; submittedAt: string | null; createdAt: string; fingerprint: string; year: number; month: number };
+export type StoredReport = Submission & { version: number; reviewedVersion: number; authorId: string | null; samName: string; village: string; leaderName: string; submittedBy: string; submittedAt: string | null; createdAt: string; fingerprint: string; year: number; month: number };
 type StoredSummary = Pick<StoredReport, "id" | "requestId" | "samId" | "samName" | "village" | "leaderName" | "submittedBy" | "method" | "year" | "month"> & { submittedAt: string };
-const reportColumns = sql`p.version,p.id,p.request_id as "requestId",p.sam_id as "samId",p.author_user_id as "authorId",p.sam_name as "samName",p.village,p.leader_name as "leaderName",p.submitted_by as "submittedBy",p.written_date::text as "writtenDate",p.method,p.form,p.files,p.fingerprint,to_char(p.submitted_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') as "submittedAt",to_char(p.created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') as "createdAt",r.year,r.month`;
+const reportColumns = sql`p.reviewed_version as "reviewedVersion",p.version,p.id,p.request_id as "requestId",p.sam_id as "samId",p.author_user_id as "authorId",p.sam_name as "samName",p.village,p.leader_name as "leaderName",p.submitted_by as "submittedBy",p.written_date::text as "writtenDate",p.method,p.form,p.files,p.fingerprint,to_char(p.submitted_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') as "submittedAt",to_char(p.created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') as "createdAt",r.year,r.month`;
 export async function lockedReport(db: Executor, id: string): Promise<StoredReport> {
   const [report] = await rows<StoredReport>(db, sql`select ${reportColumns} from prayer_app.pastoral_reports p join prayer_app.pastoral_requests r on r.id=p.request_id where p.id=${id} for update of p`);
   if (!report) throw new ReportError("REPORT_NOT_FOUND", 404);
@@ -104,14 +104,14 @@ export async function getReport(actor: Actor, id: string) {
   if (!report) throw new ReportError("REPORT_NOT_FOUND", 404);
   // Keep credential-independent data and opaque IDs only; fingerprint is not a public API field.
   const { fingerprint: _fingerprint, ...result } = report; void _fingerprint;
-  return { ...result, isOwner: report.authorId === actor.id, periodLabel: periodLabel(report) };
+  return { ...result, isReviewed: !!report.submittedAt && report.reviewedVersion >= report.version, isOwner: report.authorId === actor.id, periodLabel: periodLabel(report) };
 }
-export async function listReports(actor: Actor, page: number, admin = false, requestId?: string | null) {
-  if (admin) requireReportAdmin(actor); else await requireReportAccess(actor);
+export async function listReports(actor: Actor, page: number, admin = false, requestId?: string | null, unreviewedOnly = false) {
+  if (admin || unreviewedOnly) requireReportAdmin(actor); else await requireReportAccess(actor);
   int(page, 1, 100000); if (requestId) reportId(requestId);
-  const filter = sql`p.submitted_at is not null and ${admin ? sql`true` : sql`p.author_user_id=${actor.id}`} and ${requestId ? sql`p.request_id=${requestId}` : sql`true`}`;
+  const filter = sql`p.submitted_at is not null and ${admin ? sql`true` : sql`p.author_user_id=${actor.id}`} and ${requestId ? sql`p.request_id=${requestId}` : sql`true`} and ${unreviewedOnly ? sql`p.reviewed_version < p.version` : sql`true`}`;
   const [reports, count] = await Promise.all([
-    rows<StoredSummary>(getDb(), sql`select p.id,p.request_id as "requestId",p.sam_id as "samId",p.sam_name as "samName",p.village,p.leader_name as "leaderName",p.submitted_by as "submittedBy",p.method,to_char(p.submitted_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') as "submittedAt",r.year,r.month from prayer_app.pastoral_reports p join prayer_app.pastoral_requests r on r.id=p.request_id where ${filter} order by p.submitted_at desc,p.id desc limit 20 offset ${(page - 1) * 20}`),
+    rows<StoredSummary>(getDb(), sql`select (p.reviewed_version >= p.version) as "isReviewed",p.id,p.request_id as "requestId",p.sam_id as "samId",p.sam_name as "samName",p.village,p.leader_name as "leaderName",p.submitted_by as "submittedBy",p.method,to_char(p.submitted_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') as "submittedAt",r.year,r.month from prayer_app.pastoral_reports p join prayer_app.pastoral_requests r on r.id=p.request_id where ${filter} order by p.submitted_at desc,p.id desc limit 20 offset ${(page - 1) * 20}`),
     rows<{ count: number }>(getDb(), sql`select count(*)::int as count from prayer_app.pastoral_reports p where ${filter}`),
   ]);
   return { reports: reports.map(r => ({ ...r, periodLabel: periodLabel(r) })), total: count[0].count, page };

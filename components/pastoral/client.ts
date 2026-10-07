@@ -2,7 +2,7 @@ import { fetchJson } from "../../src/lib/fetch-json";
 import type { Attachment, ReportAccess, ReportForm, ReportRequest, Submission } from "../../src/features/pastoral/policy";
 export { fetchJson as api };
 export type Status = ReportAccess & { today: string; count: number; requests: ReportRequest[]; completed: { requestId: string; samId: string }[] };
-export type Summary = { id: string; samName: string; leaderName: string; submittedBy: string; method: string; submittedAt: string; periodLabel: string };
+export type Summary = { isReviewed?: boolean; id: string; samName: string; leaderName: string; submittedBy: string; method: string; submittedAt: string; periodLabel: string };
 export type ReportView = Submission & Omit<Summary, "submittedAt"> & { submittedAt: string | null; version: number; isOwner: boolean };
 export const emptyForm = (): ReportForm => ({ noMeeting: false, noMeetingReason: "", meetings: [{ when: "", place: "", attendees: "" }], sharing: [{ member: "", content: "" }], news: [{ member: "", content: "" }], leaderPrayer: "", other: "" });
 export const jsonBody = (method: string, body?: unknown): RequestInit => ({ method, ...(body === undefined ? {} : { headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }) });

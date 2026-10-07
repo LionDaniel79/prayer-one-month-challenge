@@ -38,6 +38,7 @@ export function PrayerMenuSettings() {
       });
       if (typeof setting.enabled !== "boolean") throw new Error("INVALID_SETTING");
       setEnabled(setting.enabled);
+      window.dispatchEvent(new CustomEvent("prayer-menu:changed", { detail: setting }));
       setMessage(setting.enabled
         ? "저장했습니다. 모든 사용자에게 기도운동 탭이 표시됩니다."
         : "저장했습니다. 모든 사용자의 메뉴에서 기도운동 탭이 숨겨집니다.");

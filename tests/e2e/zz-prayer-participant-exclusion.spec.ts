@@ -93,7 +93,7 @@ test.describe("challenge-only participant exclusion", () => {
       expect(after.members.map((member) => member.userId).sort()).toEqual(remaining.map((member) => member.userId).sort());
       expect(after.totals.members).toBe(before.totals.members - 1);
       expect(after.totals.todayCompleted).toBe(before.totals.todayCompleted - Number(participant!.completedToday));
-      expect(after.totals.averageRate).toBeCloseTo(remaining.reduce((sum, member) => sum + member.rate, 0) / remaining.length);
+      expect(after.totals.averageRate).toBeCloseTo(remaining.length ? remaining.reduce((sum, member) => sum + member.rate, 0) / remaining.length : 0);
       const samAfter = after.sams.find((sam) => sam.samLabel === samLabel);
       const samRemaining = remaining.filter((member) => (member.samLabel ?? "미지정") === samLabel);
       expect(samAfter?.members ?? 0).toBe(samBefore.members - 1);

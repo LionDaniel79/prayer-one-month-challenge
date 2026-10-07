@@ -1272,3 +1272,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .booking-period-form .specific-date-actions { grid-column: 1 / -1; flex-wrap: wrap; }
 .admin-shell > .admin-setting-card { margin-top: 24px; }
 @media (max-width: 600px) { .booking-period-form { grid-template-columns: minmax(0, 1fr); } }
+
+/* Dashboard pagination keeps the oldest activities on later pages. */
+.admin-activity-pagination { display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:.75rem; margin-top:1rem; }
+.admin-activity-pagination span { text-align:center; font-size:.9rem; }
