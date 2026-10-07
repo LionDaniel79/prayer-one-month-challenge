@@ -20,12 +20,23 @@ describe("prayer participant management controls", () => {
     expect(button).not.toContain("disabled");
   });
 
-  it("disables removal when there is no active challenge", () => {
+  it("hides participant controls and sam statistics when there is no active challenge", () => {
     const html = renderToStaticMarkup(React.createElement(AdminPrayerManagement, {
       initial: aggregateAdminDashboard([member]),
     }));
-    const button = html.match(/<button[^>]*aria-label="가람 기도운동 명단에서 삭제"[^>]*>/)?.[0];
-    expect(button).toBeDefined();
-    expect(button).toContain("disabled");
+    expect(html).not.toContain('aria-label="가람 기도운동 명단에서 삭제"');
+    expect(html).not.toContain("참여자 명단");
+    expect(html).not.toContain("샘별 통계");
+    expect(html).toContain("도전 설정");
+  });
+
+  it("hides participant controls and sam statistics when the prayer menu is disabled", () => {
+    const html = renderToStaticMarkup(React.createElement(AdminPrayerManagement, {
+      initial: aggregateAdminDashboard([member], challenge, false),
+    }));
+    expect(html).not.toContain('aria-label="가람 기도운동 명단에서 삭제"');
+    expect(html).not.toContain("참여자 명단");
+    expect(html).not.toContain("샘별 통계");
+    expect(html).toContain("도전 설정");
   });
 });
