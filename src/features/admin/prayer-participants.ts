@@ -24,3 +24,17 @@ export async function excludePrayerParticipant(userId: string, challengeId: stri
       .onConflictDoNothing({ target: [prayerParticipantExclusions.challengeId, prayerParticipantExclusions.userId] });
   });
 }
+
+/** One population definition for dashboard, participant list and sam statistics. */
+export function prayerParticipantHasCheckin(
+  challenge: { id: string; startDate: string; endDate: string },
+  today: string,
+) {
+  const end = today < challenge.endDate ? today : challenge.endDate;
+  return sql`exists (select 1 from prayer_app.prayer_checkins eligible_check
+    where eligible_check.user_id = ${users.id}
+      and eligible_check.challenge_id = ${challenge.id}
+      and eligible_check.prayer_date >= ${challenge.startDate}::date
+      and eligible_check.prayer_date <= ${end}::date
+      and extract(isodow from eligible_check.prayer_date) <> 7)`;
+}

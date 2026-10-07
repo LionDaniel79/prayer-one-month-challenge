@@ -1,3 +1,4 @@
+import { getPrayerMenuSettings } from "../prayer-menu/service";
 import { and, asc, eq, gte, lte } from "drizzle-orm";
 import { getDb } from "../../db/client";
 import { challenges, memberRoster, prayerCheckins, users } from "../../db/schema";
@@ -7,7 +8,7 @@ import { defaultEndDate, todayInSeoul } from "../challenge/date";
 import { calculateProgress } from "../challenge/progress";
 import { decryptRosterPhone } from "../roster/crypto";
 import { formatPhoneForDisplay } from "../roster/normalize";
-import { prayerParticipantNotExcluded } from "./prayer-participants";
+import { prayerParticipantHasCheckin, prayerParticipantNotExcluded } from "./prayer-participants";
 
 export type AdminMemberSource = {
   userId: string;
@@ -23,6 +24,7 @@ export type AdminMemberSource = {
 };
 
 export type AdminDashboardData = {
+  prayerMenuEnabled: boolean;
   challenge: {
     id: string;
     title: string;
@@ -72,8 +74,9 @@ function ratio(completed: number, eligible: number): number {
 export function aggregateAdminDashboard(
   rows: AdminMemberSource[],
   challenge: AdminDashboardData["challenge"] = null,
+  prayerMenuEnabled = true,
 ): AdminDashboardData {
-  const ranked = rows
+  const ranked = (prayerMenuEnabled ? rows.filter(row => row.completed > 0) : [])
     .map((row) => ({ ...row, rate: ratio(row.completed, row.eligible) }))
     .sort((a, b) => b.rate - a.rate || a.name.localeCompare(b.name, "ko"));
 
@@ -129,6 +132,7 @@ export function aggregateAdminDashboard(
     });
 
   return {
+    prayerMenuEnabled,
     challenge,
     totals: {
       members: members.length,
@@ -170,6 +174,11 @@ export async function getAdminDashboard(now = new Date()): Promise<AdminDashboar
     .from(challenges)
     .where(eq(challenges.isActive, true))
     .limit(1);
+  const { enabled: prayerMenuEnabled } = await getPrayerMenuSettings();
+  if (!activeChallenge || !prayerMenuEnabled) {
+    return aggregateAdminDashboard([], activeChallenge ?? null, prayerMenuEnabled);
+  }
+  const today = todayInSeoul(now);
 
   const userRows = await db
     .select({
@@ -186,7 +195,8 @@ export async function getAdminDashboard(now = new Date()): Promise<AdminDashboar
     .leftJoin(memberRoster, eq(memberRoster.id, users.rosterId))
     .where(and(
       eq(users.isActive, true),
-      activeChallenge ? prayerParticipantNotExcluded(activeChallenge.id) : undefined,
+      prayerParticipantNotExcluded(activeChallenge.id),
+      prayerParticipantHasCheckin(activeChallenge, today),
     ))
     .orderBy(asc(users.displayName));
 
@@ -199,18 +209,6 @@ export async function getAdminDashboard(now = new Date()): Promise<AdminDashboar
     role: row.role,
     isActive: row.isActive,
   }));
-
-  if (!activeChallenge) {
-    return aggregateAdminDashboard(
-      identities.map((row) => ({
-        ...row,
-        completed: 0,
-        eligible: 0,
-        completedToday: false,
-      })),
-      null,
-    );
-  }
 
   const checkinRows = await db
     .select({
@@ -235,7 +233,6 @@ export async function getAdminDashboard(now = new Date()): Promise<AdminDashboar
     completedByUser.set(row.userId, values);
   }
 
-  const today = todayInSeoul(now);
   const rows = identities.map((user) => {
     const completedDates = completedByUser.get(user.userId) ?? [];
     const progress = calculateProgress({
@@ -252,7 +249,7 @@ export async function getAdminDashboard(now = new Date()): Promise<AdminDashboar
     };
   });
 
-  return aggregateAdminDashboard(rows, activeChallenge);
+  return aggregateAdminDashboard(rows, activeChallenge, prayerMenuEnabled);
 }
 
 export function resolveChallengeEndDate(startDate: string, explicitEndDate?: string): string {

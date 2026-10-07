@@ -3,12 +3,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 const adminNav = [
   { href: "/admin", label: "대시보드" },
+  { href: "/admin/notices", label: "공지 관리" },
   { href: "/admin/prayer", label: "기도운동 관리" },
   { href: "/admin/visits", label: "심방 신청 관리" },
   { href: "/admin/prayer-requests", label: "기도요청 관리" },
   { href: "/admin/community", label: "커뮤니티 관리" },
   { href: "/admin/pastoral-reports", label: "목양지 관리" },
-  { href: "/admin/notices", label: "공지 관리" },
   { href: "/admin/users", label: "사용자 관리" },
 ] as const;
 function activePath(pathname: string, href: string) {
