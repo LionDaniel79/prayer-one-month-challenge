@@ -20,6 +20,6 @@ describe("admin page runtime boundary", () => {
     expect(loader).toContain('new AbortController()');
     expect(loader).toContain('onPageChange=');
     expect(loader).not.toContain('"/api/admin/roster"');
-    expect(loader).toContain("관리자 대시보드를 불러오지 못했습니다");
+    expect(loader).toContain("대시보드를 불러오지 못했습니다. 다시 시도해 주세요.");
   });
 });

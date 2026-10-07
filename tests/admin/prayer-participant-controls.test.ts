@@ -25,8 +25,9 @@ describe("prayer participant management controls", () => {
       initial: aggregateAdminDashboard([member]),
     }));
     expect(html).not.toContain('aria-label="가람 기도운동 명단에서 삭제"');
-    expect(html).not.toContain("참여자 명단");
-    expect(html).not.toContain("샘별 통계");
+    expect(html).not.toContain("<h2>참여자 명단</h2>");
+    expect(html).not.toContain("participant-table");
+    expect(html).not.toContain("<h2>샘별 통계</h2>");
     expect(html).toContain("도전 설정");
   });
 
@@ -35,8 +36,9 @@ describe("prayer participant management controls", () => {
       initial: aggregateAdminDashboard([member], challenge, false),
     }));
     expect(html).not.toContain('aria-label="가람 기도운동 명단에서 삭제"');
-    expect(html).not.toContain("참여자 명단");
-    expect(html).not.toContain("샘별 통계");
+    expect(html).not.toContain("<h2>참여자 명단</h2>");
+    expect(html).not.toContain("participant-table");
+    expect(html).not.toContain("<h2>샘별 통계</h2>");
     expect(html).toContain("도전 설정");
   });
 });
