@@ -217,14 +217,13 @@ export const dbVisitRepository: VisitRepository = {
   },
 
   async markSynced(id, eventId) {
-    await getDb()
-      .update(visitRequests)
-      .set({
+    await getDb().transaction(async (tx) => {
+      await tx.update(visitRequests).set({
         googleEventId: eventId,
         calendarSyncStatus: "synced",
         updatedAt: new Date(),
-      })
-      .where(eq(visitRequests.id, id));
+      }).where(eq(visitRequests.id, id));
+    });
   },
 
   async cancelAfterSyncFailure(id) {

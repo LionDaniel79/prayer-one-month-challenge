@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getCurrentSessionUser } from "../../../src/features/auth/http-session";
 import { createPrayerRequest } from "../../../src/features/prayer-requests/service";
 import { DomainError } from "../../../src/lib/http";
+import { scheduleEmailDelivery } from "../../../src/features/email/wakeup";
 
 const PrayerRequestInput = z.object({
   content: z.string().trim().min(1).max(10000),
@@ -23,6 +24,7 @@ export async function POST(request: Request) {
 
   try {
     const id = await createPrayerRequest(user.id, parsed.data.content);
+    scheduleEmailDelivery(request);
     return NextResponse.json({ status: "ok", id }, { status: 201 });
   } catch (error) {
     if (error instanceof DomainError) {
