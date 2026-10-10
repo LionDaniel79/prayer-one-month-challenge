@@ -65,6 +65,7 @@ describe("visit booking compensation", () => {
             cancelled = true;
           },
         }),
+        "2026-10-01",
       ),
     ).rejects.toMatchObject({ code: "CALENDAR_EVENT_CREATE_FAILED" });
 
@@ -86,6 +87,7 @@ describe("visit booking compensation", () => {
             throw new Error("db update failed");
           },
         }),
+        "2026-10-01",
       ),
     ).rejects.toMatchObject({ code: "CALENDAR_EVENT_SYNC_FAILED" });
 
@@ -111,6 +113,7 @@ describe("visit booking compensation", () => {
             cancelled = true;
           },
         }),
+        "2026-10-01",
       ),
     ).rejects.toMatchObject({ code: "CALENDAR_EVENT_SYNC_FAILED" });
 
@@ -128,6 +131,7 @@ describe("visit booking compensation", () => {
         },
       }),
       repo(),
+      "2026-10-01",
     );
 
     expect(captured).not.toHaveProperty("reason");

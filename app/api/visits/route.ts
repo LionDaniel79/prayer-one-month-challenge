@@ -4,6 +4,7 @@ import { getCurrentSessionUser } from "../../../src/features/auth/http-session";
 import { DomainError } from "../../../src/lib/http";
 import { getSelectedCalendarProvider } from "../../../src/features/visits/provider-factory";
 import { submitVisitRequest } from "../../../src/features/visits/service";
+import { scheduleEmailDelivery } from "../../../src/features/email/wakeup";
 
 const VisitInput = z.object({
   visitDate: z.iso.date(),
@@ -34,6 +35,7 @@ export async function POST(request: Request) {
       },
       provider,
     );
+    scheduleEmailDelivery(request);
     return NextResponse.json({ status: "ok", ...result }, { status: 201 });
   } catch (error) {
     if (error instanceof DomainError) {

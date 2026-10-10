@@ -23,6 +23,8 @@ describe("public information content", () => {
     for (const text of ["갱신 토큰", "이벤트 ID", "Supabase", "Vercel", "Google", "Limited Use", "범용 AI 모델", "공유 설정"]) expect(html).toContain(text);
     expect(html).toContain("기존 일정의 제목·설명·참석자 목록은 이 조회에서 요청하지 않으며");
     expect(html).toContain("심방 사유와 별도의 기도요청 내용은 심방 일정 설명에 넣지 않습니다");
+    expect(html).toContain("gmail.send");
+    expect(html).toContain("기존 메일 본문·목록을 읽거나 수정하는 권한은 요청하지 않습니다");
   });
   it("explains deletion limits and gives a usable revocation and contact path", () => {
     const html = privacy();
@@ -34,10 +36,12 @@ describe("public information content", () => {
     expect(html).not.toContain("TODO");
     expect(privacyMetadata.alternates?.canonical).toBe("https://prayer-one-month-challenge.vercel.app/privacy");
   });
-  it("has working section destinations for every policy contents link", () => {
+  it("has working section destinations for every policy contents link including Gmail", () => {
     const html = privacy();
     const links = [...html.matchAll(/href="#([^"]+)"/g)].map(match => match[1]);
-    expect(links).toHaveLength(9);
+    expect(links).toHaveLength(10);
+    expect(links).toContain("email-notifications");
+    expect(new Set(links).size).toBe(links.length);
     for (const id of links) expect(html).toContain(`id="${id}"`);
     expect((html.match(/<h1[ >]/g) ?? [])).toHaveLength(1);
   });

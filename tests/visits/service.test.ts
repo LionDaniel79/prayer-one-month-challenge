@@ -74,6 +74,8 @@ describe("visit booking service", () => {
   });
 
   it("loads independent availability inputs together", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-10-01T00:00:00Z"));
     let release!: (value: []) => void;
     const started: string[] = [];
     const pending = getMonthAvailability("2026-10", provider({
@@ -176,6 +178,7 @@ describe("visit booking service", () => {
         },
         provider(),
         repo,
+        "2026-10-01",
       ),
     ).rejects.toMatchObject({
       code: "VISIT_ALREADY_EXISTS",
@@ -204,6 +207,7 @@ describe("visit booking service", () => {
         },
         provider(),
         repo,
+        "2026-10-01",
       ),
     ).rejects.toEqual(new DomainError("VISIT_ALREADY_EXISTS", 409));
   });
@@ -229,6 +233,7 @@ describe("visit booking service", () => {
       },
       calendar,
       repository(),
+      "2026-10-01",
     );
 
     expect(JSON.stringify(calendarInput)).not.toContain("민감한 심방 이유");
@@ -274,6 +279,7 @@ describe("visit booking service", () => {
       },
       provider(),
       repo,
+      "2026-10-01",
     );
 
     expect(capturedStatus).toBe("requested");

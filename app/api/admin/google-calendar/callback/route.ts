@@ -13,6 +13,11 @@ function clearState(response: NextResponse) {
 }
 
 export async function GET(request: NextRequest) {
+  // Gmail consent is purpose-separated. Never consume Calendar state or replace its token.
+  if (request.nextUrl.searchParams.get("state")?.startsWith("mail.")) {
+    const { emailOAuthCallback } = await import("../../../../../src/features/email/oauth");
+    return emailOAuthCallback(request);
+  }
   try {
     const user = await getCurrentSessionUser();
     requireAdmin(user);

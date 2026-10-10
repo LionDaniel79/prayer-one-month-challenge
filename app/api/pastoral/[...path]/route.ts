@@ -5,6 +5,7 @@ import { beginReport, cancelDraft, getReport, getReportChunk, getReportImage, ge
 import { binary, boundedBytes, boundedJson, errorResponse, json, privateHeaders, sameOrigin, sessionActor } from "../../../../src/features/pastoral/http";
 import { requireReportAccess } from "../../../../src/features/pastoral/access";
 import { CHUNK_LIMIT, ReportError } from "../../../../src/features/pastoral/policy";
+import { scheduleEmailDelivery } from "../../../../src/features/email/wakeup";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 type Context = { params: Promise<{ path: string[] }> };
@@ -31,7 +32,11 @@ export async function POST(request: Request, context: Context) {
     const path = (await context.params).path;
     const revision = await revisionResponse(request,path,actor,false); if(revision)return revision;
     if (path.length === 1 && path[0] === "reports") return json(await beginReport(actor, await boundedJson(request)), 201);
-    if (path.length === 3 && path[0] === "reports" && path[2] === "publish") return json(await publishReport(actor, path[1]));
+    if (path.length === 3 && path[0] === "reports" && path[2] === "publish") {
+      const result = await publishReport(actor, path[1]);
+      scheduleEmailDelivery(request);
+      return json(result);
+    }
     throw new ReportError("NOT_FOUND", 404);
   } catch (error) { return errorResponse(error); }
 }

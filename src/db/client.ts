@@ -1,5 +1,6 @@
 import { attachDatabasePool } from "@vercel/functions";
 import { drizzle } from "drizzle-orm/node-postgres";
+import { sql } from "drizzle-orm";
 import { Pool } from "pg";
 import { getEnv } from "../lib/env";
 
@@ -35,7 +36,13 @@ export function getDb() {
     let failed = true;
     try {
       // Own acquisition/release: Drizzle starts BEGIN before its cleanup block.
-      const result = await drizzle(connection).transaction(transaction, config);
+      const result = await drizzle(connection).transaction(async (tx) => {
+        // LOCAL is reset on COMMIT/ROLLBACK, including with a transaction pooler.
+        // Never derive this privilege from a browser header/body or NODE_ENV alone.
+        const capture = process.env.VERCEL_ENV === "production" && process.env.NODE_ENV === "production" ? "production" : "disabled";
+        await tx.execute(sql`select set_config('prayer_app.email_capture', ${capture}, true)`);
+        return transaction(tx);
+      }, config);
       failed = false;
       return result;
     } finally {

@@ -37,15 +37,14 @@ export async function createPrayerRequest(
   content: string,
 ): Promise<string> {
   const normalized = normalizePrayerRequestContent(content);
-  const [created] = await getDb()
-    .insert(prayerRequests)
-    .values({
+  return getDb().transaction(async (tx) => {
+    const [created] = await tx.insert(prayerRequests).values({
       userId,
       content: normalized,
       status: "received",
-    })
-    .returning({ id: prayerRequests.id });
-  return created.id;
+    }).returning({ id: prayerRequests.id });
+    return created.id;
+  });
 }
 
 export async function listPrayerRequestsForAdmin(
