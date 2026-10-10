@@ -1,5 +1,7 @@
 import {beforeEach,describe,expect,it,vi} from 'vitest';
 const mocks=vi.hoisted(()=>({rows:vi.fn(),execute:vi.fn(),settings:vi.fn(),production:vi.fn()}));
+// These are unit tests of consent state; request-context authorization remains covered by real API/E2E tests.
+vi.mock('../../src/features/auth/http-session',()=>({getCurrentSessionUser:vi.fn()}));
 vi.mock('../../src/features/pastoral/db',async()=>({sql:(await import('drizzle-orm')).sql,rows:mocks.rows,getDb:()=>({execute:mocks.execute,transaction:async(fn:(tx:unknown)=>unknown)=>fn({execute:mocks.execute})})}));
 vi.mock('../../src/features/email/repository',()=>({emailConfig:()=>({clientId:'client',clientSecret:'secret',key:Buffer.alloc(32,9).toString('base64')}),getEmailSettings:mocks.settings,requireEmailProduction:mocks.production}));
 import {consumeEmailState,startEmailConnection} from '../../src/features/email/oauth';
