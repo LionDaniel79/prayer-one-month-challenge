@@ -108,9 +108,12 @@ begin
      or btrim(NEW.preferred_time) ~ '^(오전|오후)[[:space:]]*[0-9]{1,2}[[:space:]]*시([[:space:]]*[0-9]{1,2}[[:space:]]*분)?$') then time_text:=btrim(NEW.preferred_time); end if;
  else return NEW;
  end if;
- select * into cfg from prayer_app.email_notification_settings where id=1;
+ -- Serialize capture with disable/reconnect so cancellation cannot miss this row.
+ select * into cfg from prayer_app.email_notification_settings where id=1 for share;
  if not cfg.enabled or cfg.verified_at is null or cfg.refresh_token_ciphertext is null or cfg.recipient='' or cfg.google_email is distinct from cfg.recipient then return NEW; end if;
  if cfg.enabled_at is not null and NEW.created_at<cfg.enabled_at then return NEW; end if;
+ -- Retention must not allow an old source event to be recreated after its tombstone expires.
+ if NEW.created_at<now()-interval '7 days' then return NEW; end if;
  if who is not null then
    select u.display_name,coalesce(nullif(r.sam_label,''),s.name) into name_text,sam_text
    from prayer_app.users u left join prayer_app.member_roster r on r.id=u.roster_id left join prayer_app.sams s on s.id=u.sam_id where u.id=who;

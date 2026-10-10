@@ -8,3 +8,8 @@ test('submission capture is authorized by transaction-local server runtime, neve
  assert.match(read('src/features/prayer-requests/service.ts'),/getDb\(\).transaction/u);
  assert.match(read('src/features/visits/service.ts'),/async markSynced[\s\S]*?getDb\(\).transaction/u);
 });
+test('capture serializes with disabling and rejects long-expired source events',()=>{
+ const migration=read('drizzle/20261010010000_submission_email_notifications.sql');
+ assert.match(migration,/select \* into cfg from prayer_app.email_notification_settings where id=1 for share/u);
+ assert.match(migration,/NEW.created_at<now\(\)-interval '7 days'/u);
+});

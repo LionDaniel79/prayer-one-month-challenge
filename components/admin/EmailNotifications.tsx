@@ -1,5 +1,7 @@
 "use client";
 import {useEffect,useRef,useState,type FormEvent} from "react";
+import Link from "next/link";
+import styles from "./email-notifications.module.css";
 
 type EmailStatus={recipient:string;enabled:boolean;connected:boolean;googleEmail:string|null;verified:boolean;configured:boolean;production:boolean;counts:{pending:number;sent:number;failed:number;unknown:number};lastError:string|null};
 const endpoint="/api/admin/email-notifications";
@@ -62,6 +64,7 @@ function NotificationSettings(){
  const changed=data!==null&&recipient.trim().toLowerCase()!==data.recipient;
  return <div className="admin-section">
   <p className="helper-text">목양지·심방신청·기도요청 접수 시 샘과 이름, 심방 일시만 한 줄로 보냅니다. 기도제목·심방 사유·전화번호·첨부파일은 메일에 포함하지 않습니다.</p>
+  <Link href="/privacy#email-notifications">이메일 알림 개인정보 이용 안내</Link>
   {!data?<p role="status">알림 설정을 불러오는 중입니다.</p>:<>
    {!data.production&&<p className="helper-text">알림 연결과 발송은 정식 서비스에서만 가능합니다. Preview에서는 발송하지 않습니다.</p>}
    {!data.configured&&<p className="helper-text">{messages.EMAIL_NOT_CONFIGURED}</p>}
@@ -91,7 +94,7 @@ function NotificationSettings(){
 export function EmailNotifications(){
  const detail=useRef<HTMLDetailsElement>(null);const [open,setOpen]=useState(false);
  useEffect(()=>{if(window.location.hash==="#email-notifications"&&detail.current)detail.current.open=true;},[]);
- return <details className="card" id="email-notifications" ref={detail} onToggle={event=>setOpen(event.currentTarget.open)}>
+ return <details className={`card ${styles.panel}`} id="email-notifications" ref={detail} onToggle={event=>setOpen(event.currentTarget.open)}>
   <summary>접수 이메일 알림</summary>{open&&<NotificationSettings/>}
  </details>;
 }

@@ -12,9 +12,8 @@ export function deploymentOrigin(value, custom) {
       (!url.hostname.endsWith('.vercel.app') && url.origin !== configured)) throw new Error('UNTRUSTED_DEPLOYMENT_URL');
   return url.origin;
 }
-// Vercel Standard Protection can protect generated deployment URLs while leaving
-// the production domain public. Use an explicit site URL or the repository's
-// declared homepage; never change protection or follow authentication redirects.
+// Use an explicit site URL or the repository's declared homepage; never change
+// deployment protection or follow authentication redirects.
 export function publicVerificationOrigin(deploymentUrl, configuredUrl, repositoryHomepage) {
   return deploymentOrigin(configuredUrl || repositoryHomepage || deploymentUrl, configuredUrl);
 }
@@ -25,7 +24,7 @@ async function main() {
   const production = process.env.GITHUB_REF === 'refs/heads/main';
   const result = { workflowCommit: sha, mode: production ? 'production-verification' : 'production-discovery-only', authenticatedSiteRequests: false, checkedAt: new Date().toISOString(), checks: [] };
   async function github(path) {
-    // The workflow token is sent ONLY to this fixed GitHub API origin; never to the app.
+    // Workflow token goes ONLY to GitHub, never to the app.
     const response = await fetch(`https://api.github.com/repos/${repository}${path ? `/${path}` : ""}`, {
       headers: { Accept: 'application/vnd.github+json', Authorization: `Bearer ${process.env.GITHUB_TOKEN}`, 'X-GitHub-Api-Version': '2022-11-28' },
       redirect: 'error', signal: AbortSignal.timeout(12000),
@@ -39,7 +38,7 @@ async function main() {
       const items = await github(`deployments?per_page=100${production ? `&sha=${sha}` : ''}`);
       deployment = production ? productionDeployment(items, sha) : items.find(d => d.creator?.login === 'vercel[bot]' && (d.production_environment === true || d.environment?.toLowerCase() === 'production'));
       if (deployment) {
-        const statuses = await github(`deployments/${deployment.id}/statuses?per_page=10`);
+        const statuses = await github(`deployments/${deployment.id}/statuses`);
         status = statuses[0];
         if (status?.state === 'success') break;
         if (['failure','error'].includes(status?.state)) throw new Error('PRODUCTION_DEPLOYMENT_FAILED');
@@ -56,7 +55,11 @@ async function main() {
     const expected = JSON.parse(await readFile('public/pastoral-release.json','utf8')).release;
     const expectedPrayerMenu = JSON.parse(await readFile('public/prayer-menu-release.json','utf8')).release;
     const expectedDashboard = JSON.parse(await readFile('public/admin-dashboard-release.json','utf8')).release;
+    const expectedEmail = JSON.parse(await readFile('public/email-notifications-release.json','utf8')).release;
     const checks = [
+      ['/email-notifications-release.json',200,'email-release'],
+      ['/api/admin/email-notifications',403,'private'],
+      ['/api/internal/email-notifications',403,'private','POST'],
       ['/admin-dashboard-release.json',200,'dashboard-release'],
       ['/api/admin/dashboard',403,'private'],
       ['/api/admin/pastoral/reports?unreviewed=1',403,'private'],
@@ -68,21 +71,21 @@ async function main() {
       ['/api/pastoral/status',401,'private'], ['/api/pastoral/reports',401,'private'],
       ['/api/admin/pastoral/schedule',403,'private'], ['/api/admin/sams/village-leaders',403,'private'],
     ];
-    for (const [path, expectedStatus, kind] of checks) {
-      const response = await fetch(origin + path, { redirect: 'manual', cache: 'no-store', signal: AbortSignal.timeout(15000) });
+    for (const [path, expectedStatus, kind, method = 'GET'] of checks) {
+      const response = await fetch(origin + path, { method, redirect: 'manual', cache: 'no-store', signal: AbortSignal.timeout(15000) });
       let passed = response.status === expectedStatus;
       const body = await response.text();
+      if (passed && kind === 'email-release') passed = JSON.parse(body).release === expectedEmail;
       if (passed && kind === 'prayer-menu-release') passed = JSON.parse(body).release === expectedPrayerMenu;
       if (passed && kind === 'dashboard-release') passed = JSON.parse(body).release === expectedDashboard;
       if (passed && kind === 'release') passed = JSON.parse(body).release === expected;
       if (passed && kind === 'health') { const data = JSON.parse(body); passed = data.status === 'ok' && data.database === 'ok'; }
       if (passed && kind === 'public-about') passed = body.includes('56사랑') && body.includes('Google Calendar') && body.includes('href="/privacy"');
-      if (passed && kind === 'public-privacy') passed = body.includes('개인정보처리방침') && body.includes('calendar.calendarlist.readonly') && body.includes('Limited Use') && body.includes('mailto:ditto0310@gmail.com');
+      if (passed && kind === 'public-privacy') passed = body.includes('개인정보처리방침') && body.includes('calendar.calendarlist.readonly') && body.includes('gmail.send') && body.includes('Limited Use') && body.includes('mailto:ditto0310@gmail.com');
       if (passed && kind === 'login') passed = body.includes('비밀번호');
       if (passed && kind === 'private') passed = ['UNAUTHORIZED','FORBIDDEN'].includes(JSON.parse(body).code);
       if (passed && kind === 'redirect') { const target = new URL(response.headers.get('location') ?? '', origin); passed = target.origin === origin && target.pathname === '/login'; }
-      result.checks.push({ path, status: response.status, passed });
-      // Do not circumvent deployment protection or follow sign-in redirects.
+      result.checks.push({ path, method, status: response.status, passed });
       if (!passed) throw new Error(`PUBLIC_CHECK_FAILED_${response.status}`);
     }
     result.passed = true;
