@@ -23,6 +23,8 @@ export type OwnPrayerRequest = {
 export type PrayerComment = {
   id: string;
   content: string;
+  version: number;
+  editedAt: string | null;
   authorName: string;
   authorRole: "member" | "admin";
   isOwn: boolean;

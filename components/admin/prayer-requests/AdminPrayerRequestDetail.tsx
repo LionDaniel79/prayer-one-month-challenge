@@ -61,11 +61,11 @@ export function AdminPrayerRequestDetail({
               {action.label}
             </button>
           ))}
+          <button type="button" className="text-button danger-button" disabled={busy} onClick={onDelete}>
+            기도요청 삭제
+          </button>
         </div>
       </div>
-      <button type="button" className="text-button danger-button" disabled={busy} onClick={onDelete}>
-        기도요청 삭제
-      </button>
       <PrayerComments key={request.id} requestId={request.id} />
     </section>
   );

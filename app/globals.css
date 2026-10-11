@@ -526,26 +526,36 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   font-weight: 700;
 }
 
-.own-prayer-requests { display: grid; gap: 16px; margin-top: 32px; }
+.own-prayer-requests { display: grid; gap: 8px; margin-top: 18px; }
 .own-prayer-requests > .section-heading { margin-bottom: 0; }
-.own-prayer-request { display: grid; gap: 16px; min-width: 0; }
-.prayer-request-meta, .prayer-follow-up-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
-.prayer-request-meta { justify-content: space-between; font-size: .85rem; color: var(--muted); }
+.own-prayer-requests > .section-heading h2 { margin: 0; }
+.own-prayer-request { min-width: 0; padding: 0; overflow: hidden; }
+.prayer-request-summary { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; width: 100%; padding: 12px 14px; border: 0; background: transparent; color: inherit; text-align: left; cursor: pointer; font: inherit; }
+.prayer-request-summary:hover, .prayer-request-summary[aria-expanded="true"] { background: #f5f8fc; }
+.prayer-request-summary:focus-visible { outline: 2px solid #207ac4; outline-offset: -3px; }
+.prayer-request-summary time { white-space: nowrap; font-size: .78rem; color: #667085; }
+.prayer-request-title { display: flex; align-items: center; gap: 6px; min-width: 0; font-weight: 600; }
+.prayer-title-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.prayer-request-summary .prayer-status { white-space: nowrap; font-size: .78rem; }
+.prayer-request-expanded { display: grid; gap: 10px; padding: 12px 14px; border-top: 1px solid #edf0f4; }
+.prayer-follow-up-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
 .prayer-status { border-radius: 999px; padding: 5px 10px; background: #f1f1f1; color: #555; font-weight: 700; }
 .prayer-status.is-praying { color: #284f79; background: #e8f1fb; }
 .prayer-status.is-completed { color: #236042; background: #e7f3ec; }
 .prayer-request-body, .prayer-comment-list p { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.7; margin: 0; }
-.prayer-comment-toggle { display: inline-flex; align-items: center; gap: 6px; }
-.prayer-unread-badge { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; color: white; background: #bc3c31; font-weight: 800; font-size: 14px; }
-.prayer-comments { border-top: 1px solid var(--line, #dedede); padding-top: 18px; display: grid; gap: 12px; min-width: 0; }
+.prayer-unread-badge { display: inline-flex; flex: 0 0 20px; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; color: white; background: #bc3c31; font-weight: 800; font-size: 14px; }
+.prayer-comments { border-top: 1px solid var(--line, #dedede); padding-top: 10px; display: grid; gap: 8px; min-width: 0; }
 .prayer-comments h3 { margin: 0; }
-.prayer-comment-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; max-height: 480px; overflow-y: auto; }
-.prayer-comment-list li { padding: 14px; background: #f5f5f3; border-radius: 12px; min-width: 0; }
+.prayer-comments p { margin: 0; }
+.prayer-comment-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; max-height: 480px; overflow-y: auto; }
+.prayer-comment-list li { padding: 10px; background: #f5f5f3; border-radius: 12px; min-width: 0; }
 .prayer-comment-list li.is-own { background: #edf3ed; }
-.prayer-comment-list li > div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px; font-size: .8rem; margin-bottom: 8px; }
-.prayer-comments textarea, .own-prayer-request textarea { box-sizing: border-box; width: 100%; min-height: 100px; padding: 12px; resize: vertical; border: 1px solid #d0d0cb; border-radius: 10px; font: inherit; margin-top: 8px; }
-.own-prayer-request textarea { min-height: 180px; }
-.prayer-comments form { display: grid; gap: 10px; }
+.prayer-comment-meta { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px; font-size: .8rem; margin-bottom: 6px; }
+.prayer-comments textarea, .prayer-request-edit textarea { box-sizing: border-box; width: 100%; min-height: 90px; height: 90px; padding: 10px; resize: vertical; border: 1px solid #d0d0cb; border-radius: 10px; font: inherit; margin-top: 4px; }
+.prayer-request-edit textarea { min-height: 180px; }
+.prayer-comments form { display: grid; gap: 6px; }
+.prayer-comment-edit-button { font-size: .8rem; margin-top: 4px; }
+.prayer-comment-edit-actions { display: flex; justify-content: flex-end; align-items: center; gap: 10px; }
 .prayer-request-form textarea {
   width: 100%;
   min-height: 240px;
@@ -1063,16 +1073,17 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   position: sticky;
   top: 100px;
   display: grid;
-  gap: 20px;
+  gap: 12px;
 }
 .admin-request-content {
-  min-height: 180px;
-  padding: 16px;
+  min-height: 90px;
+  padding: 12px;
   border-radius: 14px;
   background: #f8fafc;
   white-space: pre-wrap;
 }
 .admin-request-content p { margin: 0; line-height: 1.65; }
+.admin-request-detail .helper-text { margin: 0 0 6px; }
 .admin-request-actions {
   display: flex;
   flex-wrap: wrap;
