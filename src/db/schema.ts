@@ -254,6 +254,8 @@ export const prayerRequestComments = appSchema.table(
     authorUserId: uuid("author_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
     authorRole: roleEnum("author_role").notNull(),
     content: text("content").notNull(),
+    version: integer("version").notNull().default(1),
+    editedAt: timestamp("edited_at", { withTimezone: true }),
     clientId: uuid("client_id").notNull(),
     sequence: bigserial("sequence", { mode: "number" }).notNull().unique(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

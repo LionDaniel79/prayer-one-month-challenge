@@ -179,7 +179,6 @@ export async function listOwnPrayerRequests(userId: string, page = 0): Promise<{
       select 1 from ${prayerRequestComments} as c
       where c.request_id = ${prayerRequests}.id
         and c.author_role = 'admin'
-        and c.author_user_id <> ${prayerRequests}.user_id
         and c.sequence > ${prayerRequests}.requester_read_sequence
     )`,
   }).from(prayerRequests).where(eq(prayerRequests.userId, userId))
@@ -219,27 +218,53 @@ export async function listPrayerComments(id: string, actor: Actor, before?: numb
     id: prayerRequestComments.id, content: prayerRequestComments.content,
     authorName: users.displayName, authorRole: prayerRequestComments.authorRole,
     authorUserId: prayerRequestComments.authorUserId, sequence: prayerRequestComments.sequence,
+    version: prayerRequestComments.version, editedAt: prayerRequestComments.editedAt,
     createdAt: prayerRequestComments.createdAt,
   }).from(prayerRequestComments).innerJoin(users, eq(users.id, prayerRequestComments.authorUserId))
     .where(and(eq(prayerRequestComments.requestId, id), before ? lt(prayerRequestComments.sequence, before) : undefined))
     .orderBy(desc(prayerRequestComments.sequence)).limit(51);
-  return { comments: rows.slice(0, 50).reverse().map(({ authorUserId, createdAt, ...row }) => ({
-    ...row, isOwn: authorUserId === actor.id, createdAt: createdAt.toISOString(),
+  return { comments: rows.slice(0, 50).reverse().map(({ authorUserId, createdAt, editedAt, ...row }) => ({
+    ...row, isOwn: authorUserId === actor.id, createdAt: createdAt.toISOString(), editedAt: editedAt?.toISOString() ?? null,
   })), hasMore: rows.length > 50 };
 }
 
-export async function addPrayerComment(id: string, actor: Actor, content: string, clientId: string) {
+export async function addPrayerComment(id: string, actor: Actor, content: string, clientId: string, asAdmin = actor.role === "admin") {
+  if (asAdmin && actor.role !== "admin") throw new DomainError("FORBIDDEN", 403);
   const normalized = normalizePrayerComment(content);
   return getDb().transaction(async tx => {
     // Serialize inserts per request so a read cursor can never skip an uncommitted earlier comment.
-    await lockedRequest(tx, id, actor);
+    await lockedRequest(tx, id, actor, !asAdmin);
     const [row] = await tx.insert(prayerRequestComments).values({
-      requestId: id, authorUserId: actor.id, authorRole: actor.role, content: normalized, clientId,
+      requestId: id, authorUserId: actor.id, authorRole: asAdmin ? "admin" : "member", content: normalized, clientId,
     }).onConflictDoNothing().returning({ id: prayerRequestComments.id });
     if (row) return row.id;
     const [existing] = await tx.select({ id: prayerRequestComments.id }).from(prayerRequestComments)
       .where(and(eq(prayerRequestComments.requestId, id), eq(prayerRequestComments.authorUserId, actor.id), eq(prayerRequestComments.clientId, clientId)));
     return existing.id;
+  });
+}
+
+export function assertPrayerCommentAuthor(authorId: string, actor: Actor) {
+  if (authorId !== actor.id) throw new DomainError("PRAYER_COMMENT_NOT_FOUND", 404);
+}
+
+export async function editPrayerComment(id: string, actor: Actor, input: { commentId: string; content: string; expectedVersion: number }) {
+  const content = normalizePrayerComment(input.content);
+  return getDb().transaction(async tx => {
+    await lockedRequest(tx, id, actor);
+    const [comment] = await tx.select().from(prayerRequestComments).where(and(
+      eq(prayerRequestComments.id, input.commentId), eq(prayerRequestComments.requestId, id),
+    )).limit(1);
+    if (!comment) throw new DomainError("PRAYER_COMMENT_NOT_FOUND", 404);
+    assertPrayerCommentAuthor(comment.authorUserId, actor);
+    // Retrying a successful edit after a lost response does not create a conflict.
+    if (comment.content === content) return { id: comment.id, content, version: comment.version, editedAt: comment.editedAt?.toISOString() ?? null };
+    if (comment.version !== input.expectedVersion) throw new DomainError("PRAYER_COMMENT_CONFLICT", 409);
+    const editedAt = new Date();
+    await tx.update(prayerRequestComments).set({
+      content, version: comment.version + 1, editedAt,
+    }).where(eq(prayerRequestComments.id, comment.id));
+    return { id: comment.id, content, version: comment.version + 1, editedAt: editedAt.toISOString() };
   });
 }
 

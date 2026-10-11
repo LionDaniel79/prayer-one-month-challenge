@@ -10,7 +10,7 @@ const labels = { received: "접수", praying: "기도중", completed: "완료" }
 
 function OwnRequestCard({ request, refresh }: { request: OwnPrayerRequest; refresh: () => void }) {
   const [editing, setEditing] = useState<{ content: string; version: number } | null>(null);
-  const [commentsOpen, setCommentsOpen] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -34,11 +34,16 @@ function OwnRequestCard({ request, refresh }: { request: OwnPrayerRequest; refre
     if (editing) void update({ content: editing.content, expectedVersion: editing.version });
   }
   return <article className="card own-prayer-request" aria-label="내 기도요청 항목">
-    <div className="prayer-request-meta">
-      <time dateTime={request.createdAt}>{new Date(request.createdAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}</time>
-      <span className={"prayer-status is-" + request.status}>{labels[request.status]}{request.completedByRequester ? " · 내가 완료" : ""}</span>
-    </div>
-    {editing ? <form onSubmit={save}>
+    <button type="button" className="prayer-request-summary" aria-expanded={expanded} aria-controls={"prayer-detail-" + request.id}
+      disabled={busy} onClick={() => setExpanded(value => !value)}>
+      <time dateTime={request.createdAt}>{new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(request.createdAt))}</time>
+      <span className="prayer-request-title"><span className="prayer-title-text">{request.content.trim().split(/\r?\n/)[0]}</span>
+        {request.hasUnreadComments && <span className="prayer-unread-badge" role="img" aria-label="읽지 않은 관리자 댓글" title="새 관리자 댓글">!</span>}
+      </span>
+      <span className={"prayer-status is-" + request.status}>{labels[request.status]}</span>
+    </button>
+    {expanded && <div id={"prayer-detail-" + request.id} className="prayer-request-expanded">
+    {editing ? <form className="prayer-request-edit" onSubmit={save}>
       <label>기도내용 수정<textarea aria-label="기도내용 수정" value={editing.content} required maxLength={10000} disabled={busy} onChange={event => setEditing({ ...editing, content: event.target.value })} /></label>
       <div className="prayer-request-actions">
         <button className="text-button" type="button" disabled={busy} onClick={() => setEditing(null)}>수정 취소</button>
@@ -47,17 +52,14 @@ function OwnRequestCard({ request, refresh }: { request: OwnPrayerRequest; refre
     </form> : <p className="prayer-request-body">{request.content}</p>}
     <div className="prayer-follow-up-actions">
       {!editing && <button type="button" className="text-button" disabled={busy} onClick={() => { setEditing({ content: request.content, version: request.version }); setError(""); setMessage(""); }}>수정</button>}
-      <button type="button" className="text-button prayer-comment-toggle" aria-expanded={commentsOpen} onClick={() => setCommentsOpen(value => !value)}>
-        {commentsOpen ? "댓글 닫기" : "댓글 보기"}
-        {request.hasUnreadComments && <span className="prayer-unread-badge" role="img" aria-label="읽지 않은 관리자 댓글" title="새 관리자 댓글">!</span>}
-      </button>
       {request.status !== "completed" && <button type="button" className="text-button" disabled={busy || !!editing} onClick={() => {
         if (window.confirm("이 기도요청을 완료로 표시할까요? 관리자에게도 완료 상태가 표시됩니다.")) void update({ complete: true });
       }}>기도 완료</button>}
     </div>
     {message && <p role="status" className="success-text">{message}</p>}
     {error && <p role="alert" className="error-text">{error}</p>}
-    {commentsOpen && <PrayerComments key={request.id} requestId={request.id} isOwner onRead={refresh} />}
+    <PrayerComments key={request.id} requestId={request.id} isOwner onRead={refresh} />
+    </div>}
   </article>;
 }
 
@@ -96,7 +98,6 @@ export function PrayerRequestWorkspace() {
     <PrayerRequestForm onSubmitted={() => { setPage(0); refresh(); }} />
     <section className="own-prayer-requests" aria-label="내 기도요청">
       <div className="section-heading"><h2>내 기도요청</h2><button type="button" className="text-button" onClick={refresh}>목록 새로고침</button></div>
-      <p className="helper-text">내가 접수한 기도요청과 진행 상태를 확인하고, 관리자와 댓글을 나눌 수 있습니다.</p>
       {error && <p className="error-text" role="alert">{error}</p>}
       {loading ? <p>기도요청을 불러오는 중입니다.</p> : requests.length === 0 ? <p className="card empty-state">접수한 기도요청이 없습니다.</p> :
         requests.map(request => <OwnRequestCard key={request.id} request={request} refresh={refresh} />)}

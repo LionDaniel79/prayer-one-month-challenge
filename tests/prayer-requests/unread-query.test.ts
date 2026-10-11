@@ -13,7 +13,8 @@ it("correlates the unread subquery with the outer request instead of the comment
   await listOwnPrayerRequests("00000000-0000-4000-8000-000000000001");
   const sql = (query.mock.calls[0][0] as unknown as { text: string }).text;
   expect(sql).toContain('"prayer_app"."prayer_requests".id');
-  expect(sql).toContain('"prayer_app"."prayer_requests".user_id');
+  expect(sql).not.toContain("author_user_id <>");
+  expect(sql).toContain("c.author_role = 'admin'");
   expect(sql).toContain('"prayer_app"."prayer_requests".requester_read_sequence');
   await pool.end();
 });
