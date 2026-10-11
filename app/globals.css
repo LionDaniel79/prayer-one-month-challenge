@@ -527,6 +527,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 }
 
 .own-prayer-requests { display: grid; gap: 8px; margin-top: 18px; }
+.own-prayer-requests > .section-heading, .prayer-comments > .section-heading { display: flex; flex-wrap: wrap; gap: 8px; }
 .own-prayer-requests > .section-heading { margin-bottom: 0; }
 .own-prayer-requests > .section-heading h2 { margin: 0; }
 .own-prayer-request { min-width: 0; padding: 0; overflow: hidden; }
@@ -554,6 +555,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .prayer-comments textarea, .prayer-request-edit textarea { box-sizing: border-box; width: 100%; min-height: 90px; height: 90px; padding: 10px; resize: vertical; border: 1px solid #d0d0cb; border-radius: 10px; font: inherit; margin-top: 4px; }
 .prayer-request-edit textarea { min-height: 180px; }
 .prayer-comments form { display: grid; gap: 6px; }
+.prayer-comments .prayer-request-actions { display: flex; gap: 8px; }
 .prayer-comment-edit-button { font-size: .8rem; margin-top: 4px; }
 .prayer-comment-edit-actions { display: flex; justify-content: flex-end; align-items: center; gap: 10px; }
 .prayer-request-form textarea {
