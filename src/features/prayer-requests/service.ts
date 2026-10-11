@@ -173,12 +173,14 @@ export async function listOwnPrayerRequests(userId: string, page = 0): Promise<{
     id: prayerRequests.id, content: prayerRequests.content, status: prayerRequests.status,
     createdAt: prayerRequests.createdAt, version: prayerRequests.version,
     completedByRequester: prayerRequests.completedByRequester,
+    // Drizzle strips Column table qualifiers in a single-table SELECT projection.
+    // Interpolate the outer Table, not its Columns, to preserve correlation here.
     hasUnreadComments: sql<boolean>`exists (
-      select 1 from ${prayerRequestComments}
-      where ${prayerRequestComments.requestId} = ${prayerRequests.id}
-        and ${prayerRequestComments.authorRole} = 'admin'
-        and ${prayerRequestComments.authorUserId} <> ${prayerRequests.userId}
-        and ${prayerRequestComments.sequence} > ${prayerRequests.requesterReadSequence}
+      select 1 from ${prayerRequestComments} as c
+      where c.request_id = ${prayerRequests}.id
+        and c.author_role = 'admin'
+        and c.author_user_id <> ${prayerRequests}.user_id
+        and c.sequence > ${prayerRequests}.requester_read_sequence
     )`,
   }).from(prayerRequests).where(eq(prayerRequests.userId, userId))
     .orderBy(desc(prayerRequests.createdAt), desc(prayerRequests.id)).limit(11).offset(page * 10);
