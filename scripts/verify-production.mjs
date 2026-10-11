@@ -60,6 +60,7 @@ async function main() {
     const checks = [
       ['/prayer-request-follow-up-release.json',200,'prayer-follow-up-release'],
       ['/api/prayer-requests',401,'private'],
+      ['/api/prayer-requests/unread',401,'private'],
       ['/api/prayer-requests/00000000-0000-4000-8000-000000000001',401,'private','PATCH'],
       ['/api/prayer-requests/00000000-0000-4000-8000-000000000001/comments',401,'private'],
       ['/email-notifications-release.json',200,'email-release'],

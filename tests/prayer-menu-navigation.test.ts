@@ -39,4 +39,12 @@ describe("member prayer menu visibility", () => {
     const html = renderToStaticMarkup(React.createElement(MemberSidebar, { unreadCount: 0 }));
     expect(html).toContain(">기도운동<");
   });
+
+  it.each([false, true])("marks only the prayer request menu when unread comments exist (%s)", (prayerHasUnread) => {
+    const html = renderToStaticMarkup(React.createElement(MemberSidebar, { unreadCount: 0, prayerHasUnread }));
+    const prayerLink = html.match(/<a href="\/prayer-requests"[\s\S]*?<\/a>/)?.[0];
+    expect(prayerLink).toBeDefined();
+    expect(prayerLink!.includes('aria-label="읽지 않은 기도요청 댓글"')).toBe(prayerHasUnread);
+    expect(html.match(/읽지 않은 기도요청 댓글/g)?.length ?? 0).toBe(prayerHasUnread ? 1 : 0);
+  });
 });

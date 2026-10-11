@@ -5,6 +5,7 @@ vi.mock("../../src/features/auth/http-session", () => ({ getCurrentSessionUser: 
 vi.mock("../../src/features/prayer-requests/service", () => ({
   listOwnPrayerRequests: vi.fn(), updateOwnPrayerRequest: vi.fn(),
   listPrayerComments: vi.fn(), addPrayerComment: vi.fn(), markPrayerCommentsRead: vi.fn(), editPrayerComment: vi.fn(),
+  hasUnreadPrayerComments: vi.fn(),
 }));
 vi.mock("../../src/features/email/wakeup", () => ({ scheduleEmailDelivery: vi.fn() }));
 import { getCurrentSessionUser } from "../../src/features/auth/http-session";
@@ -12,6 +13,7 @@ import * as service from "../../src/features/prayer-requests/service";
 import * as collection from "../../app/api/prayer-requests/route";
 import * as item from "../../app/api/prayer-requests/[id]/route";
 import * as comments from "../../app/api/prayer-requests/[id]/comments/route";
+import * as unread from "../../app/api/prayer-requests/unread/route";
 import { scheduleEmailDelivery } from "../../src/features/email/wakeup";
 
 const id = "00000000-0000-4000-8000-000000000111";
@@ -32,9 +34,18 @@ describe("prayer follow-up HTTP boundary", () => {
       collection.GET(request("GET")), item.PATCH(request("PATCH", { complete: true }), context),
       comments.GET(request("GET"), context), comments.POST(request("POST", {}), context),
       comments.PATCH(request("PATCH", {}), context),
+      unread.GET(),
     ]);
-    expect(responses.map(response => response.status)).toEqual([401, 401, 401, 401, 401]);
+    expect(responses.map(response => response.status)).toEqual([401, 401, 401, 401, 401, 401]);
     for (const operation of Object.values(service)) expect(operation).not.toHaveBeenCalled();
+  });
+  it("returns only a private unread flag for the verified session owner", async () => {
+    vi.mocked(service.hasUnreadPrayerComments).mockResolvedValue(true);
+    const response = await unread.GET();
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ hasUnread: true });
+    expect(service.hasUnreadPrayerComments).toHaveBeenCalledWith(actor.id);
+    expect(response.headers.get("cache-control")).toContain("no-store");
   });
   it("never accepts a submitted owner for the own-request listing and disables caching", async () => {
     vi.mocked(service.listOwnPrayerRequests).mockResolvedValue({ requests: [], hasMore: false });

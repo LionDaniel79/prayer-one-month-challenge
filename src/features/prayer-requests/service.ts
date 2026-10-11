@@ -168,19 +168,27 @@ async function lockedRequest(tx: Transaction, id: string, actor: Actor, ownerOnl
   return row;
 }
 
+// Interpolate the outer Table, not its Columns: Drizzle strips Column qualifiers
+// from a single-table SELECT projection. Reuse this predicate for list and menu.
+const unreadAdminComment = sql<boolean>`exists (
+  select 1 from ${prayerRequestComments} as c
+  where c.request_id = ${prayerRequests}.id
+    and c.author_role = 'admin'
+    and c.sequence > ${prayerRequests}.requester_read_sequence
+)`;
+
+export async function hasUnreadPrayerComments(userId: string): Promise<boolean> {
+  const rows = await getDb().select({ id: prayerRequests.id }).from(prayerRequests)
+    .where(and(eq(prayerRequests.userId, userId), unreadAdminComment)).limit(1);
+  return rows.length > 0;
+}
+
 export async function listOwnPrayerRequests(userId: string, page = 0): Promise<{ requests: OwnPrayerRequest[]; hasMore: boolean }> {
   const rows = await getDb().select({
     id: prayerRequests.id, content: prayerRequests.content, status: prayerRequests.status,
     createdAt: prayerRequests.createdAt, version: prayerRequests.version,
     completedByRequester: prayerRequests.completedByRequester,
-    // Drizzle strips Column table qualifiers in a single-table SELECT projection.
-    // Interpolate the outer Table, not its Columns, to preserve correlation here.
-    hasUnreadComments: sql<boolean>`exists (
-      select 1 from ${prayerRequestComments} as c
-      where c.request_id = ${prayerRequests}.id
-        and c.author_role = 'admin'
-        and c.sequence > ${prayerRequests}.requester_read_sequence
-    )`,
+    hasUnreadComments: unreadAdminComment,
   }).from(prayerRequests).where(eq(prayerRequests.userId, userId))
     .orderBy(desc(prayerRequests.createdAt), desc(prayerRequests.id)).limit(11).offset(page * 10);
   return {

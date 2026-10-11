@@ -19,7 +19,7 @@ function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function MemberSidebar({ onNavigate, unreadCount, pastoralVisible = false, pastoralCount = 0, prayerMenuEnabled = true }: { onNavigate?: () => void; unreadCount: number; pastoralVisible?: boolean; pastoralCount?: number; prayerMenuEnabled?: boolean }) {
+export function MemberSidebar({ onNavigate, unreadCount, pastoralVisible = false, pastoralCount = 0, prayerMenuEnabled = true, prayerHasUnread = false }: { onNavigate?: () => void; unreadCount: number; pastoralVisible?: boolean; pastoralCount?: number; prayerMenuEnabled?: boolean; prayerHasUnread?: boolean }) {
   const pathname = usePathname();
   return (
     <nav className="member-nav" aria-label="56사랑 메뉴">
@@ -33,6 +33,7 @@ export function MemberSidebar({ onNavigate, unreadCount, pastoralVisible = false
             <span>{item.label}</span>
             {item.href === "/pastoral-reports" && <ReportBadge count={pastoralCount} />}
             {item.href === "/notices" && <UnreadNoticeBadge count={unreadCount} />}
+            {item.href === "/prayer-requests" && prayerHasUnread && <span className="nav-badge" aria-label="읽지 않은 기도요청 댓글">!</span>}
           </Link>
         );
       })}
