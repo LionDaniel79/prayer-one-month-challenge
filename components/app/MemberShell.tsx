@@ -9,6 +9,7 @@ import { LogoutButton } from "../auth/LogoutButton";
 import { ReportBadge, usePastoralBadge } from "../pastoral/ReportStatusBadge";
 import { MemberSidebar } from "./MemberSidebar";
 import { UnreadNoticeBadge, useUnreadNoticeCount } from "../notices/UnreadNoticeBadge";
+import { useUnreadPrayerComments } from "../prayer-requests/useUnreadPrayerComments";
 
 export function MemberShell({
   user,
@@ -27,6 +28,7 @@ export function MemberShell({
     if (!prayerMenuEnabled && pathname === "/") router.replace("/notices");
   }, [prayerMenuEnabled, pathname, router]);
   const unreadCount = useUnreadNoticeCount();
+  const prayerHasUnread = useUnreadPrayerComments(menuOpen);
   const pastoral = usePastoralBadge();
 
   return (
@@ -37,7 +39,7 @@ export function MemberShell({
           <strong>56사랑</strong>
         </div>
 
-        <MemberSidebar prayerMenuEnabled={prayerMenuEnabled} pastoralVisible={pastoral.visible} pastoralCount={pastoral.count} unreadCount={unreadCount} onNavigate={() => setMenuOpen(false)} />
+        <MemberSidebar prayerMenuEnabled={prayerMenuEnabled} pastoralVisible={pastoral.visible} pastoralCount={pastoral.count} unreadCount={unreadCount} prayerHasUnread={prayerHasUnread} onNavigate={() => setMenuOpen(false)} />
 
         <div className="sidebar-footer">
           <Link href="/profile" onClick={() => setMenuOpen(false)}>내 정보</Link>

@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { fetchJson } from "../../src/lib/fetch-json";
 import type { PrayerComment, PrayerCommentPage } from "../../src/features/prayer-requests/types";
+import { prayerCommentsReadEvent } from "./useUnreadPrayerComments";
 
 export function PrayerComments({ requestId, isOwner = false, onRead }: {
   requestId: string; isOwner?: boolean; onRead?: () => void;
@@ -90,6 +91,7 @@ export function PrayerComments({ requestId, isOwner = false, onRead }: {
       inFlight = true;
       try {
         await fetchJson(endpoint, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ throughCommentId: lastCommentId }) });
+        window.dispatchEvent(new Event(prayerCommentsReadEvent));
         if (!cancelled) { acknowledged = true; onRead?.(); }
       } catch { /* Keep the unread badge when the read acknowledgement fails. */ }
       finally { inFlight = false; }
