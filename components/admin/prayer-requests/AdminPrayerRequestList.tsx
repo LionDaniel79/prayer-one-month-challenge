@@ -78,7 +78,7 @@ export function AdminPrayerRequestList({
             >
               <span><strong>{request.requesterName}</strong><small>{request.preview}</small></span>
               <span>{dateLabel(request.createdAt)}</span>
-              <span>{statusLabel(request.status)}</span>
+              <span>{request.completedByRequester ? "신청자 완료" : statusLabel(request.status)}</span>
             </button>
           ))}
         </div>

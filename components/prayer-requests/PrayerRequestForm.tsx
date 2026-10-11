@@ -3,7 +3,7 @@
 import { FormEvent, useState } from "react";
 import { fetchJson } from "../../src/lib/fetch-json";
 
-export function PrayerRequestForm() {
+export function PrayerRequestForm({ onSubmitted }: { onSubmitted?: () => void } = {}) {
   const [content, setContent] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
@@ -26,9 +26,10 @@ export function PrayerRequestForm() {
 
       setContent("");
       setMessage("기도요청이 전달되었습니다.");
+      onSubmitted?.();
     } catch (error) {
       setError(error instanceof Error && error.name === "TimeoutError"
-        ? "응답이 지연되어 전송 결과를 확인하지 못했습니다. 입력 내용은 보존했습니다. 다시 보내기 전에 관리자에게 접수 여부를 확인해 주세요."
+        ? "응답이 지연되어 전송 결과를 확인하지 못했습니다. 입력 내용은 보존했습니다. 다시 접수하기 전에 아래 내 기도요청 목록을 새로고침해 확인해 주세요."
         : "기도요청을 전달하지 못했습니다. 잠시 후 다시 시도해 주세요.");
     } finally {
       setBusy(false);
@@ -58,7 +59,7 @@ export function PrayerRequestForm() {
           type="submit"
           disabled={busy || !content.trim()}
         >
-          {busy ? "전송 중…" : "전송"}
+          {busy ? "접수 중…" : "접수"}
         </button>
       </div>
       {message && <p className="success-text" role="status">{message}</p>}

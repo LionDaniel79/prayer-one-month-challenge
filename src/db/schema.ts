@@ -1,4 +1,6 @@
 import {
+  bigint,
+  bigserial,
   boolean,
   customType,
   date,
@@ -230,6 +232,10 @@ export const prayerRequests = appSchema.table(
       .references(() => users.id, { onDelete: "cascade" }),
     content: text("content").notNull(),
     status: varchar("status", { length: 20 }).notNull().default("received"),
+    version: integer("version").notNull().default(1),
+    completedByRequester: boolean("completed_by_requester").notNull().default(false),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    requesterReadSequence: bigint("requester_read_sequence", { mode: "number" }).notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -239,6 +245,24 @@ export const prayerRequests = appSchema.table(
   ],
 );
 
+
+export const prayerRequestComments = appSchema.table(
+  "prayer_request_comments",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    requestId: uuid("request_id").notNull().references(() => prayerRequests.id, { onDelete: "cascade" }),
+    authorUserId: uuid("author_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    authorRole: roleEnum("author_role").notNull(),
+    content: text("content").notNull(),
+    clientId: uuid("client_id").notNull(),
+    sequence: bigserial("sequence", { mode: "number" }).notNull().unique(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("prayer_request_comments_request_sequence_idx").on(t.requestId, t.sequence),
+    uniqueIndex("prayer_request_comments_client_uq").on(t.requestId, t.authorUserId, t.clientId),
+  ],
+);
 
 export const visitRequests = appSchema.table(
   "visit_requests",

@@ -1,4 +1,5 @@
 "use client";
+import { PrayerComments } from "../../prayer-requests/PrayerComments";
 
 import type {
   AdminPrayerRequestDetail,
@@ -40,6 +41,7 @@ export function AdminPrayerRequestDetail({
       <div className="admin-request-content">
         <p>{request.content}</p>
       </div>
+      {request.completedByRequester && <p className="success-text">신청자가 기도 완료로 표시했습니다.{request.completedAt ? " (" + new Date(request.completedAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" }) + ")" : ""}</p>}
 
       <div>
         <p className="helper-text">처리 상태</p>
@@ -64,6 +66,7 @@ export function AdminPrayerRequestDetail({
       <button type="button" className="text-button danger-button" disabled={busy} onClick={onDelete}>
         기도요청 삭제
       </button>
+      <PrayerComments key={request.id} requestId={request.id} />
     </section>
   );
 }

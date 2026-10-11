@@ -44,10 +44,16 @@ export function AdminPrayerRequestManagement({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [revision, setRevision] = useState(0);
 
   useEffect(() => {
+    if (busy) return;
     let cancelled = false;
-    void fetchRequests(filter)
+    let inFlight = false;
+    function refresh() {
+      if (inFlight || document.visibilityState === "hidden") return;
+      inFlight = true;
+      void fetchRequests(filter)
       .then((rows) => {
         if (!cancelled) {
           setRequests(rows);
@@ -59,14 +65,23 @@ export function AdminPrayerRequestManagement({
           setError(cause instanceof Error ? cause.message : "PRAYER_REQUEST_LOAD_FAILED");
           setLoading(false);
         }
-      });
-    return () => { cancelled = true; };
-  }, [filter]);
+      }).finally(() => { inFlight = false; });
+    }
+    refresh();
+    const timer = window.setInterval(refresh, 15000);
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => { cancelled = true; window.clearInterval(timer); window.removeEventListener("focus", refresh); document.removeEventListener("visibilitychange", refresh); };
+  }, [filter, busy, revision]);
 
   useEffect(() => {
-    if (!selectedId) return;
+    if (!selectedId || busy) return;
     let cancelled = false;
-    void fetchDetail(selectedId)
+    let inFlight = false;
+    function refresh() {
+      if (inFlight || document.visibilityState === "hidden") return;
+      inFlight = true;
+      void fetchDetail(selectedId!)
       .then((row) => {
         if (!cancelled) setDetail(row);
       })
@@ -74,9 +89,14 @@ export function AdminPrayerRequestManagement({
         if (!cancelled) {
           setError(cause instanceof Error ? cause.message : "PRAYER_REQUEST_LOAD_FAILED");
         }
-      });
-    return () => { cancelled = true; };
-  }, [selectedId]);
+      }).finally(() => { inFlight = false; });
+    }
+    refresh();
+    const timer = window.setInterval(refresh, 15000);
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => { cancelled = true; window.clearInterval(timer); window.removeEventListener("focus", refresh); document.removeEventListener("visibilitychange", refresh); };
+  }, [selectedId, busy, revision]);
 
   function select(id: string) {
     if (busy || selectedId === id) return;
@@ -143,6 +163,7 @@ export function AdminPrayerRequestManagement({
         <p className="eyebrow">중보기도</p>
         <h1>기도요청 관리</h1>
         <p>전달된 기도요청을 확인하고 처리 상태를 관리합니다.</p>
+        <button type="button" className="text-button" disabled={busy} onClick={() => setRevision(value => value + 1)}>목록 새로고침</button>
       </section>
 
       {error && <p className="error-text" role="alert">{error}</p>}

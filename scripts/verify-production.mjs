@@ -56,7 +56,12 @@ async function main() {
     const expectedPrayerMenu = JSON.parse(await readFile('public/prayer-menu-release.json','utf8')).release;
     const expectedDashboard = JSON.parse(await readFile('public/admin-dashboard-release.json','utf8')).release;
     const expectedEmail = JSON.parse(await readFile('public/email-notifications-release.json','utf8')).release;
+    const expectedPrayerFollowUp = JSON.parse(await readFile('public/prayer-request-follow-up-release.json','utf8')).release;
     const checks = [
+      ['/prayer-request-follow-up-release.json',200,'prayer-follow-up-release'],
+      ['/api/prayer-requests',401,'private'],
+      ['/api/prayer-requests/00000000-0000-4000-8000-000000000001',401,'private','PATCH'],
+      ['/api/prayer-requests/00000000-0000-4000-8000-000000000001/comments',401,'private'],
       ['/email-notifications-release.json',200,'email-release'],
       ['/api/admin/email-notifications',403,'private'],
       ['/api/internal/email-notifications',403,'private','POST'],
@@ -76,6 +81,7 @@ async function main() {
       let passed = response.status === expectedStatus;
       const body = await response.text();
       if (passed && kind === 'email-release') passed = JSON.parse(body).release === expectedEmail;
+      if (passed && kind === 'prayer-follow-up-release') passed = JSON.parse(body).release === expectedPrayerFollowUp;
       if (passed && kind === 'prayer-menu-release') passed = JSON.parse(body).release === expectedPrayerMenu;
       if (passed && kind === 'dashboard-release') passed = JSON.parse(body).release === expectedDashboard;
       if (passed && kind === 'release') passed = JSON.parse(body).release === expected;

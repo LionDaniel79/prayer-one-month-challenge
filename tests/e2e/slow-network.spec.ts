@@ -28,12 +28,12 @@ test.describe("bounded loading on slow networks", () => {
     await page.route("**/api/prayer-requests", () => { submissions++; });
     await page.goto("/prayer-requests");
     await page.getByLabel("기도 요청 내용").fill("느린 연결에서도 보존할 검증 내용");
-    await page.getByRole("button", { name: "전송", exact: true }).click();
-    await expect(page.getByRole("button", { name: "전송 중…" })).toBeDisabled();
+    await page.getByRole("button", { name: "접수", exact: true }).click();
+    await expect(page.getByRole("button", { name: "접수 중…" })).toBeDisabled();
     await page.clock.fastForward(26_000);
     await expect(page.getByRole("main").getByRole("alert")).toContainText("전송 결과를 확인하지 못했습니다");
     await expect(page.getByLabel("기도 요청 내용")).toHaveValue("느린 연결에서도 보존할 검증 내용");
-    await expect(page.getByRole("button", { name: "전송", exact: true })).toBeEnabled();
+    await expect(page.getByRole("button", { name: "접수", exact: true })).toBeEnabled();
     expect(submissions).toBe(1);
   });
 });
