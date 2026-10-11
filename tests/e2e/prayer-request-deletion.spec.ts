@@ -17,7 +17,7 @@ test.describe("administrator prayer request deletion", () => {
     const content = `삭제 후 로그인 유지 검증 ${Date.now()}`;
     await page.getByLabel("기도 요청 내용").fill(content);
     const submitted = page.waitForResponse((response) => response.url().endsWith("/api/prayer-requests") && response.request().method() === "POST");
-    await page.getByRole("button", { name: "전송", exact: true }).click();
+    await page.getByRole("button", { name: "접수", exact: true }).click();
     const created = await submitted;
     expect(created.status()).toBe(201);
     const { id } = await created.json() as { id: string };
@@ -50,6 +50,7 @@ test.describe("administrator prayer request deletion", () => {
   test("cancelling sends nothing and a failed deletion preserves the selected content", async ({ page }) => {
     await login(page, "admin");
     let deletions = 0;
+    await page.route("**/api/prayer-requests/*/comments", route => route.fulfill({ json: { comments: [], hasMore: false } }));
     await page.route("**/api/admin/prayer-requests**", async (route) => {
       if (route.request().method() === "DELETE") {
         deletions++;
@@ -58,7 +59,7 @@ test.describe("administrator prayer request deletion", () => {
           : { json: { status: "ok" } });
       }
       return route.fulfill({ json: route.request().url().endsWith(fixture.id)
-        ? { request: fixture } : { requests: [fixture] } });
+        ? { request: fixture } : { requests: deletions >= 2 ? [] : [fixture] } });
     });
     await page.goto(`/admin/prayer-requests?id=${fixture.id}`);
     const remove = page.getByRole("button", { name: "기도요청 삭제", exact: true });
@@ -89,6 +90,7 @@ test.describe("administrator prayer request deletion", () => {
   test("a stalled deletion unlocks after the deadline and retries only the selected ID", async ({ page }) => {
     await login(page, "admin");
     const deletedUrls: string[] = [];
+    await page.route("**/api/prayer-requests/*/comments", route => route.fulfill({ json: { comments: [], hasMore: false } }));
     await page.route("**/api/admin/prayer-requests**", async (route) => {
       if (route.request().method() === "DELETE") {
         deletedUrls.push(route.request().url());
@@ -96,7 +98,7 @@ test.describe("administrator prayer request deletion", () => {
         return route.fulfill({ json: { status: "ok" } });
       }
       return route.fulfill({ json: route.request().url().endsWith(fixture.id)
-        ? { request: fixture } : { requests: [fixture] } });
+        ? { request: fixture } : { requests: deletedUrls.length >= 2 ? [] : [fixture] } });
     });
     await page.goto(`/admin/prayer-requests?id=${fixture.id}`);
     await page.clock.install();

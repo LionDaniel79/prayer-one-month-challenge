@@ -6,6 +6,33 @@ export type AdminPrayerRequestSummary = {
   createdAt: string;
   status: PrayerRequestStatus;
   preview: string;
+  completedByRequester?: boolean;
+  completedAt?: string | null;
+};
+
+export type OwnPrayerRequest = {
+  id: string;
+  content: string;
+  status: PrayerRequestStatus;
+  createdAt: string;
+  version: number;
+  completedByRequester: boolean;
+  hasUnreadComments: boolean;
+};
+
+export type PrayerComment = {
+  id: string;
+  content: string;
+  authorName: string;
+  authorRole: "member" | "admin";
+  isOwn: boolean;
+  sequence: number;
+  createdAt: string;
+};
+
+export type PrayerCommentPage = {
+  comments: PrayerComment[];
+  hasMore: boolean;
 };
 
 export type AdminPrayerRequestDetail = AdminPrayerRequestSummary & {

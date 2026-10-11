@@ -1,13 +1,23 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentSessionUser } from "../../../src/features/auth/http-session";
-import { createPrayerRequest } from "../../../src/features/prayer-requests/service";
+import { createPrayerRequest, listOwnPrayerRequests } from "../../../src/features/prayer-requests/service";
+import { json, prayerActor, prayerError } from "../../../src/features/prayer-requests/http";
 import { DomainError } from "../../../src/lib/http";
 import { scheduleEmailDelivery } from "../../../src/features/email/wakeup";
 
 const PrayerRequestInput = z.object({
   content: z.string().trim().min(1).max(10000),
 });
+
+export async function GET(request: Request) {
+  try {
+    const actor = await prayerActor();
+    const page = z.coerce.number().int().min(0).max(10000).safeParse(new URL(request.url).searchParams.get("page") ?? 0);
+    if (!page.success) return json({ code: "INVALID_INPUT" }, 400);
+    return json(await listOwnPrayerRequests(actor.id, page.data));
+  } catch (error) { return prayerError(error); }
+}
 
 export async function POST(request: Request) {
   const user = await getCurrentSessionUser();

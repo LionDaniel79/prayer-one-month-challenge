@@ -34,10 +34,10 @@ describe("56사랑 community hub access boundaries", () => {
     }
   });
 
-  it("keeps member prayer requests write-only", () => {
+  it("scopes member prayer request history to the session owner", () => {
     const source = readFileSync("app/api/prayer-requests/route.ts", "utf8");
     expect(source).toContain("export async function POST");
-    expect(source).not.toContain("export async function GET");
+    expect(source).toContain("listOwnPrayerRequests(actor.id");
   });
 
   it("returns only the created visit id from member booking service", () => {

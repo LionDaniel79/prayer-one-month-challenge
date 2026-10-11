@@ -8,7 +8,7 @@ describe("member prayer request UI", () => {
       "utf8",
     );
     expect(source).toContain("중보 기도가 필요한 내용을 자유롭게 적어주세요.");
-    expect(source).toContain("전송");
+    expect(source).toContain('접수 중…');
     expect(source).toContain("기도요청이 전달되었습니다.");
   });
 

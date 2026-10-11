@@ -71,17 +71,19 @@ test.describe("database-backed member flows", () => {
     expect(await (await page.request.get("/api/notices")).text()).not.toContain("검증용 비공개 초안");
   });
 
-  test("prayer requests submit privately without exposing a member listing", async ({ page }) => {
+  test("prayer requests submit privately and appear in the requester's own listing", async ({ page }) => {
     await login(page);
     await page.goto("/prayer-requests");
     await page.getByLabel("기도 요청 내용").fill("자동 검증용 비공개 기도 내용");
     const submitted = page.waitForResponse((response) =>
       response.url().endsWith("/api/prayer-requests") && response.request().method() === "POST");
-    await page.getByRole("button", { name: "전송", exact: true }).click();
+    await page.getByRole("button", { name: "접수", exact: true }).click();
     expect((await submitted).status()).toBe(201);
     await expect(page.getByRole("status")).toHaveText("기도요청이 전달되었습니다.");
     await expect(page.getByLabel("기도 요청 내용")).toHaveValue("");
-    expect((await page.request.get("/api/prayer-requests")).status()).toBe(405);
+    const own = await page.request.get("/api/prayer-requests");
+    expect(own.status()).toBe(200);
+    expect((await own.json()).requests.some((request: { content: string }) => request.content === "자동 검증용 비공개 기도 내용")).toBe(true);
     expect((await page.request.get("/api/admin/prayer-requests")).status()).toBe(403);
   });
 
