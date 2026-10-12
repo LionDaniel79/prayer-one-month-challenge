@@ -3,6 +3,7 @@ import { getDb, lockedPost, rows, sql, type Executor } from "./db";
 import { assertPostContent, CommunityError, expectedChunkSize, type Actor, type FileInput } from "./policy";
 import { assertAuthor, parseEditInput, type EditInput } from "./refinement-policy";
 import type { FileRow } from "./posts";
+import { assertValidPostPhoto } from "./images";
 type EditRow = {id:string;postId:string;authorId:string;baseVersion:number;title:string;body:string;keepSlots:number[];files:FileInput[];appliedAt:string|null};
 type Chunk = {index:number;data:Buffer};
 async function editRow(tx:Executor,id:string) {
@@ -92,6 +93,7 @@ export async function commitEdit(user:Actor,postId:string,id:string) {
     }
     if(final.length>2)throw new CommunityError("TOO_MANY_FILES");
     assertPostContent(edit.body, final.map(item=>item.file));
+    await assertValidPostPhoto(edit.body,final.map(item=>item.file),index=>Buffer.concat(final[index].chunks.map(chunk=>chunk.data)));
     // Readers observe either complete old content or complete new content, never half an upload.
     await tx.execute(sql`delete from prayer_app.community_files where post_id=${postId}`);
     for(let slot=0;slot<final.length;slot++) {

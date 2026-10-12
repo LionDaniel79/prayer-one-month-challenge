@@ -74,7 +74,7 @@ test("API rejects empty posts and edits, and photo-only publication waits for ve
   await login(page);
   const folderId = (await (await page.request.get(root + "/folders")).json()).folders[0].id;
   const image = await photo(), document = Buffer.from("첨부 문서");
-  const ids = [randomUUID(), randomUUID()];
+  const ids = [randomUUID(), randomUUID(), randomUUID()];
   const files = [{ name: "photo.png", size: image.length, sha256: hash(image) }, { name: "document.txt", size: document.length, sha256: hash(document) }];
   const input = { id: ids[0], folderId, title: "사진만 게시 API 검증", body: "", files };
   try {
@@ -102,6 +102,22 @@ test("API rejects empty posts and edits, and photo-only publication waits for ve
     const emptyUpdate = await page.request.put(`${root}/posts/${ids[1]}`, { data: { title: "빈 글", body: " \n " } });
     expect(emptyUpdate.status()).toBe(400); expect((await emptyUpdate.json()).code).toBe("POST_CONTENT_REQUIRED");
     expect((await (await page.request.get(`${root}/posts/${ids[1]}`)).json()).post.body).toBe("글만으로 게시");
+    // A file name and a valid hash do not prove that the attachment is a photo.
+    const fakePhoto = Buffer.from("x");
+    const fakeFiles = [{ name: "renamed.png", size: fakePhoto.length, sha256: hash(fakePhoto) }];
+    expect((await page.request.post(root + "/posts", { data: { ...input, id: ids[2], files: fakeFiles } })).status()).toBe(201);
+    const fakeUrl = `${root}/posts/${ids[2]}`;
+    expect((await page.request.put(fakeUrl + "/files/0/chunks/0", { data: fakePhoto, headers: { "content-type": "application/octet-stream" } })).ok()).toBe(true);
+    expect((await (await page.request.post(fakeUrl + "/publish")).json()).code).toBe("INVALID_POST_PHOTO");
+    // The existing text-with-attachment workflow stays usable, but clearing its body is rejected.
+    expect((await page.request.put(fakeUrl, { data: { title: "본문이 있는 첨부 글", body: "파일 설명" } })).ok()).toBe(true);
+    expect((await page.request.post(fakeUrl + "/publish")).ok()).toBe(true);
+    expect((await (await page.request.put(fakeUrl, { data: { title: "사진만", body: "" } })).json()).code).toBe("INVALID_POST_PHOTO");
+    const fakeStored = (await (await page.request.get(fakeUrl)).json()).post;
+    const editId = randomUUID();
+    expect((await page.request.post(fakeUrl + "/edits", { data: { id: editId, baseVersion: fakeStored.version, title: "사진만 수정", body: "", keepSlots: [0], files: [] } })).status()).toBe(201);
+    expect((await (await page.request.post(fakeUrl + `/edits/${editId}/commit`)).json()).code).toBe("INVALID_POST_PHOTO");
+    expect((await (await page.request.get(fakeUrl)).json()).post.body).toBe("파일 설명");
   } finally {
     for (const id of ids) await page.request.delete(`${root}/posts/${id}`);
   }

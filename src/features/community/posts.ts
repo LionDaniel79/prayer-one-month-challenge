@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { getDb, rows, sql, lockedPost, requireFolder, type PostRow } from "./db";
 import { assertManager, assertPostContent, CommunityError, expectedChunkSize, PAGE_SIZE, type Actor, type parsePostInput } from "./policy";
 import { assertAuthor } from "./refinement-policy";
+import { assertValidPostPhoto, readPhotoData } from "./images";
 export type FileRow = {slot:number;name:string;size:number;sha256:string};
 export async function saveDraft(user: Actor, input: ReturnType<typeof parsePostInput>) {
   return getDb().transaction(async tx => {
@@ -36,6 +37,7 @@ export async function publishPost(user: Actor,id:string) {
     if(post.publishedAt) return;
     const files=await rows<FileRow>(tx,sql`select slot,name,size,sha256 from prayer_app.community_files where post_id=${id} order by slot`);
     assertPostContent(post.body, files);
+    const photoData:Buffer[]=[];
     for(const file of files) {
       const chunks=await rows<{index:number;data:Buffer}>(tx,sql`select chunk_index as index,data from prayer_app.community_file_chunks where post_id=${id} and slot=${file.slot} order by chunk_index`);
       const hash=createHash("sha256"); let length=0;
@@ -46,7 +48,9 @@ export async function publishPost(user: Actor,id:string) {
       }
       if(length!==file.size) throw new CommunityError("UPLOAD_INCOMPLETE",409);
       if(hash.digest("hex")!==file.sha256) throw new CommunityError("FILE_INTEGRITY_FAILED",409);
+      if(!post.body.trim())photoData.push(Buffer.concat(chunks.map(chunk=>chunk.data)));
     }
+    await assertValidPostPhoto(post.body,files,index=>photoData[index]);
     await tx.execute(sql`update prayer_app.community_posts set published_at=now(),updated_at=now(),version=version+1 where id=${id}`);
   });
 }
@@ -77,6 +81,7 @@ export async function updatePost(user:Actor,id:string,title:string,body:string) 
     const post=await lockedPost(tx,id); assertAuthor(user,post.authorId);
     const files=await rows<FileRow>(tx,sql`select slot,name,size,sha256 from prayer_app.community_files where post_id=${id}`);
     assertPostContent(body, files);
+    await assertValidPostPhoto(body,files,index=>readPhotoData(user,id,files[index].slot,files[index].sha256,tx));
     await tx.execute(sql`update prayer_app.community_posts set title=${title},body=${body},updated_at=now(),version=version+1 where id=${id}`);
   });
 }
