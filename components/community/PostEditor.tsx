@@ -1,7 +1,7 @@
 "use client";
 import { useRouter } from "next/navigation";
 import { useRef, useState, type FormEvent } from "react";
-import { validateFiles } from "../../src/features/community/policy";
+import { hasPostContent, validateFiles } from "../../src/features/community/policy";
 import { api, errorText, type Folder, type Post } from "./shared";
 import { sha256, uploadFiles } from "./transfer";
 export function PostEditor({folders,folderId,post,basePath,onSaved}:{folders:Folder[];folderId:string;post?:Post;basePath:string;onSaved:(id:string)=>void}) {
@@ -11,13 +11,14 @@ export function PostEditor({folders,folderId,post,basePath,onSaved}:{folders:Fol
   const [retained,setRetained]=useState(post?.files??[]);
   const [busy,setBusy]=useState(false),[message,setMessage]=useState(""),[progress,setProgress]=useState(0);
   const id=useRef("");const pending=useRef(false);
+  const hasContent=hasPostContent(body,[...retained,...files]);
   function selectFiles(input:HTMLInputElement){
     const selected=[...files,...Array.from(input.files??[])];
     try{validateFiles([...retained,...selected.map(file=>({name:file.name,size:file.size,sha256:"0".repeat(64)}))]);setFiles(selected);setMessage("");}catch(error){setMessage(errorText(error));}
     input.value="";
   }
   async function submit(event:FormEvent){
-    event.preventDefault();if(pending.current)return;pending.current=true;setBusy(true);setMessage("");setProgress(0);
+    event.preventDefault();if(pending.current||!hasContent)return;pending.current=true;setBusy(true);setMessage("");setProgress(0);
     try{
       if(!id.current)id.current=crypto.randomUUID();
       const metadata=await Promise.all(files.map(async file=>({name:file.name,size:file.size,sha256:await sha256(await file.arrayBuffer())})));
@@ -48,7 +49,8 @@ export function PostEditor({folders,folderId,post,basePath,onSaved}:{folders:Fol
     <fieldset disabled={busy}>
       {!post&&<label>폴더<select value={folder} onChange={event=>setFolder(event.target.value)} required>{folders.map(item=><option key={item.id} value={item.id}>{item.name}</option>)}</select></label>}
       <label>제목<input value={title} onChange={event=>setTitle(event.target.value)} maxLength={150} required /></label>
-      <label>내용<textarea value={body} onChange={event=>setBody(event.target.value)} maxLength={20000} rows={10} required /></label>
+      <label>내용<textarea value={body} onChange={event=>setBody(event.target.value)} maxLength={20000} rows={10} placeholder="글을 작성하거나 아래에 사진을 첨부해 주세요." aria-describedby="community-content-help" /></label>
+      <p id="community-content-help" className="helper-text">글 또는 사진 중 하나만 있어도 등록할 수 있습니다.</p>
       <div className="community-file-picker"><label>첨부파일 (최대 2개, 파일당 6MB)<input type="file" multiple onChange={event=>selectFiles(event.currentTarget)}/></label>
         <p className="helper-text">기존 파일과 새 파일을 합해 최대 2개입니다.{post?" 첨부 삭제·추가는 수정 저장이 성공할 때 반영됩니다.":" 문서와 사진을 첨부할 수 있습니다. 실행 파일은 제외됩니다."}</p>
         {retained.map(file=><div className="community-file-row" key={`saved-${file.slot}`}><span>{file.name} · {(file.size/1024/1024).toFixed(2)}MB <small>(기존 파일)</small></span><button type="button" className="secondary-button" onClick={()=>setRetained(current=>current.filter(item=>item.slot!==file.slot))} aria-label={`${file.name} 첨부 제거`}>제거</button></div>)}
@@ -57,6 +59,6 @@ export function PostEditor({folders,folderId,post,basePath,onSaved}:{folders:Fol
     </fieldset>
     {message&&<p className="error-text" role="alert">{message}</p>}
     {busy&&<div role="status"><p>{post?"저장 중입니다…":"등록 중입니다…"} {files.length>0?`첨부 전송 ${progress}%`:""}</p>{files.length>0&&<progress value={progress} max={100} aria-label="첨부 전송 진행률"/>}</div>}
-    <div className="community-actions"><button type="submit" className="primary-button" disabled={busy||!title.trim()||!body.trim()||!folder}>{post?"수정 저장":busy?"등록 중…":"등록"}</button>{!busy&&<button type="button" className="secondary-button" onClick={()=>void cancel()}>취소</button>}</div>
+    <div className="community-actions"><button type="submit" className="primary-button" disabled={busy||!title.trim()||!hasContent||!folder}>{post?"수정 저장":busy?"등록 중…":"등록"}</button>{!busy&&<button type="button" className="secondary-button" onClick={()=>void cancel()}>취소</button>}</div>
   </form></section>;
 }

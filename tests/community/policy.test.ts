@@ -10,6 +10,14 @@ describe("community limits and authorization",()=>{
   it("pins chunk limits and short final chunk",()=>{expect(expectedChunkSize(MAX_FILE_BYTES,11)).toBe(CHUNK_BYTES);expect(expectedChunkSize(CHUNK_BYTES+1,1)).toBe(1);for(const i of [-1,12,1.5])expect(()=>expectedChunkSize(MAX_FILE_BYTES,i)).toThrow();});
   it("rejects non-admin management and editing other members' content",()=>{expect(()=>assertManager({id,role:"member"})).toThrow("FORBIDDEN");expect(()=>assertEditor({id,role:"member"},"other")).toThrow("FORBIDDEN");expect(()=>assertEditor({id,role:"member"},id)).not.toThrow();expect(()=>assertEditor({id,role:"admin"},null)).not.toThrow();});
   it("validates every post field and normalizes text",()=>{const post={id,folderId:id,title:" 제목 ",body:" 내용 ",files:[]};expect(parsePostInput(post).title).toBe("제목");for(const change of [{title:" "},{body:"x".repeat(20001)},{folderId:"bad"}])expect(()=>parsePostInput({...post,...change})).toThrow();});
+  it("accepts text or a photo and rejects posts containing neither",()=>{
+    const post={id,folderId:id,title:"사진만 올리기",body:" \n ",files:[{...file(),name:"사진.JPG"}]};
+    expect(parsePostInput(post).body).toBe("");
+    expect(parsePostInput({...post,body:"본문만",files:[]}).body).toBe("본문만");
+    for(const files of [[],[file()]]) expect(()=>parsePostInput({...post,files})).toThrow("POST_CONTENT_REQUIRED");
+    for(const body of [null,123,"\0","x".repeat(20001)])expect(()=>parsePostInput({...post,body})).toThrow("INVALID_INPUT");
+    expect(()=>parseCommentBody(" ")).toThrow("INVALID_INPUT");
+  });
   it("limits folder/comment content and pagination",()=>{expect(parseFolderName(" 폴더 ")).toBe("폴더");expect(()=>parseFolderName("x".repeat(61))).toThrow();expect(()=>parseCommentBody("x".repeat(2001))).toThrow();expect(pageNumber(null)).toBe(1);for(const n of [0,-1,"NaN",1.5])expect(()=>pageNumber(n)).toThrow();});
   it("requires explicit like state instead of retry-unsafe toggles",()=>{expect(parseLikeInput({liked:true})).toBe(true);expect(parseLikeInput({liked:false})).toBe(false);for(const v of [{},{liked:1},{liked:"true"},null])expect(()=>parseLikeInput(v)).toThrow();});
 });

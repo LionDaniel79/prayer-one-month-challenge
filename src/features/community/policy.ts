@@ -19,6 +19,19 @@ export function text(value: unknown, max: number): string {
 }
 export const parseFolderName = (value: unknown) => text(value, 60);
 export const parseCommentBody = (value: unknown) => text(value, 2000);
+export function parsePostBody(value: unknown): string {
+  if (typeof value !== "string" || value.includes("\0")) throw new CommunityError("INVALID_INPUT");
+  const body = value.normalize("NFC").trim();
+  if (body.length > 20000) throw new CommunityError("INVALID_INPUT");
+  return body;
+}
+export const isPhotoName = (name: string) => /\.(jpe?g|png|webp|gif|avif|tiff?|heic|heif)$/i.test(name);
+export function hasPostContent(body: string, files: ReadonlyArray<{ name: string }>): boolean {
+  return Boolean(body.trim()) || files.some(file => isPhotoName(file.name));
+}
+export function assertPostContent(body: string, files: ReadonlyArray<{ name: string }>): void {
+  if (!hasPostContent(body, files)) throw new CommunityError("POST_CONTENT_REQUIRED");
+}
 export function record(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new CommunityError("INVALID_INPUT");
   return value as Record<string, unknown>;
@@ -49,7 +62,9 @@ export function assertEditor(user: Actor, authorId: string | null): void {
 }
 export function parsePostInput(value: unknown) {
   const input = record(value);
-  return { id: uuid(input.id), folderId: uuid(input.folderId), title: text(input.title, 150), body: text(input.body, 20000), files: validateFiles(input.files ?? []) };
+  const body = parsePostBody(input.body), files = validateFiles(input.files ?? []);
+  assertPostContent(body, files);
+  return { id: uuid(input.id), folderId: uuid(input.folderId), title: text(input.title, 150), body, files };
 }
 export function pageNumber(value: unknown): number {
   if (value == null || value === "") return 1;

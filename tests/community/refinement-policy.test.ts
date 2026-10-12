@@ -4,6 +4,11 @@ const id="00000000-0000-4000-8000-000000000001";
 const input={id,baseVersion:0,title:" title ",body:" body ",keepSlots:[0],files:[]};
 describe("community refinement policy",()=>{
   it("normalizes an edit without broadening administrator ownership",()=>{expect(parseEditInput(input).title).toBe("title");expect(()=>assertAuthor({id:"other",role:"admin"},id)).toThrow("FORBIDDEN");expect(()=>assertAuthor({id,role:"admin"},id)).not.toThrow();});
+  it("allows photo-only edits and defers retained photo checks to the stored files",()=>{
+    expect(parseEditInput({...input,body:" "}).body).toBe("");
+    expect(parseEditInput({...input,body:"",keepSlots:[],files:[{name:"photo.png",size:1,sha256:"0".repeat(64)}]}).body).toBe("");
+    expect(()=>parseEditInput({...input,body:" ",keepSlots:[],files:[]})).toThrow("POST_CONTENT_REQUIRED");
+  });
   it("counts retained and new attachments together",()=>{expect(()=>parseEditInput({...input,keepSlots:[0,1],files:[{name:"third.txt",size:1,sha256:"0".repeat(64)}]})).toThrow("TOO_MANY_FILES");});
   it("rejects duplicate and invalid retained slots",()=>{for(const keepSlots of [[0,0],[2],[-1],["0"]])expect(()=>parseEditInput({...input,keepSlots})).toThrow();});
   it("requires a safe optimistic version",()=>{for(const baseVersion of [-1,1.2,"0",null,Number.MAX_SAFE_INTEGER+1])expect(()=>parseEditInput({...input,baseVersion})).toThrow();});
