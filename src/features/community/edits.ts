@@ -1,8 +1,9 @@
 import { createHash } from "node:crypto";
 import { getDb, lockedPost, rows, sql, type Executor } from "./db";
-import { CommunityError, expectedChunkSize, type Actor, type FileInput } from "./policy";
+import { assertPostContent, CommunityError, expectedChunkSize, type Actor, type FileInput } from "./policy";
 import { assertAuthor, parseEditInput, type EditInput } from "./refinement-policy";
 import type { FileRow } from "./posts";
+import { assertValidPostPhoto } from "./images";
 type EditRow = {id:string;postId:string;authorId:string;baseVersion:number;title:string;body:string;keepSlots:number[];files:FileInput[];appliedAt:string|null};
 type Chunk = {index:number;data:Buffer};
 async function editRow(tx:Executor,id:string) {
@@ -36,6 +37,7 @@ export async function beginEdit(user:Actor,postId:string,value:unknown) {
     if(post.version!==input.baseVersion)throw new CommunityError("EDIT_CONFLICT",409);
     const current=await rows<FileRow>(tx,sql`select slot,name,size,sha256 from prayer_app.community_files where post_id=${postId}`);
     if(input.keepSlots.some(slot=>!current.some(file=>file.slot===slot)))throw new CommunityError("EDIT_CONFLICT",409);
+    assertPostContent(input.body, [...current.filter(file=>input.keepSlots.includes(file.slot)), ...input.files]);
     await tx.execute(sql`delete from prayer_app.community_post_edits where author_user_id=${user.id} and id<>${input.id} and ((applied_at is null and updated_at<now()-interval '24 hours') or applied_at<now()-interval '7 days')`);
     if(!existing) {
       const [{count}]=await rows<{count:number}>(tx,sql`select count(*)::int as count from prayer_app.community_post_edits where author_user_id=${user.id} and applied_at is null`);
@@ -90,6 +92,8 @@ export async function commitEdit(user:Actor,postId:string,id:string) {
       verify(file,chunks);final.push({file,chunks});
     }
     if(final.length>2)throw new CommunityError("TOO_MANY_FILES");
+    assertPostContent(edit.body, final.map(item=>item.file));
+    await assertValidPostPhoto(edit.body,final.map(item=>item.file),index=>Buffer.concat(final[index].chunks.map(chunk=>chunk.data)));
     // Readers observe either complete old content or complete new content, never half an upload.
     await tx.execute(sql`delete from prayer_app.community_files where post_id=${postId}`);
     for(let slot=0;slot<final.length;slot++) {

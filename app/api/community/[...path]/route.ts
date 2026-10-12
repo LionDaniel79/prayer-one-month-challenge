@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentSessionUser } from "../../../../src/features/auth/http-session";
-import { CHUNK_BYTES, CommunityError, pageNumber, parseLikeInput, parseCommentBody, parsePostInput, record, text, uuid } from "../../../../src/features/community/policy";
+import { CHUNK_BYTES, CommunityError, pageNumber, parseLikeInput, parseCommentBody, parsePostBody, parsePostInput, record, text, uuid } from "../../../../src/features/community/policy";
 import { assertSameOrigin, readBytes, readJson } from "../../../../src/features/community/http";
 import { createFolder, deleteFolder, listFolders, renameFolder } from "../../../../src/features/community/folders";
 import { deletePost, getPost, listDrafts, listPosts, movePost, publishPost, saveDraft, updatePost } from "../../../../src/features/community/posts";
@@ -38,7 +38,7 @@ async function handle(request:Request,context:Context):Promise<Response> {
       if(path.length===1 && method==="POST") return json(await saveDraft(user,parsePostInput(await readJson(request))),201);
       const id=uuid(key);
       if(path.length===2 && method==="GET") return json({post:await getPost(user,id)});
-      if(path.length===2 && method==="PUT") {const input=record(await readJson(request));await updatePost(user,id,text(input.title,150),text(input.body,20000));return json({ok:true});}
+      if(path.length===2 && method==="PUT") {const input=record(await readJson(request));await updatePost(user,id,text(input.title,150),parsePostBody(input.body));return json({ok:true});}
       if(path.length===2 && method==="DELETE") {await deletePost(user,id);return json({ok:true});}
       if(path.length===3 && action==="like" && method==="PUT") return json(await setPostLike(user,id,parseLikeInput(await readJson(request))));
       if(path.length===3 && action==="publish" && method==="POST") {await publishPost(user,id);return json({id});}
