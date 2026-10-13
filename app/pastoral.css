@@ -46,6 +46,9 @@
 .pastoral-report-list article > div { min-width: 0; }
 .pastoral-report-list p { margin: 8px 0; }
 .pastoral-row-actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.pastoral-report-list .pastoral-member-report { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: start; overflow-wrap: anywhere; }
+.pastoral-member-report > .pastoral-row-actions { grid-column: 1 / -1; justify-content: flex-end; }
+.pastoral-receipt { justify-self: end; color: #245736; background: #eaf4e9; border-radius: 999px; padding: 6px 10px; font-size: .85rem; font-weight: 700; white-space: nowrap; }
 .pastoral summary { cursor: pointer; font-weight: 650; padding: 12px 0; }
 .pastoral-month-scroll { max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain; padding: 6px 4px 12px; }
 .pastoral-months { display: grid; grid-template-columns: repeat(12,minmax(72px,1fr)); min-width: 888px; gap: 8px; }

@@ -119,6 +119,60 @@ test.describe("private pastoral reports", () => {
     } finally { await context.close(); }
   });
 
+  test("own history shows receipt on the right after admin review and resets for a revision", async ({ page, browser }, info) => {
+    await loginAs(page, "leader");
+    const value = input();
+    await upload(page.request, value, []);
+    expect((await page.request.post(`/api/pastoral/reports/${value.id}/publish`)).status()).toBe(200);
+    await page.clock.install();
+    await page.goto("/pastoral-reports");
+    const history = page.locator(".pastoral-history");
+    const receipt = history.getByText("접수 완료", { exact: true });
+    await expect(history.locator("article")).toHaveCount(1);
+    await expect(receipt).toHaveCount(0);
+    const context = await browser.newContext();
+    const admin = await context.newPage();
+    const endpoint = `/api/admin/pastoral/reports/${value.id}/review`;
+    try {
+      await login(admin, "admin");
+      await admin.route(`**${endpoint}`, route => route.fulfill({ status: 503, json: { code: "PASTORAL_UNAVAILABLE" } }));
+      await admin.goto(`/admin/pastoral-reports?id=${value.id}`);
+      await expect(admin.getByRole("button", { name: "확인 다시 저장", exact: true })).toBeVisible();
+      const refreshed = page.waitForResponse(response => new URL(response.url()).pathname === "/api/pastoral/reports" && response.status() === 200);
+      await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+      expect((await (await refreshed).json()).reports[0].isReviewed).toBe(false);
+      await expect(receipt).toHaveCount(0);
+      await admin.unroute(`**${endpoint}`);
+      await admin.getByRole("button", { name: "확인 다시 저장", exact: true }).click();
+      await expect(admin.locator(".pastoral-detail")).toContainText("관리자 확인 완료");
+      // The member keeps the history open while an independent admin confirms it.
+      await page.clock.runFor(30000);
+      await expect(receipt).toBeVisible();
+      for (const width of [360, 1280]) {
+        await page.setViewportSize({ width, height: 900 });
+        await expectNoOverflow(page);
+        const card = await history.locator("article").boundingBox();
+        const badge = await receipt.boundingBox();
+        expect(badge!.x + badge!.width / 2).toBeGreaterThan(card!.x + card!.width / 2);
+        await history.screenshot({ path: info.outputPath(`pastoral-receipt-${width}.png`), animations: "disabled" });
+      }
+      await page.reload(); await expect(receipt).toBeVisible();
+      const editId = randomUUID();
+      expect((await page.request.post(`/api/pastoral/reports/${value.id}/edits`, { data: { id: editId, expectedVersion: 0, writtenDate: today, method: "form", form: { ...value.form, other: "수정 후 다시 확인할 내용" }, files: [], keepSlots: [] } })).status()).toBe(201);
+      expect((await page.request.post(`/api/pastoral/reports/${value.id}/edits/${editId}/publish`)).status()).toBe(200);
+      await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+      await expect(receipt).toHaveCount(0);
+      await admin.reload();
+      await expect(admin.locator(".pastoral-detail")).toContainText("관리자 확인 완료");
+      await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+      await expect(receipt).toBeVisible();
+      expect((await page.request.post("/api/auth/logout")).status()).toBe(200);
+      await loginAs(page, "outsider"); await page.goto("/pastoral-reports");
+      await expect(history).toContainText("제출된 목양지가 없습니다.");
+      await expect(receipt).toHaveCount(0);
+    } finally { await context.close(); }
+  });
+
   test("two 6MiB files are atomic, hash-verified and safe to retry", async ({ page, request }) => {
     await loginAs(page, "leader"); const buffers = [Buffer.alloc(6291456, 65), Buffer.alloc(6291456, 66)]; const value = input("file", [{ name: "목양지.txt", data: buffers[0] }, { name: "추가자료.hwp", data: buffers[1] }]);
     expect((await page.request.post("/api/pastoral/reports", { data: value })).status()).toBe(201);
