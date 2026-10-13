@@ -1036,6 +1036,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 }
 .admin-prayer-request-list h2,
 .admin-request-detail h2 { margin: 0; }
+.admin-request-requester { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; }
+.admin-request-requester h2 { min-width: 0; overflow-wrap: anywhere; }
+.admin-request-requester time { color: #667085; font-size: .9rem; white-space: nowrap; }
 .admin-request-columns {
   display: grid;
   grid-template-columns: minmax(180px, 1.4fr) 110px 76px;
