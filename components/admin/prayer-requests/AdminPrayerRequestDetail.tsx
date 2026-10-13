@@ -31,11 +31,18 @@ export function AdminPrayerRequestDetail({
     );
   }
 
+  const requestedDate = new Intl.DateTimeFormat("ko-KR", {
+    timeZone: "Asia/Seoul", year: "numeric", month: "numeric", day: "numeric",
+  }).format(new Date(request.createdAt));
+
   return (
     <section className="card admin-request-detail" aria-busy={busy || undefined}>
       <div>
         <p className="eyebrow">요청자</p>
-        <h2>{request.requesterName}</h2>
+        <div className="admin-request-requester">
+          <h2>{request.requesterName}</h2>
+          <time dateTime={request.createdAt} aria-label={`요청일 ${requestedDate}`}>{requestedDate}</time>
+        </div>
       </div>
 
       <div className="admin-request-content">
