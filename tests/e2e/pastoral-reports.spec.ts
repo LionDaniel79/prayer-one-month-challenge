@@ -138,7 +138,9 @@ test.describe("private pastoral reports", () => {
       await admin.route(`**${endpoint}`, route => route.fulfill({ status: 503, json: { code: "PASTORAL_UNAVAILABLE" } }));
       await admin.goto(`/admin/pastoral-reports?id=${value.id}`);
       await expect(admin.getByRole("button", { name: "확인 다시 저장", exact: true })).toBeVisible();
+      const refreshed = page.waitForResponse(response => new URL(response.url()).pathname === "/api/pastoral/reports" && response.status() === 200);
       await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+      expect((await (await refreshed).json()).reports[0].isReviewed).toBe(false);
       await expect(receipt).toHaveCount(0);
       await admin.unroute(`**${endpoint}`);
       await admin.getByRole("button", { name: "확인 다시 저장", exact: true }).click();
@@ -164,6 +166,7 @@ test.describe("private pastoral reports", () => {
       await expect(admin.locator(".pastoral-detail")).toContainText("관리자 확인 완료");
       await page.evaluate(() => window.dispatchEvent(new Event("focus")));
       await expect(receipt).toBeVisible();
+      expect((await page.request.post("/api/auth/logout")).status()).toBe(200);
       await loginAs(page, "outsider"); await page.goto("/pastoral-reports");
       await expect(history).toContainText("제출된 목양지가 없습니다.");
       await expect(receipt).toHaveCount(0);
