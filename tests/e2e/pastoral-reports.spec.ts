@@ -154,7 +154,7 @@ test.describe("private pastoral reports", () => {
         const card = await history.locator("article").boundingBox();
         const badge = await receipt.boundingBox();
         expect(badge!.x + badge!.width / 2).toBeGreaterThan(card!.x + card!.width / 2);
-        await history.screenshot({ path: info.outputPath(`pastoral-receipt-${width}.png`) });
+        await history.screenshot({ path: info.outputPath(`pastoral-receipt-${width}.png`), animations: "disabled" });
       }
       await page.reload(); await expect(receipt).toBeVisible();
       const editId = randomUUID();
