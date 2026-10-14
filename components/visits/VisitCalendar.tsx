@@ -46,10 +46,12 @@ const unavailableLabel: Record<string, string> = {
 export function VisitCalendar({
   selectedDate,
   onSelect,
+  onAvailabilityChange,
   refreshKey = 0,
 }: {
   selectedDate: string | null;
   onSelect: (date: string) => void;
+  onAvailabilityChange: (dates: VisitDateAvailability[]) => void;
   refreshKey?: number;
 }) {
   const [month, setMonth] = useState(currentSeoulMonth);
@@ -58,26 +60,40 @@ export function VisitCalendar({
     key: string; dates: VisitDateAvailability[]; message: string;
   } | null>(null);
   const requestKey = `${month}:${refreshKey}:${retryKey}`;
+  const selectedMonth = selectedDate?.slice(0, 7);
+  const additionalMonth = selectedMonth && selectedMonth !== month ? selectedMonth : null;
   const loading = result?.key !== requestKey;
   const dates = !loading && result ? result.dates : [];
   const message = !loading && result ? result.message : "";
 
   useEffect(() => {
     const controller = new AbortController();
+    let pending = false;
 
-    void fetchJson<{ dates: VisitDateAvailability[] }>("/api/visits/availability?month=" + encodeURIComponent(month), {
-      cache: "no-store",
-      signal: controller.signal,
-    })
-      .then((body) => {
+    async function refresh() {
+      if (pending || controller.signal.aborted) return;
+      pending = true;
+      try {
+        // Keep an open request current even while browsing a different month.
+        const months = additionalMonth ? [month, additionalMonth] : [month];
+        const responses = await Promise.allSettled(months.map((value) =>
+          fetchJson<{ dates: VisitDateAvailability[] }>("/api/visits/availability?month=" + encodeURIComponent(value), {
+            cache: "no-store",
+            signal: controller.signal,
+          }),
+        ));
+        const bodies = responses.map((response) => {
+          if (response.status === "rejected") throw response.reason;
+          return response.value;
+        });
         if (!controller.signal.aborted) {
-          const dates = Array.isArray(body.dates) ? body.dates : [];
+          const dates = Array.isArray(bodies[0].dates) ? bodies[0].dates : [];
           const unavailable = dates.some((date) => !date.available && date.reason === "calendar_unavailable");
           setResult({ key: requestKey, dates, message: unavailable
             ? "일정 조회가 지연되고 있습니다. 다시 확인해 주세요." : "" });
+          onAvailabilityChange(bodies.flatMap((body) => Array.isArray(body.dates) ? body.dates : []));
         }
-      })
-      .catch((error) => {
+      } catch (error) {
         if (controller.signal.aborted) return;
         const code = error instanceof Error ? error.message : "";
         setResult({ key: requestKey, dates: [], message:
@@ -85,12 +101,28 @@ export function VisitCalendar({
             ? "관리자가 Google Calendar를 연결하면 심방 신청을 시작할 수 있습니다."
             : "일정을 확인하기 어렵습니다. 잠시 후 다시 시도해 주세요.",
         });
-      });
+        onAvailabilityChange([]);
+      } finally {
+        pending = false;
+      }
+    }
+
+    function refreshVisible() {
+      if (document.visibilityState === "visible") void refresh();
+    }
+
+    void refresh();
+    const timer = window.setInterval(refreshVisible, 30_000);
+    window.addEventListener("focus", refreshVisible);
+    document.addEventListener("visibilitychange", refreshVisible);
 
     return () => {
       controller.abort();
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refreshVisible);
+      document.removeEventListener("visibilitychange", refreshVisible);
     };
-  }, [month, requestKey]);
+  }, [month, additionalMonth, requestKey, onAvailabilityChange]);
 
   function navigateMonth(amount: number) {
     setMonth((value) => moveMonth(value, amount));

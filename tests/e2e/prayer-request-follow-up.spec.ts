@@ -70,7 +70,8 @@ test.describe("private prayer conversations", () => {
       await card.getByRole("button", { name: "댓글 수정", exact: true }).click();
       await card.getByLabel("댓글 수정 내용").fill("함께 기도해 주셔서 정말 감사합니다.");
       await card.getByRole("button", { name: "댓글 수정 저장", exact: true }).click();
-      await expect(card.getByText("함께 기도해 주셔서 정말 감사합니다.", { exact: true })).toBeVisible();
+      // Assert the saved comment, not the textarea value while PATCH is pending.
+      await expect(card.locator(".prayer-comment-list p").filter({ hasText: "함께 기도해 주셔서 정말 감사합니다." })).toBeVisible();
       await page.reload();
       await expect(card.getByRole("img", { name: "읽지 않은 관리자 댓글" })).toHaveCount(0);
       await summary.click();
@@ -81,7 +82,7 @@ test.describe("private prayer conversations", () => {
       await admin.getByRole("button", { name: "댓글 수정", exact: true }).click();
       await admin.getByLabel("댓글 수정 내용").fill("계속 함께 기도하고 있습니다.");
       await admin.getByRole("button", { name: "댓글 수정 저장", exact: true }).click();
-      await expect(admin.getByText("계속 함께 기도하고 있습니다.", { exact: true })).toBeVisible();
+      await expect(admin.locator(".prayer-comment-list p").filter({ hasText: "계속 함께 기도하고 있습니다." })).toBeVisible();
       await card.getByRole("button", { name: "댓글 새로고침" }).click();
       await expect(card.getByText("계속 함께 기도하고 있습니다.", { exact: true })).toBeVisible();
       await page.screenshot({ path: testInfo.outputPath("prayer-comments-edit-mobile.png"), fullPage: true, animations: "disabled" });
