@@ -46,7 +46,7 @@ test.describe("private prayer conversations", () => {
       await expect(card.locator(".prayer-status")).toHaveText("기도중");
       await admin.getByLabel("댓글 내용").fill("관리자와 함께 기도하고 있습니다.");
       await admin.getByRole("button", { name: "댓글 등록", exact: true }).click();
-      await expect(admin.getByText("관리자와 함께 기도하고 있습니다.", { exact: true })).toBeVisible();
+      await expect(admin.locator(".prayer-comment-list p").filter({ hasText: "관리자와 함께 기도하고 있습니다." })).toBeVisible();
       await page.getByRole("button", { name: "목록 새로고침" }).click();
       await expect(card.getByRole("img", { name: "읽지 않은 관리자 댓글" })).toBeVisible();
       await expect(admin.getByRole("img", { name: "읽지 않은 관리자 댓글" })).toHaveCount(0);
