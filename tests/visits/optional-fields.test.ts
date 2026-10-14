@@ -27,7 +27,8 @@ beforeEach(() => {
 describe("optional visit details", () => {
   it("offers an enabled 신청 action with no required text inputs", () => {
     const html = renderToStaticMarkup(createElement(VisitRequestPanel, {
-      visitDate: booking.visitDate, requesterName: "검증", onClose() {}, onSuccess() {},
+      visitDate: booking.visitDate, requesterName: "검증", dateAvailable: true,
+      onClose() {}, onSuccess() {}, onDateUnavailable() {},
     }));
     const submit = html.match(/<button\b(?=[^>]*type="submit")([^>]*)>신청<\/button>/);
     expect(submit).not.toBeNull();

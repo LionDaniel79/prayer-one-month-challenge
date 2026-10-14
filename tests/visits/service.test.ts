@@ -285,4 +285,30 @@ describe("visit booking service", () => {
     expect(capturedStatus).toBe("requested");
     expect(result).toEqual({ id: "v1" });
   });
+
+  it("closes an explicitly enabled date after receipt and reopens it after cancellation", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-10-01T00:00:00Z"));
+    const date = "2026-10-04";
+    let active = false;
+    const repo = repository({
+      async listEnabledDates() { return [date]; },
+      async isDateEnabled() { return true; },
+      async listBlockedWeekdays() { return [0]; },
+      async isWeekdayBlocked() { return true; },
+      async listActiveVisitDates() { return active ? [date] : []; },
+      async hasActiveVisit() { return active; },
+      async createPending() { active = true; return { id: "v1", status: "requested" }; },
+    });
+    const calendar = provider({ async listEvents() {
+      return [{ id: "busy", start: { date }, end: { date: "2026-10-05" } }];
+    } });
+    const availability = async () => (await getMonthAvailability("2026-10", calendar, repo)).find((day) => day.date === date);
+    expect(await availability()).toMatchObject({ available: true });
+    await submitVisitRequest({ requesterUserId: "u1", visitDate: date, visitType: "personal",
+      attendees: "", location: "", preferredTime: "", reason: "" }, calendar, repo, "2026-10-01");
+    expect(await availability()).toMatchObject({ available: false, reason: "existing_visit" });
+    active = false;
+    expect(await availability()).toMatchObject({ available: true });
+  });
 });

@@ -6,13 +6,17 @@ import { fetchJson } from "../../src/lib/fetch-json";
 export function VisitRequestPanel({
   visitDate,
   requesterName,
+  dateAvailable,
   onClose,
   onSuccess,
+  onDateUnavailable,
 }: {
   visitDate: string;
   requesterName: string;
+  dateAvailable: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  onDateUnavailable: () => void;
 }) {
   const [visitType, setVisitType] = useState<"personal" | "sam">("personal");
   const [attendees, setAttendees] = useState("");
@@ -24,7 +28,7 @@ export function VisitRequestPanel({
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (busy) return;
+    if (busy || !dateAvailable) return;
 
     setBusy(true);
     setMessage("");
@@ -45,6 +49,9 @@ export function VisitRequestPanel({
       onSuccess();
     } catch (cause) {
       const code = cause instanceof Error ? cause.message : "";
+      if (["VISIT_OUTSIDE_BOOKING_PERIOD", "VISIT_ALREADY_EXISTS", "VISIT_DATE_UNAVAILABLE"].includes(code)) {
+        onDateUnavailable();
+      }
       setMessage(
         code === "VISIT_OUTSIDE_BOOKING_PERIOD"
           ? "신청 가능한 기간이 변경되었습니다. 달력에서 다른 날짜를 선택해 주세요."
@@ -153,7 +160,11 @@ export function VisitRequestPanel({
           신청한 내용을 확인 후 유선으로 확정합니다.
         </p>
 
-        {message && (
+        {!dateAvailable ? (
+          <p className="error-text" role="status">
+            이 날짜는 지금 신청할 수 없습니다. 달력에서 다른 날짜를 선택해 주세요.
+          </p>
+        ) : message && (
           <p className={message.includes("전달") ? "success-text" : "error-text"} role="status">
             {message}
           </p>
@@ -162,7 +173,7 @@ export function VisitRequestPanel({
         <button
           className="primary-button"
           type="submit"
-          disabled={busy}
+          disabled={busy || !dateAvailable}
         >
           {busy ? "신청 중…" : "신청"}
         </button>
