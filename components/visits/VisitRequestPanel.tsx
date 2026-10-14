@@ -2,11 +2,14 @@
 
 import { FormEvent, useState } from "react";
 import { fetchJson } from "../../src/lib/fetch-json";
+import { describeVisitStartTimes } from "../../src/features/visits/start-times";
+import type { VisitStartTimes } from "../../src/features/visits/types";
 
 export function VisitRequestPanel({
   visitDate,
   requesterName,
   dateAvailable,
+  startTimes,
   onClose,
   onSuccess,
   onDateUnavailable,
@@ -14,6 +17,7 @@ export function VisitRequestPanel({
   visitDate: string;
   requesterName: string;
   dateAvailable: boolean;
+  startTimes?: VisitStartTimes | null;
   onClose: () => void;
   onSuccess: () => void;
   onDateUnavailable: () => void;
@@ -138,12 +142,22 @@ export function VisitRequestPanel({
         <label>
           희망 시간 (선택)
           <input
+            aria-describedby={dateAvailable ? "visit-start-time-guidance" : undefined}
             maxLength={200}
             value={preferredTime}
             onChange={(event) => setPreferredTime(event.target.value)}
             placeholder="예: 오후 3시 이후"
           />
         </label>
+
+        {dateAvailable && (
+          <div className="visit-start-time-guidance" id="visit-start-time-guidance" aria-live="polite">
+            <p>{startTimes
+              ? describeVisitStartTimes(startTimes[visitType], visitType)
+              : "가능 시간을 확인하지 못했습니다. 잠시 후 다시 확인해 주세요."}</p>
+            <small>오전 10시~오후 5시 · {visitType === "personal" ? "개인심방 1시간" : "샘심방 2시간"} · 일정 앞뒤 30분 여유</small>
+          </div>
+        )}
 
         <label>
           심방 요청 이유 (선택)

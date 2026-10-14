@@ -773,6 +773,18 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   font-size: .9rem;
 }
 
+.visit-start-time-guidance {
+  margin-top: -6px;
+  padding: 12px;
+  border-radius: 12px;
+  background: #f0f6ff;
+  color: #24446b;
+  font-size: .9rem;
+  line-height: 1.6;
+}
+.visit-start-time-guidance p { margin: 0 0 4px; }
+.visit-start-time-guidance small { color: #475467; }
+
 @media (max-width: 980px) {
   .visit-layout.has-panel { grid-template-columns: minmax(0, 1fr); }
   .visit-request-panel {

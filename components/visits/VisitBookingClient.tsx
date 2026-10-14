@@ -13,6 +13,7 @@ export function VisitBookingClient({
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [availability, setAvailability] = useState<VisitDateAvailability[]>([]);
+  const selectedAvailability = availability.find((day) => day.date === selectedDate);
 
   return (
     <div className={selectedDate ? "visit-layout has-panel" : "visit-layout"}>
@@ -30,7 +31,8 @@ export function VisitBookingClient({
           key={selectedDate}
           visitDate={selectedDate}
           requesterName={requesterName}
-          dateAvailable={availability.some((day) => day.date === selectedDate && day.available)}
+          dateAvailable={selectedAvailability?.available === true}
+          startTimes={selectedAvailability?.available ? selectedAvailability.startTimes : null}
           onClose={() => setSelectedDate(null)}
           onDateUnavailable={() => {
             setAvailability([]);
