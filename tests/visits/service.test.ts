@@ -311,4 +311,25 @@ describe("visit booking service", () => {
     active = false;
     expect(await availability()).toMatchObject({ available: true });
   });
+
+  it("returns only calculated start ranges for an enabled date with a Google event", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-10-01T00:00:00Z"));
+    const date = "2026-10-04";
+    const calendar = provider({ async listEvents() {
+      return [{ summary: "PRIVATE_EVENT_NAME", description: "PRIVATE_DETAILS",
+        start: { dateTime: `${date}T14:00:00+09:00` }, end: { dateTime: `${date}T15:00:00+09:00` } }];
+    } });
+    const repo = repository({ async listEnabledDates() { return [date]; } });
+    const dates = await getMonthAvailability("2026-10", calendar, repo);
+    expect(dates.find(day => day.date === date)).toEqual({ date, available: true, startTimes: {
+      personal: [{ start: "10:00", end: "12:30" }, { start: "15:30", end: "16:00" }],
+      sam: [{ start: "10:00", end: "11:30" }],
+    } });
+    expect(JSON.stringify(dates)).not.toContain("PRIVATE");
+    const booked = await getMonthAvailability("2026-10", calendar, { ...repo, async listActiveVisitDates() { return [date]; } });
+    expect(booked.find(day => day.date === date)).toEqual({ date, available: false, reason: "existing_visit" });
+    const blocked = await getMonthAvailability("2026-10", calendar, repository());
+    expect(blocked.find(day => day.date === date)).toEqual({ date, available: false, reason: "google_event" });
+  });
 });

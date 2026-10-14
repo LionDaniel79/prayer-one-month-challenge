@@ -12,6 +12,7 @@ import { requesterSam, requesterSamJoin, requesterSamLabel } from "./requester-i
 import { withDeadline } from "../../lib/deadline";
 import { getBookingPeriod, withinBookingPeriod, type BookingPeriod } from "./booking-period";
 import { addDays, todayInSeoul } from "../challenge/date";
+import { getVisitStartTimes } from "./start-times";
 import type {
   CalendarProvider,
   VisitCalendarEventInput,
@@ -279,8 +280,8 @@ export async function getMonthAvailability(
     }
   }
 
-  return dates.map((date) =>
-    evaluateVisitDate({
+  return dates.map((date) => {
+    const availability = evaluateVisitDate({
       date,
       calendarHealthy: true,
       googleBlockedDates,
@@ -289,8 +290,11 @@ export async function getMonthAvailability(
       activeVisitDates,
       enabledDates,
       bookingPeriod,
-    }),
-  );
+    });
+    return availability.available
+      ? { ...availability, startTimes: getVisitStartTimes(date, events) }
+      : availability;
+  });
 }
 
 export async function submitVisitRequest(

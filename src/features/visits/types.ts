@@ -6,6 +6,10 @@ export type VisitStatus =
 
 export type CalendarSyncStatus = "pending" | "synced" | "failed";
 
+export type VisitType = "personal" | "sam";
+export type VisitStartWindow = { start: string; end: string };
+export type VisitStartTimes = Record<VisitType, VisitStartWindow[]>;
+
 export type CalendarEventLike = {
   status?: string | null;
   start?: {
@@ -28,7 +32,7 @@ export type VisitUnavailableReason =
   | "existing_visit";
 
 export type VisitDateAvailability =
-  | { date: string; available: true }
+  | { date: string; available: true; startTimes?: VisitStartTimes | null }
   | {
       date: string;
       available: false;
