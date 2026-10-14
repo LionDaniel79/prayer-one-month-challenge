@@ -42,7 +42,9 @@ test.describe("booked dates in the member visit calendar", () => {
     await expect(page.getByText("일정을 확인하기 어렵습니다. 잠시 후 다시 시도해 주세요.")).toBeVisible();
     await expect(panel.getByRole("button", { name: "신청", exact: true })).toBeDisabled();
     offline = false;
-    await page.getByRole("button", { name: "다시 확인", exact: true }).click();
+    // The mobile request sheet covers the calendar's retry button. Verify
+    // recovery without closing the sheet or losing the draft.
+    await page.clock.fastForward(30_000);
     await expect(panel.getByRole("button", { name: "신청", exact: true })).toBeEnabled();
   });
 
