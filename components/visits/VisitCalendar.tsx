@@ -60,6 +60,8 @@ export function VisitCalendar({
     key: string; dates: VisitDateAvailability[]; message: string;
   } | null>(null);
   const requestKey = `${month}:${refreshKey}:${retryKey}`;
+  const selectedMonth = selectedDate?.slice(0, 7);
+  const additionalMonth = selectedMonth && selectedMonth !== month ? selectedMonth : null;
   const loading = result?.key !== requestKey;
   const dates = !loading && result ? result.dates : [];
   const message = !loading && result ? result.message : "";
@@ -72,16 +74,24 @@ export function VisitCalendar({
       if (pending || controller.signal.aborted) return;
       pending = true;
       try {
-        const body = await fetchJson<{ dates: VisitDateAvailability[] }>("/api/visits/availability?month=" + encodeURIComponent(month), {
-          cache: "no-store",
-          signal: controller.signal,
+        // Keep an open request current even while browsing a different month.
+        const months = additionalMonth ? [month, additionalMonth] : [month];
+        const responses = await Promise.allSettled(months.map((value) =>
+          fetchJson<{ dates: VisitDateAvailability[] }>("/api/visits/availability?month=" + encodeURIComponent(value), {
+            cache: "no-store",
+            signal: controller.signal,
+          }),
+        ));
+        const bodies = responses.map((response) => {
+          if (response.status === "rejected") throw response.reason;
+          return response.value;
         });
         if (!controller.signal.aborted) {
-          const dates = Array.isArray(body.dates) ? body.dates : [];
+          const dates = Array.isArray(bodies[0].dates) ? bodies[0].dates : [];
           const unavailable = dates.some((date) => !date.available && date.reason === "calendar_unavailable");
           setResult({ key: requestKey, dates, message: unavailable
             ? "일정 조회가 지연되고 있습니다. 다시 확인해 주세요." : "" });
-          onAvailabilityChange(dates);
+          onAvailabilityChange(bodies.flatMap((body) => Array.isArray(body.dates) ? body.dates : []));
         }
       } catch (error) {
         if (controller.signal.aborted) return;
@@ -112,7 +122,7 @@ export function VisitCalendar({
       window.removeEventListener("focus", refreshVisible);
       document.removeEventListener("visibilitychange", refreshVisible);
     };
-  }, [month, requestKey, onAvailabilityChange]);
+  }, [month, additionalMonth, requestKey, onAvailabilityChange]);
 
   function navigateMonth(amount: number) {
     setMonth((value) => moveMonth(value, amount));

@@ -67,4 +67,32 @@ test.describe("booked dates in the member visit calendar", () => {
     await expect(panel.getByRole("button", { name: "신청", exact: true })).toBeDisabled();
     expect(submitted).toBe(1);
   });
+
+  test("browsing another month keeps the selected date usable and continues checking it", async ({ page }) => {
+    await login(page);
+    await page.clock.install();
+    const date = todayInSeoul();
+    const month = date.slice(0, 7);
+    const [year, monthNumber] = month.split("-").map(Number);
+    const nextDate = new Date(Date.UTC(year, monthNumber, 1)).toISOString().slice(0, 10);
+    let booked = false;
+    await page.route("**/api/visits/availability?*", (route) => {
+      const requestedMonth = new URL(route.request().url()).searchParams.get("month");
+      return route.fulfill({ json: { dates: requestedMonth === month
+        ? [{ date, available: !booked, reason: booked ? "existing_visit" : undefined }]
+        : [{ date: nextDate, available: true }] } });
+    });
+    await page.goto("/visits");
+    await page.getByRole("button", { name: date + " 심방 신청 가능" }).click();
+    const panel = page.getByRole("complementary", { name: "심방 신청하기" });
+    await panel.getByLabel("장소 (선택)", { exact: true }).fill("다른 달을 보아도 보존할 장소");
+    await page.getByRole("button", { name: "다음 달", exact: true }).click();
+    await expect(page.getByRole("button", { name: nextDate + " 심방 신청 가능" })).toBeVisible();
+    await expect(panel.getByRole("button", { name: "신청", exact: true })).toBeEnabled();
+    booked = true;
+    await page.clock.fastForward(30_000);
+    await expect(panel.getByRole("button", { name: "신청", exact: true })).toBeDisabled();
+    await expect(panel.getByLabel("장소 (선택)", { exact: true })).toHaveValue("다른 달을 보아도 보존할 장소");
+    await expect(page.getByRole("button", { name: nextDate + " 심방 신청 가능" })).toBeEnabled();
+  });
 });
