@@ -46,7 +46,7 @@ export function AdminHubDashboard({
           <small>사용자 명단에 등록된 전체 인원</small>
         </Link>
         {data.prayer.enabled && <Link className="admin-summary-card" href="/admin/prayer">
-          <span>{name} 참여</span><strong>{data.prayer.participants}명</strong>
+          <span className="activity-name">{name} 참여</span><strong>{data.prayer.participants}명</strong>
           <small>설정 기간 내 실제 체크 · 오늘 {data.prayer.todayCompleted}명 ({percent(data.prayer.todayRate)})</small>
         </Link>}
         <Link className="admin-summary-card" href="/admin/visits?status=requested">

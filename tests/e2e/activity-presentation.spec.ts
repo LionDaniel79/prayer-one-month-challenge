@@ -66,3 +66,36 @@ test("admin edits the activity name and description; members see them without lo
     await memberContext.close();
   }
 });
+
+test("long activity names fit the mobile summary and inactive activity screen", async ({ page, browser, baseURL }) => {
+  test.skip(process.env.E2E_DATABASE_READY !== "1", "Requires the disposable CI database.");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await login(page, "admin");
+  const original = await (await page.request.get(endpoint)).json();
+  const { challenges } = await (await page.request.get("/api/admin/challenge")).json();
+  const active = challenges.find((challenge: { isActive: boolean }) => challenge.isActive);
+  expect(active).toBeDefined();
+  const memberContext = await browser.newContext({ baseURL, viewport: { width: 390, height: 844 } });
+  const member = await memberContext.newPage();
+  const name = "DailyScriptureReadingAndThanksgiving";
+  try {
+    expect((await page.request.put(endpoint, { data: { enabled: true, name, description: "" } })).status()).toBe(200);
+    await login(member);
+    await page.goto("/admin");
+    const summary = page.locator('.admin-summary-card[href="/admin/prayer"]');
+    await expect(summary).toContainText(name);
+    expect(await summary.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+    await expectNoOverflow(page);
+    await page.setViewportSize({ width: 1280, height: 900 });
+    expect(await summary.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+    expect((await page.request.post("/api/admin/challenge", { data: { ...active, isActive: false } })).status()).toBe(200);
+    await member.reload();
+    await expect(member.getByRole("heading", { name, exact: true })).toBeVisible();
+    await expect(member.getByText("아직 활성화된 도전이 없습니다.")).toBeVisible();
+    await expectNoOverflow(member);
+  } finally {
+    expect((await page.request.post("/api/admin/challenge", { data: active })).status()).toBe(200);
+    expect((await page.request.put(endpoint, { data: original })).status()).toBe(200);
+    await memberContext.close();
+  }
+});
