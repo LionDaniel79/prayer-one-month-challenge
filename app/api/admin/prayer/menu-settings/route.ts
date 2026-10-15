@@ -6,7 +6,11 @@ import { getPrayerMenuSettings, savePrayerMenuSettings } from "../../../../../sr
 import { DomainError } from "../../../../../src/lib/http";
 
 export const dynamic = "force-dynamic";
-const Input = z.object({ enabled: z.boolean() }).strict();
+const Input = z.object({
+  enabled: z.boolean(),
+  name: z.string().trim().min(1).max(40).optional(),
+  description: z.string().trim().max(2000).optional(),
+}).strict();
 const headers = { "Cache-Control": "private, no-store, max-age=0" };
 
 function errorResponse(error: unknown) {
@@ -32,6 +36,6 @@ export async function PUT(request: Request) {
     }
     const parsed = Input.safeParse(await request.json().catch(() => null));
     if (!parsed.success) return NextResponse.json({ code: "INVALID_INPUT" }, { status: 400, headers });
-    return NextResponse.json(await savePrayerMenuSettings(parsed.data.enabled), { headers });
+    return NextResponse.json(await savePrayerMenuSettings(parsed.data), { headers });
   } catch (error) { return errorResponse(error); }
 }

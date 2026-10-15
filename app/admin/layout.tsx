@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { AdminShell } from "../../components/admin/AdminShell";
 import { requireAdmin } from "../../src/features/admin/service";
 import { getCurrentSessionUser } from "../../src/features/auth/http-session";
+import { getPrayerMenuSettings } from "../../src/features/prayer-menu/service";
 
 export default async function AdminLayout({
   children,
@@ -15,5 +16,6 @@ export default async function AdminLayout({
     redirect("/");
   }
 
-  return <AdminShell displayName={user.displayName}>{children}</AdminShell>;
+  const setting = await getPrayerMenuSettings();
+  return <AdminShell displayName={user.displayName} initialPrayerMenuSettings={setting}>{children}</AdminShell>;
 }

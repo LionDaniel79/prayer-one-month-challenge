@@ -13,15 +13,15 @@ test("saved global visibility controls member and admin navigation on mobile and
     const beforeRecords = await (await member.request.get("/api/checkins")).json();
     const beforeChallenge = await (await page.request.get("/api/admin/challenge")).json();
     await page.goto("/admin/prayer");
-    const section = page.getByRole("region", { name: "기도운동 탭 표시 설정" });
-    const checkbox = section.getByRole("checkbox", { name: "기도운동 탭 활성화" });
+    const section = page.getByRole("region", { name: "운동 이름·설명 및 탭 설정" });
+    const checkbox = section.getByRole("checkbox", { name: "운동 탭 활성화" });
     await expect(checkbox).toBeChecked();
     await expect(page.getByRole("heading", { name: "참여자 명단", exact: true })).toBeVisible();
     // The settings section follows, rather than replacing, the existing management content.
     expect(await section.evaluate((el) => Boolean(el.previousElementSibling?.querySelector(".participant-table")))).toBe(true);
     await checkbox.uncheck();
     await expect(page.getByRole("heading", { name: "참여자 명단", exact: true })).toBeVisible();
-    expect(await (await member.request.get("/api/prayer-menu")).json()).toEqual({ enabled: true });
+    expect(await (await member.request.get("/api/prayer-menu")).json()).toMatchObject({ enabled: true });
     await section.getByRole("button", { name: "저장", exact: true }).click();
     await expect(section.getByRole("status")).toContainText("숨겨집니다");
     await expect(page.getByRole("heading", {name:"참여자 명단",exact:true})).toHaveCount(0);
@@ -86,8 +86,8 @@ test("failed save reports an error without changing the persisted setting", asyn
   test.skip(process.env.E2E_DATABASE_READY !== "1", "Requires the disposable CI database.");
   await login(page, "admin");
   await page.goto("/admin/prayer");
-  const section = page.getByRole("region", { name: "기도운동 탭 표시 설정" });
-  const checkbox = section.getByRole("checkbox", { name: "기도운동 탭 활성화" });
+  const section = page.getByRole("region", { name: "운동 이름·설명 및 탭 설정" });
+  const checkbox = section.getByRole("checkbox", { name: "운동 탭 활성화" });
   await expect(checkbox).toBeChecked();
   await page.route(`**${endpoint}`, async (route) => {
     if (route.request().method() === "PUT") {
@@ -99,7 +99,7 @@ test("failed save reports an error without changing the persisted setting", asyn
     await section.getByRole("button", { name: "저장", exact: true }).click();
     await expect(section.getByRole("alert")).toContainText("저장 결과를 확인하지 못했습니다");
     await expect(section.getByRole("status")).toHaveCount(0);
-    expect(await (await page.request.get(endpoint)).json()).toEqual({ enabled: true });
+    expect(await (await page.request.get(endpoint)).json()).toMatchObject({ enabled: true });
   } finally { await page.unroute(`**${endpoint}`); }
   await page.reload();
   await expect(checkbox).toBeChecked();

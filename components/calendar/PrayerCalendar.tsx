@@ -2,6 +2,7 @@
 
 import type { MemberDashboard } from "../../src/lib/types";
 import { addDays, isMutablePrayerDate, isPrayerDay } from "../../src/features/challenge/date";
+import { usePrayerMenuSettings } from "../app/PrayerMenuProvider";
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -29,6 +30,8 @@ export function PrayerCalendar({
   onToggle: (date: string) => void;
   pendingDates: ReadonlySet<string>;
 }) {
+  const { name } = usePrayerMenuSettings();
+  const activity = name === "기도운동" ? "기도" : "참여";
   const checked = new Set(dashboard.completedDates);
   const { first, last } = calendarBounds(
     dashboard.challenge.startDate,
@@ -38,7 +41,7 @@ export function PrayerCalendar({
   for (let cursor = first; cursor <= last; cursor = addDays(cursor, 1)) cells.push(cursor);
 
   return (
-    <section className="calendar-card card" aria-label="기도 완료 달력">
+    <section className="calendar-card card" aria-label={`${activity} 완료 달력`}>
       <div className="weekday-row">
         {WEEKDAYS.map((day) => <span key={day}>{day}</span>)}
       </div>
@@ -56,7 +59,7 @@ export function PrayerCalendar({
           const sunday = !isPrayerDay(date);
           const today = date === dashboard.today;
           const { month, day } = shortDate(date);
-          const action = done ? "기도 완료 취소" : "기도 완료 체크";
+          const action = done ? `${activity} 완료 취소` : `${activity} 완료 체크`;
           const reason = !inside ? "도전 기간 밖" : sunday ? "일요일" : mutable ? "" : "수정 기간 지남";
           return (
             <button
@@ -84,11 +87,11 @@ export function PrayerCalendar({
         })}
       </div>
       <div className="calendar-legend">
-        <span>✓ 기도 완료</span>
+        <span>✓ {activity} 완료</span>
         <span>테두리: 오늘</span>
       </div>
       <p className="helper-text">
-        오늘과 어제 날짜를 눌러 기도 완료를 체크·취소할 수 있습니다.
+        오늘과 어제 날짜를 눌러 {activity} 완료를 체크·취소할 수 있습니다.
         {" "}일요일은 체크하지 않습니다.
       </p>
     </section>

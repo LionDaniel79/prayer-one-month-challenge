@@ -4,8 +4,10 @@ import { useEffect, useState } from "react";
 import type { AdminDashboardData } from "../../../src/features/admin/service";
 import { AdminPrayerManagement } from "./AdminPrayerManagement";
 import { fetchJson } from "../../../src/lib/fetch-json";
+import { usePrayerMenuSettings } from "../../app/PrayerMenuProvider";
 
 export function AdminPrayerManagementLoader() {
+  const { name } = usePrayerMenuSettings();
   const [data, setData] = useState<AdminDashboardData | null>(null);
   const [error, setError] = useState("");
   const [attempt, setAttempt] = useState(0);
@@ -28,14 +30,14 @@ export function AdminPrayerManagementLoader() {
   if (error) {
     return (
       <section className="card empty-state" role="alert">
-        <strong>기도운동 관리 데이터를 불러오지 못했습니다.</strong>
+        <strong>{name} 관리 데이터를 불러오지 못했습니다.</strong>
         <p className="helper-text">잠시 후 다시 시도해 주세요.</p>
         <button type="button" className="text-button" onClick={() => { setError(""); setAttempt((value) => value + 1); }}>다시 불러오기</button>
       </section>
     );
   }
   if (!data) {
-    return <section className="card empty-state">기도운동 관리 데이터를 불러오는 중입니다.</section>;
+    return <section className="card empty-state">{name} 관리 데이터를 불러오는 중입니다.</section>;
   }
   return <AdminPrayerManagement initial={data} />;
 }

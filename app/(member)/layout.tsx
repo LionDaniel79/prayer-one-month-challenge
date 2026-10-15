@@ -8,6 +8,6 @@ export default async function MemberLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   const user = await getCurrentSessionUser();
   if (!user) redirect("/login");
-  const { enabled } = await getPrayerMenuSettings();
-  return <MemberShell user={user} initialPrayerMenuEnabled={enabled}>{children}</MemberShell>;
+  const setting = await getPrayerMenuSettings();
+  return <MemberShell user={user} initialPrayerMenuSettings={setting}>{children}</MemberShell>;
 }

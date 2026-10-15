@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { usePrayerMenuSettings } from "../app/PrayerMenuProvider";
 const adminNav = [
   { href: "/admin", label: "대시보드" },
   { href: "/admin/notices", label: "공지 관리" },
@@ -17,10 +18,11 @@ function activePath(pathname: string, href: string) {
 }
 export function AdminSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
+  const { name } = usePrayerMenuSettings();
   return <nav className="admin-hub-nav" aria-label="관리자 메뉴">
     {adminNav.map((item) => {
       const active = activePath(pathname, item.href);
-      return <Link key={item.href} href={item.href} className={active ? "admin-hub-link is-active" : "admin-hub-link"} aria-current={active ? "page" : undefined} onClick={onNavigate}>{item.label}</Link>;
+      return <Link key={item.href} href={item.href} className={active ? "admin-hub-link is-active" : "admin-hub-link"} aria-current={active ? "page" : undefined} onClick={onNavigate}>{item.href === "/admin/prayer" ? `${name} 관리` : item.label}</Link>;
     })}
   </nav>;
 }
