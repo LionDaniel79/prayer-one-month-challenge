@@ -291,8 +291,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .activity-description { white-space: pre-wrap; overflow-wrap: anywhere; }
 .activity-name { min-width: 0; overflow-wrap: anywhere; }
 .member-nav-link > span:nth-child(2), .admin-hub-link { min-width: 0; overflow-wrap: anywhere; }
-.feature-heading h2, .feature-heading h3, .admin-page-heading h1 { overflow-wrap: anywhere; }
-.feature-heading h3 { margin: 12px 0 6px; font-size: 1rem; }
+.feature-heading h2, .admin-page-heading h1 { overflow-wrap: anywhere; }
 .feature-heading h2 {
   margin: 4px 0 6px;
   font-size: clamp(1.6rem, 4vw, 2.3rem);

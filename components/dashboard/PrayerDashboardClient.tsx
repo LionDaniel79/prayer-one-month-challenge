@@ -95,7 +95,6 @@ export function PrayerDashboardClient({ initial }: { initial: MemberDashboard })
       <section className="feature-heading">
         <h2>{name}</h2>
         {description && <p className="activity-description">{description}</p>}
-        <h3>{dashboard.challenge.title}</h3>
         <p>
           <strong>{dashboard.user.displayName}</strong>
           {dashboard.user.position ? ` · ${dashboard.user.position}` : ""} 님의 참여 기록
