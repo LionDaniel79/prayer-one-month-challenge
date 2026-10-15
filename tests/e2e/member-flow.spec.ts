@@ -90,7 +90,8 @@ test.describe("database-backed member flows", () => {
   test("mobile member drawer and all four sections fit 360 pixels", async ({ page }, testInfo) => {
     await page.setViewportSize({ width: 360, height: 800 });
     await login(page);
-    await expect(page.getByRole("heading", { name: "기도운동 1달 도전" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "기도운동", exact: true })).toBeVisible();
+    await expect(page.getByText("기도운동 1달 도전", { exact: true })).toHaveCount(0);
     await page.screenshot({ path: testInfo.outputPath("member-mobile.png"), fullPage: true });
     for (const label of ["심방신청", "기도요청", "공지", "기도운동"]) {
       await page.getByRole("button", { name: "메뉴 열기", exact: true }).click();
