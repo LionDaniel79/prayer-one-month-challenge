@@ -10,8 +10,10 @@ import {
 } from "../../src/features/checkins/optimistic";
 import { PrayerCalendar } from "../calendar/PrayerCalendar";
 import { ProgressCard } from "./ProgressCard";
+import { usePrayerMenuSettings } from "../app/PrayerMenuProvider";
 
 export function PrayerDashboardClient({ initial }: { initial: MemberDashboard }) {
+  const { name, description } = usePrayerMenuSettings();
   const [dashboard, setDashboard] = useState(initial);
   const dashboardRef = useRef(initial);
   const [pendingDates, setPendingDates] = useState<Set<string>>(new Set());
@@ -91,10 +93,12 @@ export function PrayerDashboardClient({ initial }: { initial: MemberDashboard })
   return (
     <>
       <section className="feature-heading">
-        <h2>{dashboard.challenge.title}</h2>
+        <h2>{name}</h2>
+        {description && <p className="activity-description">{description}</p>}
+        <h3>{dashboard.challenge.title}</h3>
         <p>
           <strong>{dashboard.user.displayName}</strong>
-          {dashboard.user.position ? ` · ${dashboard.user.position}` : ""} 님의 기도 기록
+          {dashboard.user.position ? ` · ${dashboard.user.position}` : ""} 님의 참여 기록
         </p>
       </section>
       <ProgressCard dashboard={dashboard} />

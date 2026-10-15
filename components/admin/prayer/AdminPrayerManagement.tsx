@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { AdminDashboardData } from "../../../src/features/admin/service";
 import { defaultEndDate } from "../../../src/features/challenge/date";
 import { fetchJson } from "../../../src/lib/fetch-json";
+import { usePrayerMenuSettings } from "../../app/PrayerMenuProvider";
 
 function percent(value: number) {
   return Math.round(value * 100) + "%";
@@ -17,6 +18,7 @@ async function jsonRequest<T>(url: string, init: RequestInit = {}): Promise<T> {
 }
 
 export function AdminPrayerManagement({ initial }: { initial: AdminDashboardData }) {
+  const { name, description } = usePrayerMenuSettings();
   const requestVersion=useRef(0);
   const [data, setData] = useState(initial);
   const [showChallenge, setShowChallenge] = useState(false);
@@ -138,8 +140,9 @@ export function AdminPrayerManagement({ initial }: { initial: AdminDashboardData
     <div className="admin-feature-page">
       <div className="section-heading">
         <section className="admin-page-heading">
-          <p className="eyebrow">기도운동</p>
-          <h1>기도운동 관리</h1>
+          <p className="eyebrow">운동 관리</p>
+          <h1>{name} 관리</h1>
+          {description && <p className="activity-description">{description}</p>}
           <p>
             {data.challenge
               ? data.challenge.startDate + " ~ " + data.challenge.endDate
@@ -155,7 +158,7 @@ export function AdminPrayerManagement({ initial }: { initial: AdminDashboardData
       {message && <p className="success-text" role="status">{message}</p>}
 
       {data.prayerMenuEnabled && data.challenge?.isActive ? <>
-      <section className="admin-kpis" aria-label="기도운동 현황">
+      <section className="admin-kpis" aria-label={`${name} 현황`}>
         <article className="card"><span>전체 참여자</span><strong>{data.totals.members}명</strong></article>
         <article className="card"><span>오늘 완료</span><strong>{data.totals.todayCompleted}명 · {percent(data.totals.todayRate)}</strong></article>
         <article className="card"><span>평균 달성률</span><strong>{percent(data.totals.averageRate)}</strong></article>
@@ -190,7 +193,7 @@ export function AdminPrayerManagement({ initial }: { initial: AdminDashboardData
 
       <section className="card admin-section">
         <div className="section-heading">
-          <h2>참여자 명단</h2><p className="helper-text">설정 기간에 1회 이상 기도 체크한 사용자만 표시합니다.</p>
+          <h2>참여자 명단</h2><p className="helper-text">설정 기간에 1회 이상 참여를 체크한 사용자만 표시합니다.</p>
           <div className="admin-filters">
             <button type="button" className="text-button" disabled={Boolean(removingId) || refreshing} onClick={() => void refreshParticipants()}>{refreshing ? "불러오는 중..." : "새로고침"}</button>
             <input
@@ -221,13 +224,13 @@ export function AdminPrayerManagement({ initial }: { initial: AdminDashboardData
               <span>{member.rank}위</span>
               <span>{member.completed}/{member.eligible} · {percent(member.rate)}</span>
               <span>{member.completedToday ? "완료" : "미완료"}</span>
-              <span><button className="text-button danger-button" type="button" disabled={!data.challenge?.isActive || Boolean(removingId) || refreshing} aria-label={`${member.name} 기도운동 명단에서 삭제`} onClick={() => void removeParticipant(member)}>{removingId === member.userId ? "처리 중..." : "삭제"}</button></span>
+              <span><button className="text-button danger-button" type="button" disabled={!data.challenge?.isActive || Boolean(removingId) || refreshing} aria-label={`${member.name} ${name} 명단에서 삭제`} onClick={() => void removeParticipant(member)}>{removingId === member.userId ? "처리 중..." : "삭제"}</button></span>
             </div>
           ))}
         </div>
       </section>
 
-      </> : <p className="card helper-text">기도운동 탭이 비활성화되어 있거나 활성 도전이 없습니다. 참여자 명단과 샘별 통계는 표시하지 않습니다.</p>}
+      </> : <p className="card helper-text">{name} 탭이 비활성화되어 있거나 활성 도전이 없습니다. 참여자 명단과 샘별 통계는 표시하지 않습니다.</p>}
 
       {showChallenge && (
         <div className="modal-backdrop" role="presentation" onMouseDown={() => setShowChallenge(false)}>
@@ -235,10 +238,10 @@ export function AdminPrayerManagement({ initial }: { initial: AdminDashboardData
             <button className="modal-close" type="button" onClick={() => setShowChallenge(false)} aria-label="닫기">×</button>
             <form action={submitChallenge} className="admin-form">
               <h2>도전 설정</h2>
-              <label>제목<input name="title" defaultValue={data.challenge?.title ?? "기도운동 1달 도전"} required /></label>
+              <label>도전 제목<input name="title" defaultValue={data.challenge?.title ?? `${name} 도전`} maxLength={120} required /></label>
               <label>시작일<input name="startDate" type="date" value={challengeStart} onChange={(event) => changeStart(event.target.value)} required /></label>
               <label>종료일<input name="endDate" type="date" value={challengeEnd} onChange={(event) => setChallengeEnd(event.target.value)} required /></label>
-              <p className="helper-text">시작일을 바꾸면 1개월 기준 종료일이 자동 계산됩니다.</p>
+              <p className="helper-text">시작일을 바꾸면 1개월 기준 종료일이 자동 계산됩니다. 종료일을 다시 지정해 원하는 기간으로 조정할 수 있습니다. 참여 체크는 월~토요일의 오늘·어제 날짜에 가능합니다.</p>
               <label className="checkbox-row"><input name="isActive" type="checkbox" defaultChecked={data.challenge?.isActive ?? true} /> 활성화</label>
               <button className="primary-button" type="submit">저장</button>
             </form>

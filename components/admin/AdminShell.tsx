@@ -4,17 +4,22 @@ import Link from "next/link";
 import { useState } from "react";
 import { LogoutButton } from "../auth/LogoutButton";
 import { AdminSidebar } from "./AdminSidebar";
+import { PrayerMenuProvider } from "../app/PrayerMenuProvider";
+import { defaultPrayerMenuSettings, type PrayerMenuSetting } from "../../src/features/prayer-menu/settings";
 
 export function AdminShell({
   displayName,
+  initialPrayerMenuSettings = defaultPrayerMenuSettings,
   children,
 }: {
   displayName: string;
+  initialPrayerMenuSettings?: PrayerMenuSetting;
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
 
   return (
+    <PrayerMenuProvider initial={initialPrayerMenuSettings} menuOpen={open}>
     <div className="admin-hub">
       <button
         className="admin-hub-menu-button"
@@ -57,5 +62,6 @@ export function AdminShell({
         <div className="admin-hub-content">{children}</div>
       </section>
     </div>
+    </PrayerMenuProvider>
   );
 }

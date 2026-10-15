@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { usePrayerMenuEnabled } from "./usePrayerMenuEnabled";
+import { PrayerMenuProvider, usePrayerMenuSettings } from "./PrayerMenuProvider";
+import type { PrayerMenuSetting } from "../../src/features/prayer-menu/settings";
 import type { SessionUser } from "../../src/features/auth/session";
 import { LogoutButton } from "../auth/LogoutButton";
 import { ReportBadge, usePastoralBadge } from "../pastoral/ReportStatusBadge";
@@ -13,15 +14,23 @@ import { useUnreadPrayerComments } from "../prayer-requests/useUnreadPrayerComme
 
 export function MemberShell({
   user,
-  initialPrayerMenuEnabled,
+  initialPrayerMenuSettings,
   children,
 }: {
   user: SessionUser;
-  initialPrayerMenuEnabled: boolean;
+  initialPrayerMenuSettings: PrayerMenuSetting;
   children: React.ReactNode;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const prayerMenuEnabled = usePrayerMenuEnabled(initialPrayerMenuEnabled, menuOpen);
+  return <PrayerMenuProvider initial={initialPrayerMenuSettings} menuOpen={menuOpen}>
+    <MemberShellContent user={user} menuOpen={menuOpen} setMenuOpen={setMenuOpen}>{children}</MemberShellContent>
+  </PrayerMenuProvider>;
+}
+
+function MemberShellContent({ user, menuOpen, setMenuOpen, children }: {
+  user: SessionUser; menuOpen: boolean; setMenuOpen: React.Dispatch<React.SetStateAction<boolean>>; children: React.ReactNode;
+}) {
+  const { enabled: prayerMenuEnabled, name } = usePrayerMenuSettings();
   const pathname = usePathname();
   const router = useRouter();
   useEffect(() => {
@@ -39,7 +48,7 @@ export function MemberShell({
           <strong>56사랑</strong>
         </div>
 
-        <MemberSidebar prayerMenuEnabled={prayerMenuEnabled} pastoralVisible={pastoral.visible} pastoralCount={pastoral.count} unreadCount={unreadCount} prayerHasUnread={prayerHasUnread} onNavigate={() => setMenuOpen(false)} />
+        <MemberSidebar prayerMenuEnabled={prayerMenuEnabled} prayerMenuName={name} pastoralVisible={pastoral.visible} pastoralCount={pastoral.count} unreadCount={unreadCount} prayerHasUnread={prayerHasUnread} onNavigate={() => setMenuOpen(false)} />
 
         <div className="sidebar-footer">
           <Link href="/profile" onClick={() => setMenuOpen(false)}>내 정보</Link>
