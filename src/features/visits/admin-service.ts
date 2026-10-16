@@ -232,13 +232,11 @@ export async function updateVisitDetails(
   }
 }
 
-async function transitionVisit(
+async function getVisitForTransition(
   id: string,
   to: VisitStatus,
-  provider: CalendarProvider,
   repository: VisitAdminRepository,
-  adminUserId?: string,
-): Promise<void> {
+): Promise<AdminVisitRecord> {
   const visit = await repository.getById(id);
   if (!visit) throw new DomainError("VISIT_NOT_FOUND", 404);
   if (visit.calendarSyncStatus === "pending" && !visit.googleEventId) {
@@ -247,90 +245,40 @@ async function transitionVisit(
   if (!canTransitionVisit(visit.status, to)) {
     throw new DomainError("INVALID_VISIT_STATUS_TRANSITION", 409);
   }
+  return visit;
+}
 
-  if (to === "cancelled") {
-    if (visit.googleEventId) {
-      try {
-        await provider.deleteVisitEvent(visit.googleEventId);
-      } catch {
-        await repository.setSyncStatus(id, "failed");
-        throw new DomainError("CALENDAR_EVENT_DELETE_FAILED", 502);
-      }
-    }
+async function transitionVisit(
+  id: string,
+  to: "confirmed" | "completed",
+  repository: VisitAdminRepository,
+  adminUserId?: string,
+): Promise<void> {
+  await getVisitForTransition(id, to, repository);
 
-    await repository.transition(id, { status: "cancelled" });
-    if (visit.googleEventId) {
-      await repository.setSyncStatus(id, "synced");
-    }
-    return;
-  }
-
-  const nextCalendarStatus =
-    to === "completed" ? "completed" as const : "confirmed" as const;
-
-  if (visit.googleEventId) {
-    try {
-      await provider.updateVisitEvent(
-        visit.googleEventId,
-        calendarInput(visit, {}, nextCalendarStatus),
-      );
-    } catch {
-      await repository.setSyncStatus(id, "failed");
-      throw new DomainError("CALENDAR_EVENT_UPDATE_FAILED", 502);
-    }
-  }
-
+  // Workflow status belongs to the app. Rewriting the Google event here would
+  // overwrite any time or details edited directly in Calendar.
   const confirmed = to === "confirmed";
-  try {
-    await repository.transition(id, {
-      status: to,
-      confirmedAt: confirmed ? new Date() : undefined,
-      confirmedByUserId: confirmed ? adminUserId ?? null : undefined,
-    });
-  } catch (error) {
-    if (visit.googleEventId) {
-      const originalCalendarStatus =
-        visit.status === "confirmed"
-          ? "confirmed" as const
-          : visit.status === "completed"
-            ? "completed" as const
-            : "requested" as const;
-      try {
-        await provider.updateVisitEvent(
-          visit.googleEventId,
-          calendarInput(visit, {}, originalCalendarStatus),
-        );
-      } catch {
-        try {
-          await repository.setSyncStatus(id, "failed");
-        } catch {
-          // Keep the DB transition failure as the primary error.
-        }
-      }
-    }
-    throw error;
-  }
-
-  if (visit.googleEventId) {
-    await repository.setSyncStatus(id, "synced");
-  }
+  await repository.transition(id, {
+    status: to,
+    confirmedAt: confirmed ? new Date() : undefined,
+    confirmedByUserId: confirmed ? adminUserId ?? null : undefined,
+  });
 }
 
 export async function confirmVisit(
   id: string,
   adminUserId: string,
-  provider: CalendarProvider,
   repository: VisitAdminRepository = dbVisitAdminRepository,
 ): Promise<void> {
-  return transitionVisit(id, "confirmed", provider, repository, adminUserId);
+  return transitionVisit(id, "confirmed", repository, adminUserId);
 }
 
 export async function completeVisit(
   id: string,
-  provider: CalendarProvider,
   repository: VisitAdminRepository = dbVisitAdminRepository,
 ): Promise<void> {
-  return transitionVisit(id, "completed", provider, repository);
+  return transitionVisit(id, "completed", repository);
 }
 
 export async function cancelVisit(
@@ -338,7 +286,20 @@ export async function cancelVisit(
   provider: CalendarProvider,
   repository: VisitAdminRepository = dbVisitAdminRepository,
 ): Promise<void> {
-  return transitionVisit(id, "cancelled", provider, repository);
+  const visit = await getVisitForTransition(id, "cancelled", repository);
+  if (visit.googleEventId) {
+    try {
+      await provider.deleteVisitEvent(visit.googleEventId);
+    } catch {
+      await repository.setSyncStatus(id, "failed");
+      throw new DomainError("CALENDAR_EVENT_DELETE_FAILED", 502);
+    }
+  }
+
+  await repository.transition(id, { status: "cancelled" });
+  if (visit.googleEventId) {
+    await repository.setSyncStatus(id, "synced");
+  }
 }
 
 export async function deleteVisit(

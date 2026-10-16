@@ -27,6 +27,41 @@ test.describe("administrative visit controls", () => {
     await expect(row).toHaveCount(0);
   });
 
+  test("confirmation and completion update only the app without Google credentials", async ({ page }) => {
+    const url = new URL(process.env.DATABASE_URL!);
+    if (!["localhost", "127.0.0.1"].includes(url.hostname) || url.pathname !== "/prayer_e2e") throw new Error("DISPOSABLE_DATABASE_REQUIRED");
+    const sql = postgres(url.toString(), { ssl: "require", max: 1 });
+    let id: string | undefined;
+    try {
+      const [row] = await sql`insert into prayer_app.visit_requests
+        (requester_user_id, visit_date, visit_type, attendees, location, preferred_time, reason, status, calendar_sync_status, google_event_id)
+        values (${e2eAccounts.member.userId}, '2099-10-06', 'personal', '검증', '교회', '오후 2시', '비공개 검증', 'requested', 'synced', 'externally-edited-event') returning id`;
+      id = row.id;
+      await login(page, "admin");
+      await page.goto("/admin/visits");
+      await page.locator(".admin-visit-row").filter({ hasText: "2099-10-06" }).click();
+
+      for (const action of [
+        { route: "confirm", button: "유선확정 완료", status: "confirmed" },
+        { route: "complete", button: "완료", status: "completed" },
+      ]) {
+        const [response] = await Promise.all([
+          page.waitForResponse((response) => response.url().endsWith(`/api/admin/visits/${id}/${action.route}`) && response.request().method() === "POST"),
+          page.getByRole("button", { name: action.button, exact: true }).click(),
+        ]);
+        expect(await response.json()).toEqual({ status: "ok" });
+        await expect(page.locator(".admin-visit-summary")).toContainText(action.status);
+        const [saved] = await sql`select status, google_event_id, calendar_sync_status, preferred_time, location,
+          confirmed_by_user_id, confirmed_at from prayer_app.visit_requests where id=${id!}`;
+        expect(saved).toMatchObject({ status: action.status, google_event_id: "externally-edited-event", calendar_sync_status: "synced", preferred_time: "오후 2시", location: "교회", confirmed_by_user_id: e2eAccounts.admin.userId });
+        expect(saved.confirmed_at).not.toBeNull();
+      }
+    } finally {
+      if (id) await sql`delete from prayer_app.visit_requests where id=${id}`;
+      await sql.end();
+    }
+  });
+
   test("imports separate leaders and deletes a cancelled visit without Google credentials", async ({ page }) => {
     await login(page, "admin");
     const rosterBefore = await (await page.request.get("/api/admin/roster")).json();

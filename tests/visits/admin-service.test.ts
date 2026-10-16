@@ -3,6 +3,7 @@ import type { CalendarProvider } from "../../src/features/visits/calendar-provid
 import {
   canTransitionVisit,
   cancelVisit,
+  completeVisit,
   confirmVisit,
   findBlockedWeekdayConflicts,
   updateVisitDetails,
@@ -28,14 +29,12 @@ describe("admin visit workflow", () => {
     expect(canTransitionVisit("cancelled", "confirmed")).toBe(false);
   });
 
-  it("does not advance DB status when Google confirmation update fails", async () => {
-    let transitioned = false;
-    const provider: CalendarProvider = {
-      async listEvents() { return []; },
-      async createVisitEvent() { return { eventId: "unused" }; },
-      async updateVisitEvent() { throw new Error("google failed"); },
-      async deleteVisitEvent() {},
-    };
+  it.each([
+    { from: "requested", to: "confirmed" },
+    { from: "confirmed", to: "completed" },
+  ] as const)("saves $to in the app without changing calendar sync state", async ({ from, to }) => {
+    let transition: Parameters<VisitAdminRepository["transition"]>[1] | undefined;
+    const syncWrites: string[] = [];
     const repository: VisitAdminRepository = {
       async getById() {
         return {
@@ -47,20 +46,24 @@ describe("admin visit workflow", () => {
           location: "교회",
           preferredTime: "오후",
           reason: "비공개 이유",
-          status: "requested",
-          calendarSyncStatus: "synced",
+          status: from,
+          calendarSyncStatus: "failed",
           googleEventId: "g1",
         };
       },
       async updateDetails() {},
-      async setSyncStatus() {},
-      async transition() { transitioned = true; },
+      async setSyncStatus(_id, status) { syncWrites.push(status); },
+      async transition(_id, input) { transition = input; },
     };
 
-    await expect(
-      confirmVisit("v1", "admin1", provider, repository),
-    ).rejects.toMatchObject({ code: "CALENDAR_EVENT_UPDATE_FAILED" });
-    expect(transitioned).toBe(false);
+    if (to === "confirmed") {
+      await confirmVisit("v1", "admin1", repository);
+      expect(transition).toEqual({ status: "confirmed", confirmedAt: expect.any(Date), confirmedByUserId: "admin1" });
+    } else {
+      await completeVisit("v1", repository);
+      expect(transition).toEqual({ status: "completed", confirmedAt: undefined, confirmedByUserId: undefined });
+    }
+    expect(syncWrites).toEqual([]);
   });
 
   it("does not cancel DB status when Google event deletion fails", async () => {
