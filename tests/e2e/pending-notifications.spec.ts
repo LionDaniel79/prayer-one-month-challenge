@@ -20,8 +20,8 @@ test("pending metadata is packed before pagination and tracks completion, review
     await db`insert into prayer_app.pastoral_requests(id,year,month,enabled) values(${requestId},2098,11,false)`;
     for (let i = 0; i < prayerIds.length; i++) await db`insert into prayer_app.prayer_requests(id,user_id,content,status,created_at)
       values(${prayerIds[i]},${e2eAccounts.member.userId},'PRIVATE_PRAYER_BODY',${i<3?'received':i<5?'praying':'completed'},'2099-01-01'::timestamptz+${i}*interval '1 second')`;
-    for (let i = 0; i < visitIds.length; i++) await db`insert into prayer_app.visit_requests(id,requester_user_id,visit_date,visit_type,attendees,location,preferred_time,reason,status,created_at)
-      values(${visitIds[i]},${e2eAccounts.member.userId},'2099-02-01'::date+${i},'personal','','','','PRIVATE_VISIT_REASON',${i<3?'requested':i<5?'confirmed':i===5?'completed':'cancelled'},'2099-01-02'::timestamptz+${i}*interval '1 second')`;
+    for (let i = 0; i < visitIds.length; i++) await db`insert into prayer_app.visit_requests(id,requester_user_id,visit_date,visit_type,attendees,location,preferred_time,reason,status,calendar_sync_status,created_at)
+      values(${visitIds[i]},${e2eAccounts.member.userId},'2099-02-01'::date+${i},'personal','','','','PRIVATE_VISIT_REASON',${i<3?'requested':i<5?'confirmed':i===5?'completed':'cancelled'},'synced','2099-01-02'::timestamptz+${i}*interval '1 second')`;
     for (let i = 0; i < reportIds.length; i++) await db`insert into prayer_app.pastoral_reports(id,request_id,sam_id,author_user_id,sam_name,village,leader_name,submitted_by,written_date,method,form,files,fingerprint,submitted_at,version,reviewed_version)
       values(${reportIds[i]},${requestId},${samId},${e2eAccounts.member.userId},'가상샘','1','가상리더','가상제출자','2099-01-03','form',${db.json(form)},'[]',${'a'.repeat(64)},${i===3?null:'2099-01-03T00:00:00Z'},0,${i===2?0:-1})`;
     await db`insert into prayer_app.notices(id,title,body,status,author_user_id,published_at) values(${noticeId},'공지는제외','PRIVATE_NOTICE_BODY','published',${e2eAccounts.admin.userId},'2099-01-04')`;
