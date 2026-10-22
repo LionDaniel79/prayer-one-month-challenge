@@ -81,7 +81,7 @@ export function PrayerComments({ requestId, isOwner = false, onRead }: {
     if (list.current && followLatest.current) list.current.scrollTop = list.current.scrollHeight;
   }, [lastCommentId]);
   useEffect(() => {
-    if (!isOwner || !lastCommentId || !latest.current) return;
+    if (!lastCommentId || !latest.current) return;
     let cancelled = false;
     let acknowledged = false;
     let inFlight = false;
@@ -90,7 +90,7 @@ export function PrayerComments({ requestId, isOwner = false, onRead }: {
       if (cancelled || acknowledged || inFlight || !visible || document.visibilityState === "hidden") return;
       inFlight = true;
       try {
-        await fetchJson(endpoint, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ throughCommentId: lastCommentId }) });
+        await fetchJson(endpoint, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ throughCommentId: lastCommentId, asAdmin: !isOwner }) });
         window.dispatchEvent(new Event(prayerCommentsReadEvent));
         if (!cancelled) { acknowledged = true; onRead?.(); }
       } catch { /* Keep the unread badge when the read acknowledgement fails. */ }

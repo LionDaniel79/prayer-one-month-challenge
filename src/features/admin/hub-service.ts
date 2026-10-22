@@ -3,6 +3,7 @@ import { getDb } from "../../db/client";
 import { challenges, memberRoster, prayerCheckins, prayerRequests, users, visitRequests } from "../../db/schema";
 import { todayInSeoul } from "../challenge/date";
 import { getPrayerMenuSettings } from "../prayer-menu/service";
+import { countUnreadRequesterComments } from "../prayer-requests/service";
 import { ACTIVITY_PAGE_SIZE, activityPagination } from "./metrics-policy";
 import { prayerParticipantHasCheckin, prayerParticipantNotExcluded } from "./prayer-participants";
 
@@ -16,7 +17,7 @@ export type AdminHubDashboardData = {
   prayer: { enabled: boolean; participants: number; todayCompleted: number; todayRate: number };
   users: { active: number; registered: number };
   visits: { requested: number };
-  prayerRequests: { received: number; praying: number };
+  prayerRequests: { received: number; praying: number; unreadComments: number };
   pastoral: { unreviewed: number };
   recentActivity: AdminActivityItem[];
   activityPagination: { page: number; pages: number; total: number; pageSize: number };
@@ -150,7 +151,7 @@ export async function getAdminHubDashboard(now = new Date(), page = 1): Promise<
     prayer: { enabled, participants, todayCompleted, todayRate: participants > 0 ? todayCompleted/participants : 0 },
     users: { active: Number(userRow?.active ?? 0), registered: Number(userRow?.registered ?? 0) },
     visits: { requested: Number(visits?.count ?? 0) },
-    prayerRequests: { received: Number(received?.count ?? 0), praying: Number(praying?.count ?? 0) },
+    prayerRequests: { received: Number(received?.count ?? 0), praying: Number(praying?.count ?? 0), unreadComments: await countUnreadRequesterComments() },
     pastoral: { unreviewed: Number((unreviewed.rows[0] as {count:number})?.count ?? 0) },
     ...await recentActivityPage(page),
   };

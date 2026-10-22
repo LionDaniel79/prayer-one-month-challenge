@@ -5,7 +5,7 @@ import { login } from "./helpers";
 const fixture: AdminPrayerRequestDetail = {
   id: "00000000-0000-4000-8000-000000000491",
   requesterName: "삭제검증 성도", createdAt: "2026-09-27T02:00:00Z", status: "received",
-  preview: "삭제 확인을 위한 비공개 검증 내용", content: "삭제 확인을 위한 비공개 검증 내용",
+  preview: "삭제 확인을 위한 비공개 검증 내용", content: "삭제 확인을 위한 비공개 검증 내용", hasUnreadComments: false,
 };
 
 test.describe("administrator prayer request deletion", () => {

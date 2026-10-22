@@ -30,11 +30,11 @@ export async function PATCH(request: Request, context: Context) {
     sameOrigin(request);
     const id = await prayerId(context);
     const parsed = z.union([
-      z.object({ throughCommentId: z.string().uuid() }).strict(),
+      z.object({ throughCommentId: z.string().uuid(), asAdmin: z.boolean().optional() }).strict(),
       z.object({ commentId: z.string().uuid(), content: z.string().trim().min(1).max(2000), expectedVersion: z.number().int().positive() }).strict(),
     ]).safeParse(await boundedJson(request));
     if (!parsed.success) return json({ code: "INVALID_INPUT" }, 400);
-    if ("throughCommentId" in parsed.data) await markPrayerCommentsRead(id, actor, parsed.data.throughCommentId);
+    if ("throughCommentId" in parsed.data) await markPrayerCommentsRead(id, actor, parsed.data.throughCommentId, parsed.data.asAdmin ?? false);
     else return json({ status: "ok", comment: await editPrayerComment(id, actor, parsed.data) });
     return json({ status: "ok" });
   } catch (error) { return prayerError(error); }

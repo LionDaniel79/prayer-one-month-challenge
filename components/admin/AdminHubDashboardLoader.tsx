@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { AdminHubDashboardData } from "../../src/features/admin/hub-service";
 import { AdminHubDashboard } from "./AdminHubDashboard";
+import { prayerCommentsReadEvent } from "../prayer-requests/useUnreadPrayerComments";
 
 export function AdminHubDashboardLoader() {
   const [data, setData] = useState<AdminHubDashboardData | null>(null);
@@ -15,11 +16,18 @@ export function AdminHubDashboardLoader() {
     setReload(n => n + 1);
   }, []);
   useEffect(() => {
+    const refreshVisible = () => { if (document.visibilityState !== "hidden") refresh(); };
     window.addEventListener("focus", refresh);
     window.addEventListener("pastoral:changed", refresh);
+    window.addEventListener(prayerCommentsReadEvent, refresh);
+    document.addEventListener("visibilitychange", refreshVisible);
+    const timer = window.setInterval(refreshVisible, 15000);
     return () => {
+      window.clearInterval(timer);
       window.removeEventListener("focus", refresh);
       window.removeEventListener("pastoral:changed", refresh);
+      window.removeEventListener(prayerCommentsReadEvent, refresh);
+      document.removeEventListener("visibilitychange", refreshVisible);
     };
   }, [refresh]);
   useEffect(() => {

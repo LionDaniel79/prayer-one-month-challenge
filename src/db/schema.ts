@@ -236,6 +236,7 @@ export const prayerRequests = appSchema.table(
     completedByRequester: boolean("completed_by_requester").notNull().default(false),
     completedAt: timestamp("completed_at", { withTimezone: true }),
     requesterReadSequence: bigint("requester_read_sequence", { mode: "number" }).notNull().default(0),
+    adminReadSequence: bigint("admin_read_sequence", { mode: "number" }).notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
