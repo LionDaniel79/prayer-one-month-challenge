@@ -7,7 +7,7 @@ import type { AdminPrayerRequestDetail as Detail } from "../../src/features/pray
 const request: Detail = {
   id: "00000000-0000-4000-8000-000000000101",
   requesterName: "검증 성도", createdAt: "2026-09-27T02:00:00Z", status: "received",
-  preview: "기도 내용", content: "기도 내용",
+  preview: "기도 내용", content: "기도 내용", hasUnreadComments: false,
 };
 
 function render(detail: Detail | null, busy: boolean) {

@@ -1,4 +1,5 @@
 export type PrayerRequestStatus = "received" | "praying" | "completed";
+export type AdminPrayerRequestFilter = "all" | "unread" | PrayerRequestStatus;
 
 export type AdminPrayerRequestSummary = {
   id: string;
@@ -6,6 +7,7 @@ export type AdminPrayerRequestSummary = {
   createdAt: string;
   status: PrayerRequestStatus;
   preview: string;
+  hasUnreadComments: boolean;
   completedByRequester?: boolean;
   completedAt?: string | null;
 };

@@ -3,6 +3,7 @@
 import type {
   AdminPrayerRequestSummary,
   PrayerRequestStatus,
+  AdminPrayerRequestFilter,
 } from "../../../src/features/prayer-requests/types";
 
 function statusLabel(status: PrayerRequestStatus) {
@@ -29,10 +30,10 @@ export function AdminPrayerRequestList({
   onSelect,
 }: {
   requests: AdminPrayerRequestSummary[];
-  filter: "all" | PrayerRequestStatus;
+  filter: AdminPrayerRequestFilter;
   selectedId: string | null;
   busy: boolean;
-  onFilterChange: (value: "all" | PrayerRequestStatus) => void;
+  onFilterChange: (value: AdminPrayerRequestFilter) => void;
   onSelect: (id: string) => void;
 }) {
   return (
@@ -43,11 +44,12 @@ export function AdminPrayerRequestList({
           value={filter}
           disabled={busy}
           onChange={(event) =>
-            onFilterChange(event.target.value as "all" | PrayerRequestStatus)
+            onFilterChange(event.target.value as AdminPrayerRequestFilter)
           }
           aria-label="기도요청 상태 필터"
         >
           <option value="all">전체</option>
+          <option value="unread">댓글 미확인</option>
           <option value="received">접수</option>
           <option value="praying">기도중</option>
           <option value="completed">완료</option>
@@ -76,7 +78,7 @@ export function AdminPrayerRequestList({
               }
               onClick={() => onSelect(request.id)}
             >
-              <span><strong>{request.requesterName}</strong><small>{request.preview}</small></span>
+              <span><strong>{request.requesterName}</strong>{request.hasUnreadComments && <span className="prayer-unread-badge" role="img" aria-label="미확인 신청자 댓글">!</span>}<small>{request.preview}</small></span>
               <span>{dateLabel(request.createdAt)}</span>
               <span>{request.completedByRequester ? "신청자 완료" : statusLabel(request.status)}</span>
             </button>

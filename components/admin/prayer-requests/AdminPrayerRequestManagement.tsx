@@ -2,19 +2,22 @@
 
 import { useEffect, useState } from "react";
 import { fetchJson } from "../../../src/lib/fetch-json";
+import { prayerCommentsReadEvent } from "../../prayer-requests/useUnreadPrayerComments";
 import type {
   AdminPrayerRequestDetail,
   AdminPrayerRequestSummary,
   PrayerRequestStatus,
+  AdminPrayerRequestFilter,
 } from "../../../src/features/prayer-requests/types";
 import { AdminPrayerRequestDetail as DetailPanel } from "./AdminPrayerRequestDetail";
 import { AdminPrayerRequestList } from "./AdminPrayerRequestList";
 
 async function fetchRequests(
-  filter: "all" | PrayerRequestStatus,
+  filter: AdminPrayerRequestFilter,
 ): Promise<AdminPrayerRequestSummary[]> {
   const params = new URLSearchParams();
-  if (filter !== "all") params.set("status", filter);
+  if (filter === "unread") params.set("unreadComments", "1");
+  else if (filter !== "all") params.set("status", filter);
   const suffix = params.toString() ? "?" + params.toString() : "";
   const body = await fetchJson<{ requests: AdminPrayerRequestSummary[] }>("/api/admin/prayer-requests" + suffix, {
     cache: "no-store",
@@ -32,11 +35,13 @@ async function fetchDetail(id: string): Promise<AdminPrayerRequestDetail> {
 export function AdminPrayerRequestManagement({
   initialStatus = "all",
   initialId = null,
+  initialUnreadComments = false,
 }: {
   initialStatus?: "all" | PrayerRequestStatus;
   initialId?: string | null;
+  initialUnreadComments?: boolean;
 }) {
-  const [filter, setFilter] = useState<"all" | PrayerRequestStatus>(initialStatus);
+  const [filter, setFilter] = useState<AdminPrayerRequestFilter>(initialUnreadComments ? "unread" : initialStatus);
   const [requests, setRequests] = useState<AdminPrayerRequestSummary[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(initialId);
   const [detail, setDetail] = useState<AdminPrayerRequestDetail | null>(null);
@@ -70,8 +75,9 @@ export function AdminPrayerRequestManagement({
     refresh();
     const timer = window.setInterval(refresh, 15000);
     window.addEventListener("focus", refresh);
+    window.addEventListener(prayerCommentsReadEvent, refresh);
     document.addEventListener("visibilitychange", refresh);
-    return () => { cancelled = true; window.clearInterval(timer); window.removeEventListener("focus", refresh); document.removeEventListener("visibilitychange", refresh); };
+    return () => { cancelled = true; window.clearInterval(timer); window.removeEventListener("focus", refresh); window.removeEventListener(prayerCommentsReadEvent, refresh); document.removeEventListener("visibilitychange", refresh); };
   }, [filter, busy, revision]);
 
   useEffect(() => {

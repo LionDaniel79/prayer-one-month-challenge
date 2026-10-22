@@ -72,7 +72,7 @@ describe("prayer follow-up HTTP boundary", () => {
     expect((await comments.PATCH(request("PATCH", { commentId: id, content: "댓글 수정", expectedVersion: 1 }), context)).status).toBe(200);
     expect(service.editPrayerComment).toHaveBeenCalledWith(id, actor, { commentId: id, content: "댓글 수정", expectedVersion: 1 });
     expect((await comments.PATCH(request("PATCH", { throughCommentId: id }), context)).status).toBe(200);
-    expect(service.markPrayerCommentsRead).toHaveBeenCalledWith(id, actor, id);
+    expect(service.markPrayerCommentsRead).toHaveBeenCalledWith(id, actor, id, false);
     expect(scheduleEmailDelivery).not.toHaveBeenCalled();
   });
 });

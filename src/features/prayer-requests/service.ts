@@ -50,7 +50,7 @@ export async function createPrayerRequest(
 }
 
 export async function listPrayerRequestsForAdmin(
-  filter: { status?: PrayerRequestStatus } = {},
+  filter: { status?: PrayerRequestStatus; unreadComments?: boolean } = {},
 ): Promise<AdminPrayerRequestSummary[]> {
   const rows = await getDb()
     .select({
@@ -61,19 +61,22 @@ export async function listPrayerRequestsForAdmin(
       createdAt: prayerRequests.createdAt,
       completedByRequester: prayerRequests.completedByRequester,
       completedAt: prayerRequests.completedAt,
+      hasUnreadComments: unreadRequesterComment,
     })
     .from(prayerRequests)
     .innerJoin(users, eq(users.id, prayerRequests.userId))
     .where(
-      filter.status
-        ? eq(prayerRequests.status, filter.status)
-        : sql`true`,
+      and(
+        filter.status ? eq(prayerRequests.status, filter.status) : undefined,
+        filter.unreadComments ? unreadRequesterComment : undefined,
+      ),
     )
     .orderBy(desc(prayerRequests.createdAt));
 
   return rows.map((row) => ({
     id: row.id,
     requesterName: row.requesterName,
+    hasUnreadComments: row.hasUnreadComments,
     completedByRequester: row.completedByRequester,
     completedAt: row.completedAt?.toISOString() ?? null,
     createdAt: row.createdAt.toISOString(),
@@ -97,6 +100,7 @@ export async function getPrayerRequestForAdmin(
       createdAt: prayerRequests.createdAt,
       completedByRequester: prayerRequests.completedByRequester,
       completedAt: prayerRequests.completedAt,
+      hasUnreadComments: unreadRequesterComment,
     })
     .from(prayerRequests)
     .innerJoin(users, eq(users.id, prayerRequests.userId))
@@ -108,6 +112,7 @@ export async function getPrayerRequestForAdmin(
   return {
     id: row.id,
     requesterName: row.requesterName,
+    hasUnreadComments: row.hasUnreadComments,
     completedByRequester: row.completedByRequester,
     completedAt: row.completedAt?.toISOString() ?? null,
     createdAt: row.createdAt.toISOString(),
@@ -176,6 +181,25 @@ const unreadAdminComment = sql<boolean>`exists (
     and c.author_role = 'admin'
     and c.sequence > ${prayerRequests}.requester_read_sequence
 )`;
+
+const unreadRequesterComment = sql<boolean>`exists (
+  select 1 from ${prayerRequestComments} as c
+  where c.request_id = ${prayerRequests}.id
+    and c.author_role = 'member'
+    and c.author_user_id = ${prayerRequests}.user_id
+    and c.sequence > ${prayerRequests}.admin_read_sequence
+)`;
+
+export async function countUnreadRequesterComments(): Promise<number> {
+  const [row] = await getDb().select({ count: sql<number>`count(*)::int` })
+    .from(prayerRequestComments).innerJoin(prayerRequests, eq(prayerRequests.id, prayerRequestComments.requestId))
+    .where(and(
+      eq(prayerRequestComments.authorRole, "member"),
+      eq(prayerRequestComments.authorUserId, prayerRequests.userId),
+      sql`${prayerRequestComments.sequence} > ${prayerRequests.adminReadSequence}`,
+    ));
+  return Number(row?.count ?? 0);
+}
 
 export async function hasUnreadPrayerComments(userId: string): Promise<boolean> {
   const rows = await getDb().select({ id: prayerRequests.id }).from(prayerRequests)
@@ -276,13 +300,16 @@ export async function editPrayerComment(id: string, actor: Actor, input: { comme
   });
 }
 
-export async function markPrayerCommentsRead(id: string, actor: Actor, throughCommentId: string) {
+export async function markPrayerCommentsRead(id: string, actor: Actor, throughCommentId: string, asAdmin = false) {
+  if (asAdmin && actor.role !== "admin") throw new DomainError("FORBIDDEN", 403);
   await getDb().transaction(async tx => {
-    await lockedRequest(tx, id, actor, true);
+    await lockedRequest(tx, id, actor, !asAdmin);
     const [comment] = await tx.select({ sequence: prayerRequestComments.sequence }).from(prayerRequestComments)
       .where(and(eq(prayerRequestComments.id, throughCommentId), eq(prayerRequestComments.requestId, id))).limit(1);
     if (!comment) throw new DomainError("INVALID_PRAYER_COMMENT", 400);
-    await tx.update(prayerRequests).set({
+    await tx.update(prayerRequests).set(asAdmin ? {
+      adminReadSequence: sql`greatest(${prayerRequests.adminReadSequence}, ${comment.sequence})`,
+    } : {
       requesterReadSequence: sql`greatest(${prayerRequests.requesterReadSequence}, ${comment.sequence})`,
     }).where(eq(prayerRequests.id, id));
   });

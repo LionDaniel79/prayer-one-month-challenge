@@ -53,10 +53,16 @@ export function AdminHubDashboard({
           <span>심방 신청 대기</span><strong>{data.visits.requested}건</strong>
           <small>확인 후 유선으로 확정</small>
         </Link>
-        <Link className="admin-summary-card" href="/admin/prayer-requests?status=received">
-          <span>미처리 기도요청</span><strong>{data.prayerRequests.received}건</strong>
-          <small>기도중 {data.prayerRequests.praying}건</small>
-        </Link>
+        <div className="admin-prayer-summary-pair">
+          <Link className="admin-summary-card" href="/admin/prayer-requests?status=received">
+            <span>미처리 기도요청</span><strong>{data.prayerRequests.received}건</strong>
+            <small>기도중 {data.prayerRequests.praying}건</small>
+          </Link>
+          <Link className="admin-summary-card" href="/admin/prayer-requests?unreadComments=1">
+            <span>댓글 알림</span><strong>{data.prayerRequests.unreadComments}건</strong>
+            <small>신청자 미확인 댓글</small>
+          </Link>
+        </div>
       </section>
 
       <section className="card admin-hub-activity" aria-busy={loading}>

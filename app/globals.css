@@ -943,6 +943,12 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 12px;
 }
+.admin-prayer-summary-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-column: span 2;
+  gap: 12px;
+}
 .admin-summary-card {
   min-width: 0;
   display: grid;
@@ -985,6 +991,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 }
 @media (max-width: 430px) {
   .admin-summary-grid { grid-template-columns: 1fr; }
+  .admin-prayer-summary-pair { grid-column: span 1; }
 }
 
 
@@ -1083,7 +1090,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 }
 .admin-request-row:hover,
 .admin-request-row.is-selected { background: #f5f8fc; }
-.admin-request-row span:first-child { display: grid; gap: 4px; min-width: 0; }
+.admin-request-row > span:first-child { display: grid; gap: 4px; min-width: 0; }
 .admin-request-row small {
   overflow: hidden;
   color: #667085;
@@ -1117,7 +1124,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 @media (max-width: 620px) {
   .admin-request-columns-head { display: none; }
   .admin-request-row { grid-template-columns: 1fr auto; }
-  .admin-request-row span:nth-child(2) { display: none; }
+  .admin-request-row > span:nth-child(2) { display: none; }
 }
 
 

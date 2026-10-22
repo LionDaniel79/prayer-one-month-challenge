@@ -21,6 +21,7 @@ export default async function AdminPrayerRequestsPage({
       <AdminPrayerRequestManagement
         initialStatus={parseStatus(rawStatus)}
         initialId={typeof rawId === "string" ? rawId : null}
+        initialUnreadComments={params.unreadComments === "1"}
       />
     </main>
   );
